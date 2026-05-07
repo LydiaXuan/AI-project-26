@@ -1,53 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAuthed() {
-      return request.auth != null;
-    }
-
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
-    }
-
-    function isApproved() {
-      return isAuthed() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        userDoc().data.approved == true;
-    }
-
-    function isAdmin() {
-      return isApproved() && userDoc().data.isAdmin == true;
-    }
-
-    // Users: own doc writable by self; readable by approved team
-    match /users/{uid} {
-      allow read: if isAuthed();
-      allow create: if request.auth.uid == uid;
-      allow update: if request.auth.uid == uid || isAdmin();
-    }
-
-    // Config: readable by all authed; writable only by admins
-    // First-time setup: allow create when no settings doc exists yet
-    match /config/{doc} {
-      allow read: if isAuthed();
-      allow create: if isAuthed() &&
-        !exists(/databases/$(database)/documents/config/settings);
-      allow update, delete: if isAdmin();
-    }
-
-    // Projects: approved team can read/create; admins can delete
-    match /projects/{pid} {
-      allow read: if isApproved();
-      allow create, update: if isApproved();
-      allow delete: if isAdmin();
-    }
-
-    // Tests: approved team can read/create/update; admins can delete
-    match /tests/{tid} {
-      allow read: if isApproved();
-      allow create, update: if isApproved();
-      allow delete: if isAdmin();
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }

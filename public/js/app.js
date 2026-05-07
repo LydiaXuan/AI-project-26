@@ -402,46 +402,84 @@ async function deleteTestRecord(id) {
   try { await deleteTest(id); toast('已删除','success'); } catch(e) { toast('删除失败：'+e.message,'error'); }
 }
 
-// ── Form ──────────────────────────────────────────────────────
+// ── Form (4-column grid layout) ───────────────────────────────
 const VDEFS = [
-  {key:'control',label:'🔵 原始图（Control）',cls:'control'},
-  {key:'test1',  label:'🔴 测试图 1',         cls:'test1'},
-  {key:'test2',  label:'🟣 测试图 2',         cls:'test2'},
-  {key:'test3',  label:'🩷 测试图 3',         cls:'test3'},
+  {key:'control',label:'🔵 原始',cls:'ctrl'},
+  {key:'test1',  label:'🔴 测试1',cls:'t1'},
+  {key:'test2',  label:'🟣 测试2',cls:'t2'},
+  {key:'test3',  label:'🩷 测试3',cls:'t3'},
 ];
 const BI_TYPES = ['折线图','柱状图','饼图','散点图','漏斗图','热力图','面积图','其他'];
-
 function renderFormView() {
   const isEdit = !!state.editTestId;
   const test = isEdit ? state.tests.find(t=>t.id===state.editTestId) : null;
-
-  // pre-fill image previews for edit
   if (test) test.variants?.forEach((v,i)=>{ if(v.imageUrl&&!formState.previews[i]) formState.previews[i]=v.imageUrl; });
 
   const projOpts = state.projects.map(p=>`<option value="${p.id}" data-name="${escHtml(p.name)}" ${test?.projectId===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
   const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
   const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
   const biOpts = BI_TYPES.map(b=>`<option value="${b}" ${test?.biVizType===b?'selected':''}>${b}</option>`).join('');
-  const varHTML = VDEFS.map((_,i)=>buildVariantBlock(i, test?.variants?.[i]||{})).join('');
+
+  // Build 4-column variant grid
+  const headers = VDEFS.map(d=>`<div class="vg-col-header ${d.cls}">${d.label}</div>`).join('');
+
+  // Image row
+  const imgCells = VDEFS.map((_,i)=>`<div class="vg-cell">${buildImgCell(i, test?.variants?.[i])}</div>`).join('');
+
+  // First installs row
+  const fiCells = VDEFS.map((_,i)=>{
+    const v=test?.variants?.[i]||{};
+    return `<div class="vg-cell"><input class="form-control" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}"/></div>`;
+  }).join('');
+
+  // CI row
+  const ciCells = VDEFS.map((_,i)=>{
+    if(i===0) return `<div class="vg-na">基准</div>`;
+    const v=test?.variants?.[i]||{};
+    const isEmp=!v.ciLower&&!v.ciUpper&&v.empiricalDelta!=null;
+    return `<div class="vg-cell" id="v${i}_ciwrap">${buildCICell(i,v,isEmp)}</div>`;
+  }).join('');
+
+  // Retained installs row
+  const riCells = VDEFS.map((_,i)=>{
+    const v=test?.variants?.[i]||{};
+    return `<div class="vg-cell"><input class="form-control" id="v${i}_ri" type="number" placeholder="—" value="${v.retainedInstalls??''}"/></div>`;
+  }).join('');
+
+  // Applied row
+  const apCells = VDEFS.map((_,i)=>{
+    if(i===0) return `<div class="vg-na">—</div>`;
+    const v=test?.variants?.[i]||{};
+    return `<div class="vg-cell" style="display:flex;justify-content:center;padding-top:6px"><label class="toggle"><input type="checkbox" id="v${i}_applied" ${v.applied?'checked':''}/><span class="toggle-slider"></span></label></div>`;
+  }).join('');
+
+  // Effect badges row
+  const efCells = VDEFS.map((_,i)=>{
+    if(i===0) return `<div class="vg-na">—</div>`;
+    const v=test?.variants?.[i]||{};
+    return `<div class="vg-badge" id="ebadge-${i}">${effectBadgeHTML(v.effect||calculateEffect(v.ciLower??null,v.ciUpper??null))}</div>`;
+  }).join('');
 
   renderShell(`
-    <div class="modal-overlay">
-      <div class="modal">
+    <div class="modal-overlay" onclick="void(0)">
+      <div class="modal" style="max-width:900px">
         <div class="modal-header">
           <h2>${isEdit?'✏️ 编辑测试记录':'＋ 新增测试记录'}</h2>
           <button class="modal-close" onclick="navigate('timeline')">✕</button>
         </div>
         <div class="modal-body">
           <form id="test-form" onsubmit="handleFormSubmit(event)">
+
+            <!-- Basic Info -->
             <div class="form-section">
               <div class="form-section-title">📋 基本信息</div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label">项目名称</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
+                <div class="form-group"><label class="form-label">项目</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
                 <div class="form-group"><label class="form-label">测试人</label><select class="form-control" id="f-tester" required>${testerOpts}</select></div>
               </div>
               <div class="form-row">
-                <div class="form-group"><label class="form-label">测试开始日期</label><input class="form-control" id="f-start" type="date" required value="${test?.startDate||''}"/></div>
-                <div class="form-group"><label class="form-label">测试结束日期</label><input class="form-control" id="f-end" type="date" value="${test?.endDate||''}"/></div>
+                <div class="form-group"><label class="form-label">开始日期</label><input class="form-control" id="f-start" type="date" required value="${test?.startDate||''}"/></div>
+                <div class="form-group"><label class="form-label">结束日期</label><input class="form-control" id="f-end" type="date" value="${test?.endDate||''}"/></div>
               </div>
               <div class="form-row">
                 <div class="form-group"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
@@ -449,10 +487,42 @@ function renderFormView() {
               </div>
               <div class="form-group"><label class="form-label">BI 可视化类型</label><select class="form-control" id="f-bitype"><option value="">不指定</option>${biOpts}</select></div>
             </div>
+
+            <!-- Variant Grid -->
             <div class="form-section">
               <div class="form-section-title">🖼️ 变体数据</div>
-              ${varHTML}
+              <div class="form-tools-row">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量上传图标截图</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
+              </div>
+
+              <div class="variants-grid">
+                <!-- headers -->
+                <div></div>${headers}
+                <div class="vg-sep"></div>
+
+                <!-- images -->
+                <div class="vg-row-label">图标</div>${imgCells}
+                <div class="vg-sep"></div>
+
+                <!-- first installs -->
+                <div class="vg-row-label">首次安装数<br>（调整）</div>${fiCells}
+
+                <!-- CI -->
+                <div class="vg-row-label">置信区间</div>${ciCells}
+
+                <!-- retained -->
+                <div class="vg-row-label">保留安装数<br>（调整）</div>${riCells}
+                <div class="vg-sep"></div>
+
+                <!-- applied -->
+                <div class="vg-row-label">是否应用</div>${apCells}
+
+                <!-- effect badges -->
+                <div class="vg-row-label">效果</div>${efCells}
+              </div>
             </div>
+
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" onclick="navigate('timeline')">取消</button>
               <button type="submit" class="btn btn-primary" id="f-submit">${isEdit?'💾 保存修改':'🚀 提交记录'}</button>
@@ -463,67 +533,28 @@ function renderFormView() {
     </div>`, 'timeline');
 }
 
-function buildVariantBlock(i, v={}) {
-  const d = VDEFS[i];
-  const isCtrl = i===0;
-  const isEmp = (!v.ciLower && !v.ciUpper && v.empiricalDelta!=null);
-  const prevSrc = formState.previews[i];
-  const imgHTML = prevSrc
-    ? `<div class="img-preview-wrap"><img class="img-preview" src="${prevSrc}" onclick="openLightbox('${prevSrc}')" style="cursor:zoom-in"/><button type="button" class="img-remove" onclick="removeImg(${i})">✕</button></div>`
-    : `<div class="img-upload-area" id="uarea-${i}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,${i})"><span class="upload-icon">📤</span><span class="upload-hint">点击或拖拽上传</span><input type="file" accept="image/*" onchange="handleImgSelect(event,${i})"/></div>`;
+function buildImgCell(i, v={}) {
+  const src = formState.previews[i];
+  if (src) return `<div class="img-cell-wrap"><img class="img-preview-sm" src="${src}" onclick="openLightbox('${src}')"/><button type="button" class="img-remove" onclick="removeImg(${i})">✕</button></div>`;
+  return `<div class="img-upload-sm" id="uarea-${i}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,${i})"><span class="upload-icon">📤</span><span>点击上传</span><input type="file" accept="image/*" onchange="handleImgSelect(event,${i})"/></div>`;
+}
 
-  const ciHTML = `<div class="ci-group">
-    <div class="form-group" style="margin-bottom:0"><label class="form-label">CI 下限 %</label><input class="form-control" id="v${i}_ciL" type="number" step="0.1" placeholder="-5.2" value="${v.ciLower??''}" oninput="updateBadge(${i})"/></div>
-    <div class="form-group" style="margin-bottom:0"><label class="form-label">CI 上限 %</label><input class="form-control" id="v${i}_ciH" type="number" step="0.1" placeholder="10.8" value="${v.ciUpper??''}" oninput="updateBadge(${i})"/></div>
-  </div>`;
-  const empHTML = `<div><label class="form-label">增幅（无置信区间）%</label><input class="form-control" id="v${i}_delta" type="number" step="0.1" placeholder="5.3" value="${v.empiricalDelta??''}" oninput="updateBadge(${i})"/></div>`;
-
-  return `
-    <div class="variant-block ${d.cls}" id="vblock-${i}">
-      <div class="variant-block-header">
-        <span class="variant-block-title">${d.label}</span>
-        <div style="display:flex;align-items:center;gap:10px">
-          ${!isCtrl?`<button type="button" class="paste-btn" id="pbtn-${i}" onclick="activatePaste(${i})">📋 从 Play 提取</button>`:''}
-          <span id="ebadge-${i}">${i>0?effectBadgeHTML(v.effect||calculateEffect(v.ciLower??null,v.ciUpper??null)):''}</span>
-        </div>
-      </div>
-      <div class="form-row">
-        <div>${imgHTML}</div>
-        <div>
-          <div class="form-group"><label class="form-label">首次安装数（调整）</label><input class="form-control" id="v${i}_fi" type="number" placeholder="12345" value="${v.firstInstalls??''}"/></div>
-          <div class="form-group"><label class="form-label">保留安装数（调整）</label><input class="form-control" id="v${i}_ri" type="number" placeholder="8765" value="${v.retainedInstalls??''}"/></div>
-        </div>
-      </div>
-      <div class="form-row" style="margin-top:10px">
-        <div class="form-group" style="margin-bottom:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <label class="form-label" style="margin-bottom:0">置信区间</label>
-            ${!isCtrl?`<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="v${i}_emp" ${isEmp?'checked':''} onchange="toggleEmp(${i})"/> 经验决策（无区间）</label>`:''}
-          </div>
-          <div id="v${i}_ciwrap">${isCtrl?'<span style="font-size:12px;color:var(--text-muted)">原始图为基准，无需填写</span>':isEmp?empHTML:ciHTML}</div>
-        </div>
-        ${!isCtrl?`<div class="form-group" style="margin-bottom:0"><label class="form-label">是否应用</label><div class="toggle-wrap" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="v${i}_applied" ${v.applied?'checked':''}/><span class="toggle-slider"></span></label><span class="toggle-label">应用此变体</span></div></div>`:''}
-      </div>
-    </div>`;
+function buildCICell(i, v={}, isEmp=false) {
+  const empCheck = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;margin-bottom:4px"><input type="checkbox" id="v${i}_emp" ${isEmp?'checked':''} onchange="toggleEmp(${i})"/> 经验决策</label>`;
+  if (isEmp) return empCheck + `<input class="form-control" id="v${i}_delta" type="number" step="0.1" placeholder="增幅%" value="${v.empiricalDelta??''}" oninput="updateBadge(${i})"/>`;
+  return empCheck + `<div class="ci-pair"><input class="form-control" id="v${i}_ciL" type="number" step="0.1" placeholder="下限%" value="${v.ciLower??''}" oninput="updateBadge(${i})"/><input class="form-control" id="v${i}_ciH" type="number" step="0.1" placeholder="上限%" value="${v.ciUpper??''}" oninput="updateBadge(${i})"/></div>`;
 }
 
 function activatePaste(i) {
   state.activeVariant = i;
-  document.querySelectorAll('.paste-active-hint').forEach(el=>el.remove());
-  const btn = document.getElementById(`pbtn-${i}`);
-  if (btn) { const h=document.createElement('span'); h.className='paste-active-hint'; h.textContent='⌨️ 等待粘贴…'; btn.replaceWith(h); }
   toast('请到提取工具复制数据，然后 Ctrl+V 粘贴', 'info');
 }
-
 function toggleEmp(i) {
   const checked = document.getElementById(`v${i}_emp`).checked;
-  const wrap = document.getElementById(`v${i}_ciwrap`);
-  wrap.innerHTML = checked
-    ? `<div><label class="form-label">增幅（无置信区间）%</label><input class="form-control" id="v${i}_delta" type="number" step="0.1" placeholder="5.3" oninput="updateBadge(${i})"/></div>`
-    : `<div class="ci-group"><div class="form-group" style="margin-bottom:0"><label class="form-label">CI 下限 %</label><input class="form-control" id="v${i}_ciL" type="number" step="0.1" placeholder="-5.2" oninput="updateBadge(${i})"/></div><div class="form-group" style="margin-bottom:0"><label class="form-label">CI 上限 %</label><input class="form-control" id="v${i}_ciH" type="number" step="0.1" placeholder="10.8" oninput="updateBadge(${i})"/></div></div>`;
+  const v = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.variants?.[i]||{}) : {};
+  document.getElementById(`v${i}_ciwrap`).innerHTML = buildCICell(i, v, checked);
   updateBadge(i);
 }
-
 function updateBadge(i) {
   const badge = document.getElementById(`ebadge-${i}`); if(!badge||i===0) return;
   const emp = document.getElementById(`v${i}_emp`)?.checked;
@@ -532,6 +563,7 @@ function updateBadge(i) {
   const hi = document.getElementById(`v${i}_ciH`)?.value;
   badge.innerHTML = effectBadgeHTML(calculateEffect(lo!==''&&lo!=null?parseFloat(lo):null, hi!==''&&hi!=null?parseFloat(hi):null));
 }
+function updateEffectBadge(i) { updateBadge(i); }
 
 function handleImgSelect(e, i) {
   const file = e.target.files?.[0]; if(!file) return;
@@ -547,19 +579,26 @@ function handleDrop(e, i) {
 function showPreview(i, src) {
   formState.previews[i] = src;
   const area = document.getElementById(`uarea-${i}`); if(!area) return;
-  const wrap = document.createElement('div'); wrap.className='img-preview-wrap';
-  wrap.innerHTML = `<img class="img-preview" src="${src}" onclick="openLightbox('${src}')" style="cursor:zoom-in"/><button type="button" class="img-remove" onclick="removeImg(${i})">✕</button>`;
+  const wrap = document.createElement('div'); wrap.className='img-cell-wrap';
+  wrap.innerHTML = `<img class="img-preview-sm" src="${src}" onclick="openLightbox('${src}')"/><button type="button" class="img-remove" onclick="removeImg(${i})">✕</button>`;
   area.replaceWith(wrap);
 }
 function removeImg(i) {
   formState.images[i]=null; formState.previews[i]=null;
-  const wrap = document.querySelector(`#vblock-${i} .img-preview-wrap`); if(!wrap) return;
-  const area = document.createElement('div'); area.className='img-upload-area'; area.id=`uarea-${i}`;
-  area.setAttribute('ondragover',"event.preventDefault();this.classList.add('drag-over')");
-  area.setAttribute('ondragleave',"this.classList.remove('drag-over')");
-  area.setAttribute('ondrop',`handleDrop(event,${i})`);
-  area.innerHTML=`<span class="upload-icon">📤</span><span class="upload-hint">点击或拖拽上传</span><input type="file" accept="image/*" onchange="handleImgSelect(event,${i})"/>`;
-  wrap.replaceWith(area);
+  const wrap = document.querySelector(`#uarea-${i}`)?.closest('.img-cell-wrap') || document.querySelector(`.img-cell-wrap`);
+  // Rebuild cell
+  const vg = document.querySelector('.variants-grid');
+  if (!vg) return;
+  // Find the image cell for variant i and replace it
+  const cells = vg.querySelectorAll('.vg-cell, .img-cell-wrap, .img-upload-sm');
+  // Re-render just the image row by updating the specific element
+  const imgRow = document.getElementById(`uarea-${i}`) || document.querySelectorAll('.img-cell-wrap, .img-upload-sm')[i];
+  if (imgRow) {
+    const newEl = document.createElement('div');
+    newEl.className = 'vg-cell';
+    newEl.innerHTML = buildImgCell(i, {});
+    imgRow.closest('.vg-cell, .img-cell-wrap') ? imgRow.closest('.vg-cell, .img-cell-wrap').replaceWith(newEl) : imgRow.replaceWith(newEl.firstChild);
+  }
 }
 
 async function handleFormSubmit(e) {
@@ -587,32 +626,332 @@ async function handleFormSubmit(e) {
       const ciH=emp?null:(document.getElementById(`v${i}_ciH`)?.value??null);
       const delta=emp?(document.getElementById(`v${i}_delta`)?.value??null):null;
       const applied=i>0?(document.getElementById(`v${i}_applied`)?.checked||false):false;
-      const effect=i===0?'control':calculateEffect(ciL!==''&&ciL!=null?parseFloat(ciL):null, ciH!==''&&ciH!=null?parseFloat(ciH):null);
+      const effect=i===0?'control':calculateEffect(ciL!==''&&ciL!=null?parseFloat(ciL):null,ciH!==''&&ciH!=null?parseFloat(ciH):null);
       let imageUrl=existV[i]?.imageUrl||null;
-      if (formState.images[i]) {
-        imageUrl = await compressImage(formState.images[i]);
-      }
-      variants.push({
-        firstInstalls: fi!==''&&fi!=null?Number(fi):null,
-        retainedInstalls: ri!==''&&ri!=null?Number(ri):null,
-        ciLower: ciL!==''&&ciL!=null?parseFloat(ciL):null,
-        ciUpper: ciH!==''&&ciH!=null?parseFloat(ciH):null,
-        empiricalDelta: delta!==''&&delta!=null?parseFloat(delta):null,
-        applied, effect, imageUrl,
-      });
+      if (formState.images[i]) imageUrl = await compressImage(formState.images[i]);
+      variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, empiricalDelta:delta!==''&&delta!=null?parseFloat(delta):null, applied, effect, imageUrl });
     }
-
-    const data = {projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,variants};
+    const data={projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,variants};
     if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
     else { await createTest(data); toast('记录已提交','success'); }
     formState.images=[null,null,null,null]; formState.previews=[null,null,null,null];
-    state.editTestId=null;
-    navigate('timeline');
+    state.editTestId=null; navigate('timeline');
   } catch(err) { toast('提交失败：'+err.message,'error'); btn.disabled=false; btn.textContent=state.editTestId?'💾 保存修改':'🚀 提交记录'; }
 }
-// expose updateEffectBadge alias
-function updateEffectBadge(i) { updateBadge(i); }
 
+// ── OCR Modal (Tesseract.js, no API needed) ───────────────────
+let ocrFiles = { fi: null, ri: null };
+let ocrData  = {};
+
+function openOCRModal() {
+  ocrFiles = { fi: null, ri: null }; ocrData = {};
+  const wrap = document.createElement('div');
+  wrap.className = 'ocr-modal-wrap'; wrap.id = 'ocr-wrap';
+  wrap.innerHTML = `
+    <div class="ocr-modal">
+      <h3>📊 上传截图自动提取数据</h3>
+      <p>上传 Google Play Console 实验截图，自动识别各变体的安装数和置信区间（本地运行，无需 API）</p>
+      <div class="ocr-uploads">
+        <div>
+          <div class="ocr-upload-label">首次安装数截图</div>
+          <div class="img-upload-area" id="ocr-fi-area" style="min-height:90px">
+            <span class="upload-icon">📤</span><span class="upload-hint">点击上传</span>
+            <input type="file" accept="image/*" onchange="ocrFileSelected(event,'fi')"/>
+          </div>
+          <div id="ocr-fi-thumb"></div>
+        </div>
+        <div>
+          <div class="ocr-upload-label">保留安装数截图</div>
+          <div class="img-upload-area" id="ocr-ri-area" style="min-height:90px">
+            <span class="upload-icon">📤</span><span class="upload-hint">点击上传</span>
+            <input type="file" accept="image/*" onchange="ocrFileSelected(event,'ri')"/>
+          </div>
+          <div id="ocr-ri-thumb"></div>
+        </div>
+      </div>
+      <div class="ocr-status" id="ocr-status">
+        <div class="spinner"></div>
+        <p>正在识别文字，请稍候（约 10~20 秒）…</p>
+        <div class="ocr-progress" id="ocr-progress"></div>
+      </div>
+      <div id="ocr-preview-wrap" style="display:none">
+        <table class="ocr-preview-table">
+          <thead><tr><th>变体</th><th>首次安装（调整）</th><th>CI 下限 %</th><th>CI 上限 %</th><th>保留安装（调整）</th></tr></thead>
+          <tbody id="ocr-tbody"></tbody>
+        </table>
+      </div>
+      <div class="ocr-actions">
+        <button class="btn btn-secondary" onclick="closeOCRModal()">取消</button>
+        <button class="btn btn-secondary" id="ocr-run-btn" onclick="runOCR()" disabled>🔍 开始识别</button>
+        <button class="btn btn-primary" id="ocr-apply-btn" onclick="applyOCRData()" disabled>✅ 填入表单</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+
+function ocrFileSelected(e, type) {
+  const file = e.target.files?.[0]; if(!file) return;
+  ocrFiles[type] = file;
+  const thumbEl = document.getElementById(`ocr-${type}-thumb`);
+  const r = new FileReader(); r.onload = ev => { thumbEl.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid var(--border)"/>`; };
+  r.readAsDataURL(file);
+  if (ocrFiles.fi || ocrFiles.ri) document.getElementById('ocr-run-btn').disabled = false;
+}
+
+async function runOCR() {
+  if (!ocrFiles.fi && !ocrFiles.ri) { toast('请至少上传一张截图','error'); return; }
+  document.getElementById('ocr-status').style.display = 'block';
+  document.getElementById('ocr-preview-wrap').style.display = 'none';
+  document.getElementById('ocr-run-btn').disabled = true;
+  document.getElementById('ocr-apply-btn').disabled = true;
+  ocrData = {};
+
+  try {
+    const logger = m => {
+      if (m.status === 'recognizing text') {
+        const p = document.getElementById('ocr-progress');
+        if (p) p.textContent = `进度 ${Math.round(m.progress*100)}%`;
+      }
+    };
+
+    if (ocrFiles.fi) {
+      const r = await Tesseract.recognize(ocrFiles.fi, 'eng', { logger });
+      const fiParsed = parseFirstInstallOCR(r.data.text);
+      Object.keys(fiParsed).forEach(v => { ocrData[v] = { ...(ocrData[v]||{}), ...fiParsed[v] }; });
+    }
+    if (ocrFiles.ri) {
+      const r2 = await Tesseract.recognize(ocrFiles.ri, 'eng', { logger });
+      const riParsed = parseRetainedOCR(r2.data.text);
+      Object.keys(riParsed).forEach(v => { ocrData[v] = { ...(ocrData[v]||{}), ...riParsed[v] }; });
+    }
+
+    // Show preview table
+    const tbody = document.getElementById('ocr-tbody');
+    const variantMap = { control:'原始(控制)', A:'测试1', B:'测试2', C:'测试3' };
+    tbody.innerHTML = Object.entries(ocrData).map(([k,d])=>`
+      <tr>
+        <td>${variantMap[k]||k}</td>
+        <td>${d.firstInstalls??'—'}</td>
+        <td>${d.ciLower??'—'}</td>
+        <td>${d.ciUpper??'—'}</td>
+        <td>${d.retainedInstalls??'—'}</td>
+      </tr>`).join('');
+    document.getElementById('ocr-status').style.display = 'none';
+    document.getElementById('ocr-preview-wrap').style.display = 'block';
+    document.getElementById('ocr-apply-btn').disabled = false;
+    toast('识别完成，请确认数据后点击「填入表单」','success');
+  } catch(err) {
+    document.getElementById('ocr-status').style.display = 'none';
+    toast('识别失败：'+err.message,'error');
+    document.getElementById('ocr-run-btn').disabled = false;
+  }
+}
+
+function parseFirstInstallOCR(text) {
+  const result = {};
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+  for (const line of lines) {
+    // Match lines starting with single letter A/B/C (variant)
+    const vm = line.match(/^([A-C])\s/);
+    if (!vm) continue;
+    const variant = vm[1];
+    // Extract all numbers (strip commas)
+    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>100);
+    // Adjusted installs = largest number
+    const firstInstalls = nums.length ? Math.max(...nums) : null;
+    // CI: look for signed percentages
+    const pcts = [...line.matchAll(/([+-]?\d+\.?\d*)\s*%/g)].map(m=>parseFloat(m[1]));
+    const ciLower = pcts.find(p=>p<0) ?? null;
+    const ciUpper = pcts.find(p=>p>0) ?? null;
+    result[variant] = { firstInstalls, ciLower, ciUpper };
+  }
+  // Also try to find control row (line with 70% or highest audience %)
+  for (const line of lines) {
+    if (line.match(/^[A-C]\s/)) continue; // skip variant rows
+    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>1000);
+    if (nums.length >= 2) {
+      result['control'] = { firstInstalls: Math.max(...nums) };
+      break;
+    }
+  }
+  return result;
+}
+
+function parseRetainedOCR(text) {
+  const result = {};
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+  for (const line of lines) {
+    const vm = line.match(/^([A-C])\s/);
+    if (!vm) continue;
+    const variant = vm[1];
+    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>100);
+    result[variant] = { retainedInstalls: nums.length ? Math.max(...nums) : null };
+  }
+  for (const line of lines) {
+    if (line.match(/^[A-C]\s/)) continue;
+    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>1000);
+    if (nums.length >= 2) {
+      result['control'] = { retainedInstalls: Math.max(...nums) };
+      break;
+    }
+  }
+  return result;
+}
+
+function applyOCRData() {
+  // Map A→i=1, B→i=2, C→i=3, control→i=0
+  const varMap = { control:0, A:1, B:2, C:3 };
+  Object.entries(ocrData).forEach(([key, d]) => {
+    const i = varMap[key];
+    if (i === undefined) return;
+    const set = (id, val) => { const el=document.getElementById(id); if(el&&val!=null) el.value=val; };
+    set(`v${i}_fi`, d.firstInstalls);
+    set(`v${i}_ri`, d.retainedInstalls);
+    if (i > 0) {
+      set(`v${i}_ciL`, d.ciLower);
+      set(`v${i}_ciH`, d.ciUpper);
+      updateBadge(i);
+    }
+  });
+  closeOCRModal();
+  toast('数据已填入，请检查并调整','success');
+}
+
+function closeOCRModal() { document.getElementById('ocr-wrap')?.remove(); }
+
+// ── Icon Crop Modal (Canvas, no API) ─────────────────────────
+let cropImg = null;
+let cropDividers = [0.25, 0.5, 0.75]; // 3 dividers for 4 regions
+let draggingDivider = null;
+const CROP_COLORS = ['#6B7280','#3B82F6','#8B5CF6','#EC4899'];
+const CROP_LABELS = ['原始','测试1','测试2','测试3'];
+
+function openCropModal() {
+  cropImg = null; cropDividers = [0.25, 0.5, 0.75];
+  setTimeout(() => { const c = document.getElementById('crop-canvas'); if(c) setupCropDrag(); }, 200);
+  const wrap = document.createElement('div');
+  wrap.className = 'crop-modal-wrap'; wrap.id = 'crop-wrap';
+  wrap.innerHTML = `
+    <div class="crop-modal">
+      <h3>✂️ 批量裁剪图标</h3>
+      <p>上传包含全部变体图标的截图，拖动分割线调整各区域，支持 1~4 个变体</p>
+      <div class="img-upload-area" id="crop-upload" style="min-height:80px">
+        <span class="upload-icon">📤</span><span class="upload-hint">点击上传截图</span>
+        <input type="file" accept="image/*" onchange="cropImgSelected(event)"/>
+      </div>
+      <div id="crop-canvas-wrap" style="display:none;margin-top:12px">
+        <div class="crop-legend" id="crop-legend"></div>
+        <canvas id="crop-canvas"></canvas>
+        <div class="crop-actions">
+          <button class="btn btn-secondary btn-sm" onclick="cropAutoSplit()">均等分割</button>
+          <button class="btn btn-primary btn-sm" onclick="applyCrop()">✅ 裁剪并填入</button>
+        </div>
+      </div>
+      <div style="margin-top:12px;text-align:right"><button class="btn btn-secondary btn-sm" onclick="closeCropModal()">关闭</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+
+function cropImgSelected(e) {
+  const file = e.target.files?.[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      cropImg = img;
+      document.getElementById('crop-upload').style.display = 'none';
+      document.getElementById('crop-canvas-wrap').style.display = 'block';
+      // Legend
+      document.getElementById('crop-legend').innerHTML = CROP_COLORS.map((c,i)=>`<div class="crop-legend-item"><div class="crop-legend-dot" style="background:${c}"></div><span>${CROP_LABELS[i]}</span></div>`).join('');
+      drawCropCanvas();
+    };
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+function drawCropCanvas() {
+  const canvas = document.getElementById('crop-canvas'); if(!canvas||!cropImg) return;
+  const MAX_W = Math.min(620, window.innerWidth - 100);
+  const scale = MAX_W / cropImg.width;
+  canvas.width = Math.round(cropImg.width * scale);
+  canvas.height = Math.round(cropImg.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(cropImg, 0, 0, canvas.width, canvas.height);
+  // Draw region overlays
+  const regions = [0, ...cropDividers, 1];
+  for (let i=0;i<regions.length-1;i++) {
+    const x1 = Math.round(regions[i]*canvas.width);
+    const x2 = Math.round(regions[i+1]*canvas.width);
+    ctx.fillStyle = CROP_COLORS[i]+'33';
+    ctx.fillRect(x1, 0, x2-x1, canvas.height);
+    ctx.fillStyle = CROP_COLORS[i];
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(CROP_LABELS[i], x1+6, 20);
+  }
+  // Draw divider lines
+  cropDividers.forEach((d,i) => {
+    const x = Math.round(d*canvas.width);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+    ctx.strokeStyle = '#374151'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+    ctx.setLineDash([]);
+    // Handle
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#374151'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, canvas.height/2, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('⇔', x, canvas.height/2+4);
+  });
+}
+
+function setupCropDrag() {
+  const canvas = document.getElementById('crop-canvas'); if(!canvas) return;
+  canvas.onmousedown = e => {
+    const rect = canvas.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / canvas.width;
+    draggingDivider = cropDividers.findIndex(d => Math.abs(d - xRatio) < 0.04);
+  };
+  canvas.onmousemove = e => {
+    if (draggingDivider === null || draggingDivider === -1) return;
+    const rect = canvas.getBoundingClientRect();
+    let xRatio = (e.clientX - rect.left) / canvas.width;
+    xRatio = Math.max(0.05, Math.min(0.95, xRatio));
+    cropDividers[draggingDivider] = xRatio;
+    cropDividers.sort((a,b)=>a-b);
+    drawCropCanvas();
+  };
+  canvas.onmouseup = () => { draggingDivider = null; };
+  canvas.onmouseleave = () => { draggingDivider = null; };
+}
+
+function cropAutoSplit() {
+  cropDividers = [0.25, 0.5, 0.75];
+  drawCropCanvas();
+}
+
+function applyCrop() {
+  if (!cropImg) return;
+  const regions = [0, ...cropDividers, 1];
+  const offscreen = document.createElement('canvas');
+  const ctx = offscreen.getContext('2d');
+  for (let i=0;i<regions.length-1;i++) {
+    const x1 = Math.round(regions[i]*cropImg.width);
+    const x2 = Math.round(regions[i+1]*cropImg.width);
+    const w = x2-x1;
+    offscreen.width = w; offscreen.height = cropImg.height;
+    ctx.clearRect(0,0,w,cropImg.height);
+    ctx.drawImage(cropImg, x1, 0, w, cropImg.height, 0, 0, w, cropImg.height);
+    const dataUrl = offscreen.toDataURL('image/jpeg', 0.85);
+    formState.previews[i] = dataUrl;
+    formState.images[i] = null; // mark as base64, not File
+    showPreview(i, dataUrl);
+  }
+  closeCropModal();
+  toast('图标已裁剪填入，请确认效果','success');
+}
+
+function closeCropModal() { document.getElementById('crop-wrap')?.remove(); }
 // ── Admin ─────────────────────────────────────────────────────
 async function renderAdmin() {
   if (!state.userData?.isAdmin) { navigate('dashboard'); return; }
@@ -693,6 +1032,8 @@ async function removeTesterItem(name) {
 
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
+  openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected,
+  openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop,
   navigate, filterTimeline, toggleCard, editTest, deleteTestRecord,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,

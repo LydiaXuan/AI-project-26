@@ -257,3 +257,85 @@ select.form-control { cursor: pointer; }
   .page { padding: 16px; }
   .test-card-images { display: none; }
 }
+
+/* ── Variant Grid (4-column form) ─────────────────────────── */
+.form-tools-row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.variants-grid {
+  display: grid;
+  grid-template-columns: 90px repeat(4, 1fr);
+  gap: 6px 10px;
+  align-items: start;
+}
+.vg-row-label {
+  font-size:11px; font-weight:700; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:.4px;
+  padding-top:10px; line-height:1.3;
+}
+.vg-col-header {
+  text-align:center; font-size:12px; font-weight:700;
+  padding:6px 4px; border-radius:var(--radius-sm);
+  border-bottom:2px solid;
+}
+.vg-col-header.ctrl  { background:#F3F4F6; color:#374151; border-color:#9CA3AF; }
+.vg-col-header.t1    { background:#EFF6FF; color:#1D4ED8; border-color:#3B82F6; }
+.vg-col-header.t2    { background:#F5F3FF; color:#6D28D9; border-color:#8B5CF6; }
+.vg-col-header.t3    { background:#FDF2F8; color:#BE185D; border-color:#EC4899; }
+.vg-cell { min-width:0; }
+.vg-na { text-align:center; font-size:12px; color:var(--text-muted); padding-top:8px; }
+.vg-sep { grid-column:1/-1; height:1px; background:var(--border); margin:4px 0; }
+.ci-pair { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.ci-pair .form-control { font-size:13px; }
+.vg-badge { display:flex; justify-content:center; padding:4px 0; }
+
+/* Compact form controls in grid */
+.variants-grid .form-control { font-size:13px; padding:7px 8px; }
+.variants-grid .toggle { transform:scale(.85); }
+
+/* Small upload area for grid */
+.img-upload-sm {
+  border:2px dashed var(--border); border-radius:var(--radius-sm);
+  min-height:80px; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:4px; cursor:pointer; transition:border-color .15s, background .15s;
+  position:relative; font-size:11px; color:var(--text-muted); text-align:center;
+  padding:4px;
+}
+.img-upload-sm:hover { border-color:var(--primary); background:var(--primary-bg); }
+.img-upload-sm input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+.img-upload-sm .upload-icon { font-size:20px; }
+.img-preview-sm { width:100%; max-height:100px; object-fit:contain; border-radius:5px; border:1px solid var(--border); display:block; cursor:zoom-in; }
+.img-cell-wrap { position:relative; }
+.img-cell-wrap .img-remove { position:absolute; top:-5px; right:-5px; width:18px; height:18px; font-size:10px; }
+
+/* ── OCR Modal ────────────────────────────────────────────── */
+.ocr-modal-wrap, .crop-modal-wrap {
+  position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:300;
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.ocr-modal, .crop-modal {
+  background:var(--surface); border-radius:16px; width:100%; max-width:680px;
+  box-shadow:var(--shadow-lg); padding:24px; max-height:90vh; overflow-y:auto;
+}
+.ocr-modal h3, .crop-modal h3 { font-size:16px; font-weight:700; margin-bottom:6px; }
+.ocr-modal p, .crop-modal p { font-size:13px; color:var(--text-muted); margin-bottom:16px; }
+.ocr-uploads { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.ocr-upload-label { font-size:12px; font-weight:600; color:var(--text-2); margin-bottom:6px; }
+.ocr-status { text-align:center; padding:20px; display:none; }
+.ocr-status .spinner { margin:0 auto 10px; }
+.ocr-status p { font-size:13px; color:var(--text-muted); }
+.ocr-progress { font-size:11px; color:var(--primary); margin-top:4px; }
+.ocr-preview-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px; }
+.ocr-preview-table th { background:var(--neutral-bg); padding:7px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); }
+.ocr-preview-table td { padding:7px 10px; border-bottom:1px solid var(--border); }
+.ocr-actions { display:flex; gap:8px; justify-content:flex-end; }
+
+/* ── Crop Modal ───────────────────────────────────────────── */
+#crop-canvas-wrap { position:relative; margin:12px 0; }
+#crop-canvas { max-width:100%; border:1px solid var(--border); border-radius:6px; display:block; cursor:crosshair; }
+.crop-legend { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; font-size:12px; }
+.crop-legend-item { display:flex; align-items:center; gap:4px; }
+.crop-legend-dot { width:12px; height:12px; border-radius:2px; }
+.crop-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+
+/* Fix calendar flicker – stop modal from closing on inner clicks */
+.modal-overlay { pointer-events:none; }
+.modal { pointer-events:all; }

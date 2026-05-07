@@ -395,10 +395,12 @@ function buildTestCard(t) {
           <div class="test-card-expand"><span class="expand-icon">▼</span></div>
         </div>
         <div class="test-card-body">
+          ${buildProgressBlock(t)}
           <table class="variants-table">
             <thead><tr><th>变体</th><th>首次安装数</th><th>置信区间</th><th>保留安装数</th><th>测试效果</th><th>是否应用</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
+          ${buildConclusionBlock(t)}
           ${t.notes?.change||t.notes?.purpose||t.notes?.design?`
           <div class="card-notes">
             ${t.notes.change?`<div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div>`:''}
@@ -412,6 +414,58 @@ function buildTestCard(t) {
         </div>
       </div>
     </div>`;
+}
+
+function buildProgressBlock(t) {
+  if (!t.startDate) return '';
+  const start = new Date(t.startDate);
+  const end = t.endDate ? new Date(t.endDate) : new Date();
+  const days = Math.max(0, Math.round((end - start) / 86400000));
+  let statusLabel, progressCls, rec;
+  if (days < 7) { statusLabel='⚡ 早期阶段'; progressCls='prog-early'; rec='数据量可能不足，建议继续观察至少 7 天'; }
+  else if (days < 14) { statusLabel='🔄 进行中'; progressCls='prog-mid'; rec='数据趋于稳定，可结合效果指标判断'; }
+  else { statusLabel='✅ 数据成熟'; progressCls='prog-done'; rec='运行时间充足，结论可靠性高'; }
+  const pct = Math.min(100, Math.round(days / 21 * 100));
+  return `<div class="prog-block">
+    <div class="prog-header"><span class="${progressCls}">${statusLabel}</span><span class="prog-days">运行 ${days} 天${t.endDate?'（已结束）':'（进行中）'}</span></div>
+    <div class="prog-bar-track"><div class="prog-bar-fill ${progressCls}" style="width:${pct}%"></div></div>
+    <div class="prog-rec">${rec}</div>
+  </div>`;
+}
+
+function buildConclusionBlock(t) {
+  const vars = t.variants||[];
+  const effectScore = {great:6,good:5,neutral_p:4,neutral_n:3,empirical:2,bad:1,control:0};
+  const testVars = vars.map((v,i)=>({v,i})).filter(({i})=>i>0);
+  if (!testVars.length) return '';
+  const sorted = [...testVars].sort((a,b)=>(effectScore[b.v.effect||'empirical']||0)-(effectScore[a.v.effect||'empirical']||0));
+  const {v:best, i:bestIdx} = sorted[0];
+  if (!best.effect || best.effect==='control') return '';
+
+  let improvement = null;
+  if (best.ciLower != null && best.ciUpper != null) improvement = ((parseFloat(best.ciLower)+parseFloat(best.ciUpper))/2).toFixed(1);
+  else if (best.empiricalDelta != null) improvement = parseFloat(best.empiricalDelta).toFixed(1);
+
+  const isSignificant = best.ciLower != null && parseFloat(best.ciLower) > 0;
+  const anyApplied = vars.some((v,i)=>i>0&&v.applied);
+  let rec, recCls;
+  if (best.effect==='great'||best.effect==='good') {
+    rec = anyApplied ? `测试${bestIdx} 已应用，效果良好` : `建议应用测试${bestIdx}`;
+    recCls = 'conc-good';
+  } else if (best.effect==='neutral_p'||best.effect==='neutral_n') {
+    rec = '效果不显著，建议继续观察或重新设计测试方案'; recCls='conc-neutral';
+  } else {
+    rec = '各组效果不佳，建议重新设计创意'; recCls='conc-bad';
+  }
+  return `<div class="conc-block ${recCls}">
+    <div class="conc-title">🤖 实验小结</div>
+    <div class="conc-body">
+      最佳变体：<strong>测试${bestIdx}</strong>
+      ${improvement!=null?`，预估提升 <strong>${improvement}%</strong>`:''}
+      ${isSignificant?' <span class="sig-badge">统计显著</span>':''}
+    </div>
+    <div class="conc-rec">${rec}</div>
+  </div>`;
 }
 
 function toggleCard(id) { document.getElementById('card-'+id)?.classList.toggle('expanded'); }

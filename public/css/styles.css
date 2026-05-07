@@ -364,3 +364,27 @@ select.form-control { cursor: pointer; }
 
 /* ── Notes input grid in form ─────────────────────────────── */
 .notes-grid { display:flex; flex-direction:column; gap:6px; }
+
+/* ── Experiment Progress Bar (Item 18) ────────────────────── */
+.prog-block { margin-top:14px; padding:10px 12px; background:#F8FAFC; border:1px solid var(--border); border-radius:var(--radius-sm); }
+.prog-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-size:12px; font-weight:600; }
+.prog-days { color:var(--text-muted); font-weight:400; }
+.prog-early { color:#D97706; }
+.prog-mid   { color:#2563EB; }
+.prog-done  { color:#16A34A; }
+.prog-bar-track { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:6px; }
+.prog-bar-fill { height:100%; border-radius:3px; transition:width .3s; }
+.prog-bar-fill.prog-early { background:#F59E0B; }
+.prog-bar-fill.prog-mid   { background:#3B82F6; }
+.prog-bar-fill.prog-done  { background:#22C55E; }
+.prog-rec { font-size:11px; color:var(--text-muted); }
+
+/* ── Auto-Conclusion Block (Item 17) ──────────────────────── */
+.conc-block { margin-top:12px; padding:10px 14px; border-radius:var(--radius-sm); border-left:3px solid; }
+.conc-good    { background:#F0FDF4; border-color:#22C55E; }
+.conc-neutral { background:#FFFBEB; border-color:#F59E0B; }
+.conc-bad     { background:#FEF2F2; border-color:#EF4444; }
+.conc-title   { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); margin-bottom:4px; }
+.conc-body    { font-size:13px; color:var(--text); margin-bottom:4px; }
+.conc-rec     { font-size:12px; color:var(--text-2); }
+.sig-badge    { display:inline-block; font-size:10px; font-weight:700; background:#DCFCE7; color:#15803D; border-radius:4px; padding:1px 5px; }

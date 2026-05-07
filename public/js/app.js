@@ -590,7 +590,7 @@ async function deleteTestRecord(id) {
   try { await deleteTest(id); toast('已删除','success'); } catch(e) { toast('删除失败：'+e.message,'error'); }
 }
 
-// ── Form (4-column grid layout) ───────────────────────────────
+// ── Form ──────────────────────────────────────────────────────
 const VDEFS = [
   {key:'control',label:'🔵 原始',cls:'ctrl'},
   {key:'test1',  label:'🔴 测试1',cls:'t1'},
@@ -604,6 +604,73 @@ function handleRatioChange(val) {
   if (!inp) return;
   inp.style.display = val === 'custom' ? 'block' : 'none';
 }
+
+const VC_STYLES = [
+  {bg:'#F3F4F6',border:'#9CA3AF',color:'#374151'},
+  {bg:'#EFF6FF',border:'#3B82F6',color:'#1D4ED8'},
+  {bg:'#F5F3FF',border:'#8B5CF6',color:'#6D28D9'},
+  {bg:'#FDF2F8',border:'#EC4899',color:'#BE185D'},
+];
+
+function buildVariantCol(i, test) {
+  const v = test?.variants?.[i] || {};
+  const st = VC_STYLES[i];
+  const label = VDEFS[i].label;
+
+  const hasImg = !!(v.imageUrl || formState.previews[i]);
+  let statusLabel, statusCls;
+  if (i > 0 && v.applied)      { statusLabel='当前应用中'; statusCls='vs-applied'; }
+  else if (!hasImg)             { statusLabel='未上传';    statusCls='vs-empty'; }
+  else if (v.firstInstalls != null && (i===0 || v.ciLower != null || v.empiricalDelta != null))
+                                { statusLabel='数据已填写'; statusCls='vs-complete'; }
+  else                          { statusLabel='已上传';    statusCls='vs-uploaded'; }
+
+  const isEmp = !!(v.empiricalDelta != null && !v.ciLower && !v.ciUpper);
+
+  const ciBlock = i === 0 ? '' : `
+    <div class="vc-field-group">
+      <div class="vc-field-label">置信区间</div>
+      <div id="v${i}_ciwrap">${buildCICell(i, v, isEmp)}</div>
+    </div>`;
+
+  const appliedBlock = i === 0 ? '' : `
+    <div class="vc-field-group vc-applied-field">
+      <div class="vc-field-label">是否应用</div>
+      <label class="toggle"><input type="checkbox" id="v${i}_applied" ${v.applied?'checked':''}/><span class="toggle-slider"></span></label>
+    </div>`;
+
+  const effectBlock = i === 0 ? '' : `
+    <div class="vg-badge" id="ebadge-${i}">${effectBadgeHTML(v.effect||calculateEffect(v.ciLower??null,v.ciUpper??null))}</div>`;
+
+  const pasteBtn = i === 0 ? '' : `
+    <button type="button" class="vc-paste-btn" onclick="activatePaste(${i})" title="复制 GPLAY| 数据后点此粘贴">📋 粘贴 Play 数据</button>`;
+
+  return `
+    <div class="variant-col" data-vi="${i}">
+      <div class="vc-header" style="background:${st.bg};border-bottom:2px solid ${st.border};color:${st.color}">
+        <span class="vc-label">${label}</span>
+        <span class="variant-status ${statusCls}">${statusLabel}</span>
+      </div>
+      <div class="vc-img-zone">
+        ${buildImgCell(i, v)}
+      </div>
+      <div class="vc-data">
+        <div class="vc-field-group">
+          <div class="vc-field-label">首次安装数（调整）</div>
+          <input class="form-control" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}"/>
+        </div>
+        ${ciBlock}
+        <div class="vc-field-group">
+          <div class="vc-field-label">保留安装数（调整）</div>
+          <input class="form-control" id="v${i}_ri" type="number" placeholder="—" value="${v.retainedInstalls??''}"/>
+        </div>
+        ${appliedBlock}
+        ${effectBlock}
+        ${pasteBtn}
+      </div>
+    </div>`;
+}
+
 function renderFormView() {
   const isEdit = !!state.editTestId;
   const test = isEdit ? state.tests.find(t=>t.id===state.editTestId) : null;
@@ -613,64 +680,16 @@ function renderFormView() {
   const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
   const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
   const biOpts = BI_TYPES.map(b=>`<option value="${b}" ${test?.biVizType===b?'selected':''}>${b}</option>`).join('');
-  const isCustomRatio = !!(test?.testRatio && !RATIO_PRESETS.includes(test.testRatio));
-  const ratioPresetOpts = RATIO_PRESETS.map(r=>`<option value="${r}" ${test?.testRatio===r?'selected':''}>${r}</option>`).join('');
 
-  // Build 4-column variant grid
-  const headers = VDEFS.map(d=>`<div class="vg-col-header ${d.cls}">${d.label}</div>`).join('');
+  const allRatioPresets = state.settings?.ratioPresets || RATIO_PRESETS;
+  const isCustomRatio = !!(test?.testRatio && !allRatioPresets.includes(test.testRatio));
+  const ratioPresetOpts = allRatioPresets.map(r=>`<option value="${r}" ${test?.testRatio===r?'selected':''}>${r}</option>`).join('');
 
-  // Status row (based on existing saved data)
-  const statusCells = VDEFS.map((_,i)=>{
-    const v = test?.variants?.[i] || {};
-    const hasImg = !!(v.imageUrl || formState.previews[i]);
-    let label, cls;
-    if (i > 0 && v.applied) { label='当前应用中'; cls='vs-applied'; }
-    else if (!hasImg) { label='未上传'; cls='vs-empty'; }
-    else if (v.firstInstalls != null && (i===0 || v.ciLower != null || v.empiricalDelta != null)) { label='数据已填写'; cls='vs-complete'; }
-    else { label='已上传'; cls='vs-uploaded'; }
-    return `<div class="vg-cell"><div class="variant-status ${cls}">${label}</div></div>`;
-  }).join('');
-
-  // Image row
-  const imgCells = VDEFS.map((_,i)=>`<div class="vg-cell">${buildImgCell(i, test?.variants?.[i])}</div>`).join('');
-
-  // First installs row
-  const fiCells = VDEFS.map((_,i)=>{
-    const v=test?.variants?.[i]||{};
-    return `<div class="vg-cell"><input class="form-control" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}"/></div>`;
-  }).join('');
-
-  // CI row
-  const ciCells = VDEFS.map((_,i)=>{
-    if(i===0) return `<div class="vg-na">基准</div>`;
-    const v=test?.variants?.[i]||{};
-    const isEmp=!v.ciLower&&!v.ciUpper&&v.empiricalDelta!=null;
-    return `<div class="vg-cell" id="v${i}_ciwrap">${buildCICell(i,v,isEmp)}</div>`;
-  }).join('');
-
-  // Retained installs row
-  const riCells = VDEFS.map((_,i)=>{
-    const v=test?.variants?.[i]||{};
-    return `<div class="vg-cell"><input class="form-control" id="v${i}_ri" type="number" placeholder="—" value="${v.retainedInstalls??''}"/></div>`;
-  }).join('');
-
-  // Applied row
-  const apCells = VDEFS.map((_,i)=>{
-    if(i===0) return `<div class="vg-na">—</div>`;
-    const v=test?.variants?.[i]||{};
-    return `<div class="vg-cell" style="display:flex;justify-content:center;padding-top:6px"><label class="toggle"><input type="checkbox" id="v${i}_applied" ${v.applied?'checked':''}/><span class="toggle-slider"></span></label></div>`;
-  }).join('');
-
-  // Effect badges row
-  const efCells = VDEFS.map((_,i)=>{
-    if(i===0) return `<div class="vg-na">—</div>`;
-    const v=test?.variants?.[i]||{};
-    return `<div class="vg-badge" id="ebadge-${i}">${effectBadgeHTML(v.effect||calculateEffect(v.ciLower??null,v.ciUpper??null))}</div>`;
-  }).join('');
+  const cols = [0,1,2,3].map(i=>buildVariantCol(i, test)).join('');
 
   renderShell(`
     <div class="modal-overlay" onclick="void(0)">
-      <div class="modal" style="max-width:900px">
+      <div class="modal form-modal-wide">
         <div class="modal-header">
           <h2>${isEdit?'✏️ 编辑测试记录':'＋ 新增测试记录'}</h2>
           <button class="modal-close" onclick="navigate('timeline')">✕</button>
@@ -678,29 +697,24 @@ function renderFormView() {
         <div class="modal-body">
           <form id="test-form" onsubmit="handleFormSubmit(event)">
 
-            <!-- Basic Info -->
             <div class="form-section">
               <div class="form-section-title">📋 基本信息</div>
-              <div class="form-row">
+              <div class="form-row-4">
                 <div class="form-group"><label class="form-label">项目</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
                 <div class="form-group"><label class="form-label">测试人</label><select class="form-control" id="f-tester" required>${testerOpts}</select></div>
-              </div>
-              <div class="form-row">
                 <div class="form-group"><label class="form-label">开始日期</label><input class="form-control" id="f-start" type="date" required value="${test?.startDate||''}"/></div>
                 <div class="form-group"><label class="form-label">结束日期</label><input class="form-control" id="f-end" type="date" value="${test?.endDate||''}"/></div>
               </div>
-              <div class="form-row">
-                <div class="form-group"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
+              <div class="form-row-3">
+                <div class="form-group" style="grid-column:span 1"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
                 <div class="form-group"><label class="form-label">测试比例</label>
                   <select class="form-control" id="f-ratio-sel" onchange="handleRatioChange(this.value)">
                     ${ratioPresetOpts}
                     <option value="custom" ${isCustomRatio?'selected':''}>自定义…</option>
                   </select>
-                  <input class="form-control" id="f-ratio" type="text" placeholder="自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+                  <input class="form-control" id="f-ratio" type="text" placeholder="输入自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
                 </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group"><label class="form-label">BI 可视化类型</label><select class="form-control" id="f-bitype"><option value="">不指定</option>${biOpts}</select></div>
+                <div class="form-group"><label class="form-label">截图类型</label><select class="form-control" id="f-bitype"><option value="">不指定</option>${biOpts}</select></div>
               </div>
               <div class="form-group"><label class="form-label">备注说明</label>
                 <div class="notes-grid">
@@ -711,42 +725,16 @@ function renderFormView() {
               </div>
             </div>
 
-            <!-- Variant Grid -->
             <div class="form-section">
-              <div class="form-section-title">🖼️ 变体数据</div>
-              <div class="form-tools-row">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量上传图标截图</button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
+              <div class="form-section-title section-title-flex">
+                <span>🖼️ 变体横向对比</span>
+                <div class="section-tools">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量裁剪图标</button>
+                  <button type="button" class="btn btn-primary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
+                </div>
               </div>
-
-              <div class="variants-grid">
-                <!-- headers -->
-                <div></div>${headers}
-                <div class="vg-sep"></div>
-
-                <!-- status -->
-                <div class="vg-row-label">状态</div>${statusCells}
-                <div class="vg-sep"></div>
-
-                <!-- images -->
-                <div class="vg-row-label">图标</div>${imgCells}
-                <div class="vg-sep"></div>
-
-                <!-- first installs -->
-                <div class="vg-row-label">首次安装数<br>（调整）</div>${fiCells}
-
-                <!-- CI -->
-                <div class="vg-row-label">置信区间</div>${ciCells}
-
-                <!-- retained -->
-                <div class="vg-row-label">保留安装数<br>（调整）</div>${riCells}
-                <div class="vg-sep"></div>
-
-                <!-- applied -->
-                <div class="vg-row-label">是否应用</div>${apCells}
-
-                <!-- effect badges -->
-                <div class="vg-row-label">效果</div>${efCells}
+              <div class="variant-columns-wrap">
+                <div class="variant-columns">${cols}</div>
               </div>
             </div>
 
@@ -811,20 +799,15 @@ function showPreview(i, src) {
   area.replaceWith(wrap);
 }
 function removeImg(i) {
-  formState.images[i]=null; formState.previews[i]=null;
-  const wrap = document.querySelector(`#uarea-${i}`)?.closest('.img-cell-wrap') || document.querySelector(`.img-cell-wrap`);
-  // Rebuild cell
-  const vg = document.querySelector('.variants-grid');
-  if (!vg) return;
-  // Find the image cell for variant i and replace it
-  const cells = vg.querySelectorAll('.vg-cell, .img-cell-wrap, .img-upload-sm');
-  // Re-render just the image row by updating the specific element
-  const imgRow = document.getElementById(`uarea-${i}`) || document.querySelectorAll('.img-cell-wrap, .img-upload-sm')[i];
-  if (imgRow) {
-    const newEl = document.createElement('div');
-    newEl.className = 'vg-cell';
-    newEl.innerHTML = buildImgCell(i, {});
-    imgRow.closest('.vg-cell, .img-cell-wrap') ? imgRow.closest('.vg-cell, .img-cell-wrap').replaceWith(newEl) : imgRow.replaceWith(newEl.firstChild);
+  formState.images[i] = null;
+  formState.previews[i] = null;
+  const zone = document.querySelector(`.variant-col[data-vi="${i}"] .vc-img-zone`);
+  if (!zone) return;
+  const existing = zone.querySelector('.img-cell-wrap') || zone.querySelector('.img-upload-sm');
+  if (existing) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = buildImgCell(i, {});
+    existing.replaceWith(tmp.firstChild);
   }
 }
 
@@ -1193,6 +1176,7 @@ async function renderAdmin() {
   const [settings, users, projects] = await Promise.all([getSettings(), getAllUsers(), getProjects()]);
   const code = settings?.accessCode || '—';
   const testers = settings?.testers || [];
+  const ratioPresets = settings?.ratioPresets || RATIO_PRESETS;
 
   const usersHTML = users.map(u=>`
     <li>
@@ -1204,6 +1188,7 @@ async function renderAdmin() {
     </li>`).join('');
   const projHTML = projects.map(p=>`<li><span>${escHtml(p.name)}</span><button class="btn btn-danger btn-sm" onclick="removeProject('${p.id}')">移除</button></li>`).join('');
   const testHTML = testers.map(n=>`<li><span>${escHtml(n)}</span><button class="btn btn-danger btn-sm" onclick="removeTesterItem('${escHtml(n)}')">移除</button></li>`).join('');
+  const ratioHTML = ratioPresets.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeRatioPresetItem('${escHtml(r)}')">移除</button></li>`).join('');
 
   renderShell(`
     <div class="page-header"><div class="page-title">⚙️ 管理面板</div></div>
@@ -1221,6 +1206,12 @@ async function renderAdmin() {
         <h3>🧑‍💻 测试人员名单</h3>
         <ul class="admin-list">${testHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
         <div class="add-row"><input class="form-control" id="add-tester" type="text" placeholder="添加测试人…"/><button class="btn btn-primary" onclick="addTesterItem()">添加</button></div>
+      </div>
+      <div class="admin-card">
+        <h3>📐 测试比例选项</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「测试比例」下拉框中显示</p>
+        <ul class="admin-list">${ratioHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
+        <div class="add-row"><input class="form-control" id="add-ratio" type="text" placeholder="如 40/30/30 或 20/80"/><button class="btn btn-primary" onclick="addRatioPresetItem()">添加</button></div>
       </div>
       <div class="admin-card" style="grid-column:1/-1">
         <h3>📁 项目管理</h3>
@@ -1264,6 +1255,23 @@ async function removeTesterItem(name) {
   if (!confirm(`确认移除 ${name}？`)) return;
   await removeTester(name); state.settings=await getSettings(); toast('已移除','success'); renderAdmin();
 }
+async function addRatioPresetItem() {
+  const n = document.getElementById('add-ratio').value.trim(); if(!n) return;
+  const s = await getSettings();
+  const presets = s?.ratioPresets || RATIO_PRESETS;
+  if (presets.includes(n)) { toast('该选项已存在','info'); return; }
+  await updateSettings({ ratioPresets: [...presets, n] });
+  state.settings = await getSettings();
+  document.getElementById('add-ratio').value = '';
+  toast('比例选项已添加','success'); renderAdmin();
+}
+async function removeRatioPresetItem(r) {
+  if (!confirm(`移除比例选项「${r}」？`)) return;
+  const s = await getSettings();
+  await updateSettings({ ratioPresets: (s?.ratioPresets || RATIO_PRESETS).filter(p=>p!==r) });
+  state.settings = await getSettings();
+  toast('已移除','success'); renderAdmin();
+}
 
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
@@ -1275,4 +1283,5 @@ Object.assign(window, {
   activatePaste, toggleEmp, updateBadge, updateEffectBadge, openLightbox,
   changeCode, makeAdmin, revokeUser,
   addProjectItem, removeProject, addTesterItem, removeTesterItem,
+  addRatioPresetItem, removeRatioPresetItem,
 });

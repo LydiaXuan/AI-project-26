@@ -285,45 +285,57 @@ select.form-control { cursor: pointer; }
 @media (max-width: 768px) {
   .charts-grid, .charts-row-3 { grid-template-columns: 1fr; }
   .admin-grid { grid-template-columns: 1fr; }
-  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
   .navbar-brand span { display: none; }
   .nav-tab { padding: 6px 10px; font-size: 12px; }
   .page { padding: 16px; }
   .test-card-images { display: none; }
+  .tl-filter-row { gap:6px; }
+  .tl-select { min-width:100px; }
 }
 
-/* ── Variant Grid (4-column form) ─────────────────────────── */
-.form-tools-row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
-.variants-grid {
-  display: grid;
-  grid-template-columns: 90px repeat(4, 1fr);
-  gap: 6px 10px;
-  align-items: start;
-}
-.vg-row-label {
-  font-size:11px; font-weight:700; color:var(--text-muted);
-  text-transform:uppercase; letter-spacing:.4px;
-  padding-top:10px; line-height:1.3;
-}
-.vg-col-header {
-  text-align:center; font-size:12px; font-weight:700;
-  padding:6px 4px; border-radius:var(--radius-sm);
-  border-bottom:2px solid;
-}
-.vg-col-header.ctrl  { background:#F3F4F6; color:#374151; border-color:#9CA3AF; }
-.vg-col-header.t1    { background:#EFF6FF; color:#1D4ED8; border-color:#3B82F6; }
-.vg-col-header.t2    { background:#F5F3FF; color:#6D28D9; border-color:#8B5CF6; }
-.vg-col-header.t3    { background:#FDF2F8; color:#BE185D; border-color:#EC4899; }
-.vg-cell { min-width:0; }
+/* ── Form layout helpers ──────────────────────────────────── */
+.form-row-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.form-row-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.form-modal-wide { max-width:1080px !important; }
+.section-title-flex { display:flex; align-items:center; justify-content:space-between; }
+.section-tools { display:flex; gap:8px; }
+
+/* ── Horizontal variant columns ───────────────────────────── */
+.variant-columns-wrap { overflow-x:auto; }
+.variant-columns { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; min-width:640px; }
+
+.variant-col { border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; display:flex; flex-direction:column; }
+
+.vc-header { padding:10px 12px; display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:4px; }
+.vc-label { font-size:13px; font-weight:700; }
+
+.vc-img-zone { padding:10px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:#FAFAFA; min-height:100px; }
+.vc-img-zone .img-upload-sm { min-height:90px; }
+.vc-img-zone .img-preview-sm { max-height:120px; }
+
+.vc-data { padding:10px 12px; display:flex; flex-direction:column; gap:10px; flex:1; }
+.vc-field-group { display:flex; flex-direction:column; gap:4px; }
+.vc-field-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); }
+.vc-applied-field { flex-direction:row; align-items:center; justify-content:space-between; }
+.vc-applied-field .vc-field-label { margin-bottom:0; }
+
+.vc-paste-btn { display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border:1px dashed var(--primary); border-radius:var(--radius-sm); background:var(--primary-bg); color:var(--primary); font-size:11px; font-weight:600; cursor:pointer; transition:background .15s; width:100%; justify-content:center; margin-top:4px; }
+.vc-paste-btn:hover { background:#C7D2FE; }
+
+/* Compact controls inside columns */
+.variant-col .form-control { font-size:12px; padding:6px 8px; }
+.ci-pair { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.ci-pair .form-control { font-size:11px; }
+.vg-badge { display:flex; justify-content:center; padding:2px 0; }
 .vg-na { text-align:center; font-size:12px; color:var(--text-muted); padding-top:8px; }
 .vg-sep { grid-column:1/-1; height:1px; background:var(--border); margin:4px 0; }
-.ci-pair { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
-.ci-pair .form-control { font-size:13px; }
-.vg-badge { display:flex; justify-content:center; padding:4px 0; }
 
-/* Compact form controls in grid */
-.variants-grid .form-control { font-size:13px; padding:7px 8px; }
-.variants-grid .toggle { transform:scale(.85); }
+/* Legacy grid (kept for any remaining uses) */
+.form-tools-row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+
+/* ── Admin ratio tag ──────────────────────────────────────── */
+.ratio-preset-tag { font-family:monospace; font-size:13px; font-weight:600; color:var(--primary); }
 
 /* Small upload area for grid */
 .img-upload-sm {

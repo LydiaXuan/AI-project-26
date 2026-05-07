@@ -13,5 +13,10 @@ jobs:
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 
+      - name: Write service account key
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}' > /tmp/sa-key.json
+
       - name: Deploy
-        run: firebase deploy --project ${{ secrets.FIREBASE_PROJECT_ID }} --token ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase deploy --project testing-record-673c7
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa-key.json

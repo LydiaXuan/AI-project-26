@@ -3,12 +3,13 @@
 // Firebase Console → 项目设置 → 你的应用 → firebaseConfig
 // ============================================================
 export const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+ apiKey: "AIzaSyCQPEkzwqS8b_m5OIXBG5beHGx3GKIOVmk",
+  authDomain: "testing-record-673c7.firebaseapp.com",
+  projectId: "testing-record-673c7",
+  storageBucket: "testing-record-673c7.firebasestorage.app",
+  messagingSenderId: "609792490664",
+  appId: "1:609792490664:web:7aa55d847158197b61969d",
+  measurementId: "G-C5FWM3FNGH"
 };
 
 // 管理员 Google 邮箱（首次登录的人自动成为管理员，此处仅作备注）

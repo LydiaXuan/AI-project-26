@@ -347,21 +347,34 @@ function filterTimeline(val) { state.filterProject=val; renderTimeline(); }
 
 function buildTestCard(t) {
   const vars = t.variants||[];
+  // Best performance calculation (among test variants only)
+  const testVars = vars.filter((_,i)=>i>0);
+  const bestFI = testVars.length ? Math.max(...testVars.map(v=>v.firstInstalls||0)) : 0;
+  const bestRI = testVars.length ? Math.max(...testVars.map(v=>v.retainedInstalls||0)) : 0;
+  const effectScore = {great:6,good:5,neutral_p:4,neutral_n:3,empirical:2,bad:1,control:0};
+  const bestEffectScore = testVars.reduce((m,v)=>Math.max(m, effectScore[v.effect||'empirical']||0), 0);
+
   const thumbs = vars.map((v,i)=>`
     <div class="variant-thumb-wrap">
-      ${v.imageUrl ? `<img class="variant-thumb" src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>` : `<div class="variant-thumb-placeholder">🖼</div>`}
+      ${v.imageUrl ? `<img class="variant-thumb${v.applied?' applied-thumb':''}" src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>` : `<div class="variant-thumb-placeholder">🖼</div>`}
+      ${v.applied ? '<div class="thumb-applied-label">✓ 已应用</div>' : ''}
       <div class="variant-label">${i===0?'原始':`测试${i}`}</div>
     </div>`).join('');
   const badges = vars.map((v,i)=>i===0?'':effectBadgeHTML(v.effect||'empirical')).join(' ');
-  const rows = vars.map((v,i)=>`
-    <tr>
+  const rows = vars.map((v,i)=>{
+    const isBestFI = i>0 && bestFI>0 && v.firstInstalls===bestFI;
+    const isBestRI = i>0 && bestRI>0 && v.retainedInstalls===bestRI;
+    const isBestEffect = i>0 && bestEffectScore>0 && (effectScore[v.effect||'empirical']||0)===bestEffectScore;
+    return `
+    <tr${v.applied&&i>0?' class="applied-row"':''}>
       <td><div class="variant-img-cell">${v.imageUrl?`<img src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>`:'<span style="font-size:18px">🖼</span>'}<span>${i===0?'🔵 原始':`🔴 测试${i}`}</span></div></td>
-      <td>${v.firstInstalls??'-'}</td>
+      <td>${v.firstInstalls??'-'}${isBestFI?'<span class="best-tag">🥇</span>':''}</td>
       <td>${(v.ciLower!==null&&v.ciLower!==''&&v.ciLower!==undefined)?`[${v.ciLower}%, ${v.ciUpper}%]`:(v.empiricalDelta!=null?`增幅 ${v.empiricalDelta}%`:'-')}</td>
-      <td>${v.retainedInstalls??'-'}</td>
-      <td>${i===0?'<span style="color:var(--text-muted)">基准</span>':effectBadgeHTML(v.effect||'empirical')}</td>
+      <td>${v.retainedInstalls??'-'}${isBestRI?'<span class="best-tag">🥇</span>':''}</td>
+      <td>${i===0?'<span style="color:var(--text-muted)">基准</span>':effectBadgeHTML(v.effect||'empirical')}${isBestEffect&&i>0?'<span class="best-tag">⭐</span>':''}</td>
       <td>${i===0?'-':v.applied?'<span class="applied-yes">✓ 已应用</span>':'<span class="applied-no">未应用</span>'}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   return `
     <div class="timeline-item">
@@ -386,6 +399,12 @@ function buildTestCard(t) {
             <thead><tr><th>变体</th><th>首次安装数</th><th>置信区间</th><th>保留安装数</th><th>测试效果</th><th>是否应用</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
+          ${t.notes?.change||t.notes?.purpose||t.notes?.design?`
+          <div class="card-notes">
+            ${t.notes.change?`<div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div>`:''}
+            ${t.notes.purpose?`<div class="note-row"><span class="note-tag">目的</span><span>${escHtml(t.notes.purpose)}</span></div>`:''}
+            ${t.notes.design?`<div class="note-row"><span class="note-tag">思路</span><span>${escHtml(t.notes.design)}</span></div>`:''}
+          </div>`:''}
           <div class="card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
             ${state.userData?.isAdmin?`<button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>`:''}
@@ -410,6 +429,12 @@ const VDEFS = [
   {key:'test3',  label:'🩷 测试3',cls:'t3'},
 ];
 const BI_TYPES = ['折线图','柱状图','饼图','散点图','漏斗图','热力图','面积图','其他'];
+const RATIO_PRESETS = ['50/50','33/33/33','25/25/25/25','20/20/20/20/20','25/75','10/90'];
+function handleRatioChange(val) {
+  const inp = document.getElementById('f-ratio');
+  if (!inp) return;
+  inp.style.display = val === 'custom' ? 'block' : 'none';
+}
 function renderFormView() {
   const isEdit = !!state.editTestId;
   const test = isEdit ? state.tests.find(t=>t.id===state.editTestId) : null;
@@ -419,9 +444,23 @@ function renderFormView() {
   const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
   const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
   const biOpts = BI_TYPES.map(b=>`<option value="${b}" ${test?.biVizType===b?'selected':''}>${b}</option>`).join('');
+  const isCustomRatio = !!(test?.testRatio && !RATIO_PRESETS.includes(test.testRatio));
+  const ratioPresetOpts = RATIO_PRESETS.map(r=>`<option value="${r}" ${test?.testRatio===r?'selected':''}>${r}</option>`).join('');
 
   // Build 4-column variant grid
   const headers = VDEFS.map(d=>`<div class="vg-col-header ${d.cls}">${d.label}</div>`).join('');
+
+  // Status row (based on existing saved data)
+  const statusCells = VDEFS.map((_,i)=>{
+    const v = test?.variants?.[i] || {};
+    const hasImg = !!(v.imageUrl || formState.previews[i]);
+    let label, cls;
+    if (i > 0 && v.applied) { label='当前应用中'; cls='vs-applied'; }
+    else if (!hasImg) { label='未上传'; cls='vs-empty'; }
+    else if (v.firstInstalls != null && (i===0 || v.ciLower != null || v.empiricalDelta != null)) { label='数据已填写'; cls='vs-complete'; }
+    else { label='已上传'; cls='vs-uploaded'; }
+    return `<div class="vg-cell"><div class="variant-status ${cls}">${label}</div></div>`;
+  }).join('');
 
   // Image row
   const imgCells = VDEFS.map((_,i)=>`<div class="vg-cell">${buildImgCell(i, test?.variants?.[i])}</div>`).join('');
@@ -483,9 +522,24 @@ function renderFormView() {
               </div>
               <div class="form-row">
                 <div class="form-group"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
-                <div class="form-group"><label class="form-label">测试比例</label><input class="form-control" id="f-ratio" type="text" placeholder="如 25/25/25/25" value="${escHtml(test?.testRatio||'')}"/></div>
+                <div class="form-group"><label class="form-label">测试比例</label>
+                  <select class="form-control" id="f-ratio-sel" onchange="handleRatioChange(this.value)">
+                    ${ratioPresetOpts}
+                    <option value="custom" ${isCustomRatio?'selected':''}>自定义…</option>
+                  </select>
+                  <input class="form-control" id="f-ratio" type="text" placeholder="自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+                </div>
               </div>
-              <div class="form-group"><label class="form-label">BI 可视化类型</label><select class="form-control" id="f-bitype"><option value="">不指定</option>${biOpts}</select></div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label">BI 可视化类型</label><select class="form-control" id="f-bitype"><option value="">不指定</option>${biOpts}</select></div>
+              </div>
+              <div class="form-group"><label class="form-label">备注说明</label>
+                <div class="notes-grid">
+                  <input class="form-control" id="f-note-change" type="text" placeholder="改动内容（做了什么改动）" value="${escHtml(test?.notes?.change||'')}"/>
+                  <input class="form-control" id="f-note-purpose" type="text" placeholder="测试目的（想验证什么）" value="${escHtml(test?.notes?.purpose||'')}"/>
+                  <input class="form-control" id="f-note-design" type="text" placeholder="设计思路（为什么这样设计）" value="${escHtml(test?.notes?.design||'')}"/>
+                </div>
+              </div>
             </div>
 
             <!-- Variant Grid -->
@@ -499,6 +553,10 @@ function renderFormView() {
               <div class="variants-grid">
                 <!-- headers -->
                 <div></div>${headers}
+                <div class="vg-sep"></div>
+
+                <!-- status -->
+                <div class="vg-row-label">状态</div>${statusCells}
                 <div class="vg-sep"></div>
 
                 <!-- images -->
@@ -614,8 +672,14 @@ async function handleFormSubmit(e) {
     const startDate = document.getElementById('f-start').value;
     const endDate = document.getElementById('f-end').value;
     const confidence = Number(document.querySelector('input[name="conf"]:checked')?.value||95);
-    const testRatio = document.getElementById('f-ratio').value;
+    const ratioSel = document.getElementById('f-ratio-sel')?.value;
+    const testRatio = ratioSel === 'custom' ? (document.getElementById('f-ratio')?.value||'') : (ratioSel||'');
     const biVizType = document.getElementById('f-bitype').value;
+    const notes = {
+      change: document.getElementById('f-note-change')?.value?.trim() || '',
+      purpose: document.getElementById('f-note-purpose')?.value?.trim() || '',
+      design: document.getElementById('f-note-design')?.value?.trim() || '',
+    };
     const existV = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.variants||[]) : [];
     const variants = [];
     for (let i=0;i<VDEFS.length;i++) {
@@ -631,7 +695,7 @@ async function handleFormSubmit(e) {
       if (formState.images[i]) imageUrl = await compressImage(formState.images[i]);
       variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, empiricalDelta:delta!==''&&delta!=null?parseFloat(delta):null, applied, effect, imageUrl });
     }
-    const data={projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,variants};
+    const data={projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,notes,variants};
     if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
     else { await createTest(data); toast('记录已提交','success'); }
     formState.images=[null,null,null,null]; formState.previews=[null,null,null,null];
@@ -1034,7 +1098,7 @@ async function removeTesterItem(name) {
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop,
-  navigate, filterTimeline, toggleCard, editTest, deleteTestRecord,
+  navigate, filterTimeline, toggleCard, editTest, deleteTestRecord, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
   activatePaste, toggleEmp, updateBadge, updateEffectBadge, openLightbox,

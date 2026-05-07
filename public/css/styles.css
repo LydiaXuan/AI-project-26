@@ -339,3 +339,28 @@ select.form-control { cursor: pointer; }
 /* Fix calendar flicker – stop modal from closing on inner clicks */
 .modal-overlay { pointer-events:none; }
 .modal { pointer-events:all; }
+
+/* ── Variant Status Chips ─────────────────────────────────── */
+.variant-status { display:inline-block; font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; white-space:nowrap; text-align:center; }
+.vs-empty    { background:#F3F4F6; color:#6B7280; border:1px solid #D1D5DB; }
+.vs-uploaded { background:#DBEAFE; color:#1D4ED8; border:1px solid #93C5FD; }
+.vs-complete { background:#DCFCE7; color:#15803D; border:1px solid #86EFAC; }
+.vs-applied  { background:#FEF9C3; color:#854D0E; border:1px solid #FDE047; }
+.vs-missing  { background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5; }
+
+/* ── Applied image in timeline ────────────────────────────── */
+.applied-thumb { border:2px solid #16A34A !important; box-shadow:0 0 0 2px #DCFCE7; }
+.thumb-applied-label { font-size:9px; font-weight:700; color:#16A34A; text-align:center; background:#DCFCE7; border-radius:4px; padding:1px 4px; margin-top:2px; }
+.applied-row { background:#F0FDF4; }
+.applied-row td { border-bottom-color:#BBF7D0; }
+
+/* ── Best performance tag ─────────────────────────────────── */
+.best-tag { display:inline-block; font-size:12px; margin-left:3px; vertical-align:middle; }
+
+/* ── Notes display in card ────────────────────────────────── */
+.card-notes { margin-top:12px; padding:10px 12px; background:#FAFAFA; border:1px solid var(--border); border-radius:var(--radius-sm); display:flex; flex-direction:column; gap:4px; }
+.note-row { display:flex; align-items:flex-start; gap:8px; font-size:12px; color:var(--text-2); line-height:1.4; }
+.note-tag { display:inline-block; font-size:10px; font-weight:700; color:var(--text-muted); background:var(--neutral-bg); border-radius:4px; padding:1px 6px; flex-shrink:0; margin-top:1px; }
+
+/* ── Notes input grid in form ─────────────────────────────── */
+.notes-grid { display:flex; flex-direction:column; gap:6px; }

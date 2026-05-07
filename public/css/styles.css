@@ -320,8 +320,24 @@ select.form-control { cursor: pointer; }
 .vc-applied-field { flex-direction:row; align-items:center; justify-content:space-between; }
 .vc-applied-field .vc-field-label { margin-bottom:0; }
 
+/* Paste image button (per variant column) */
+.vc-paste-img-btn { display:flex; align-items:center; justify-content:center; gap:5px; width:100%; margin-top:6px; padding:5px 8px; border:1px dashed #9CA3AF; border-radius:var(--radius-sm); background:#F9FAFB; color:var(--text-muted); font-size:11px; cursor:pointer; transition:all .15s; }
+.vc-paste-img-btn:hover { border-color:var(--primary); background:var(--primary-bg); color:var(--primary); }
+.vc-paste-img-btn.active { border-color:var(--primary); background:var(--primary-bg); color:var(--primary); font-weight:700; animation:pulse-border 1s infinite; }
+
+/* Image zone paste-ready state */
+.vc-img-zone.paste-ready { border:2px dashed var(--primary) !important; background:var(--primary-bg) !important; }
+.vc-img-zone.paste-ready .img-upload-sm { border-color:var(--primary); background:transparent; }
+
+/* Paste Play data button (GPLAY protocol) */
 .vc-paste-btn { display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border:1px dashed var(--primary); border-radius:var(--radius-sm); background:var(--primary-bg); color:var(--primary); font-size:11px; font-weight:600; cursor:pointer; transition:background .15s; width:100%; justify-content:center; margin-top:4px; }
 .vc-paste-btn:hover { background:#C7D2FE; }
+
+/* OCR zone paste hints */
+.ocr-paste-hint { font-size:10px; color:var(--primary); font-weight:400; }
+.ocr-drop-zone.paste-filled { border-color:#22C55E; background:#F0FDF4; }
+
+@keyframes pulse-border { 0%,100%{box-shadow:0 0 0 0 rgba(79,108,246,.3)} 50%{box-shadow:0 0 0 4px rgba(79,108,246,.15)} }
 
 /* Compact controls inside columns */
 .variant-col .form-control { font-size:12px; padding:6px 8px; }

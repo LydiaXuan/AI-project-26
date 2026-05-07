@@ -45,7 +45,7 @@ const state = {
   view: 'dashboard', tests: [], projects: [],
   filterProject: 'all', filterEffect: 'all', filterBiType: 'all',
   filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
-  editTestId: null, activeVariant: null,
+  editTestId: null, activeVariant: null, activeImgVariant: null,
   _unsubTests: null, _unsubProjects: null,
 };
 const formState = { images: [null,null,null,null], previews: [null,null,null,null] };
@@ -75,20 +75,91 @@ function openLightbox(src) {
 
 // ── Paste handler ─────────────────────────────────────────────
 document.addEventListener('paste', e => {
-  const text = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+  const isTextField = ['INPUT','TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable;
+  const clipData = e.clipboardData || window.clipboardData;
+
+  // ① Image paste (icons or data screenshots)
+  const imgItem = [...(clipData?.items||[])].find(it => it.type.startsWith('image/'));
+  if (imgItem && !isTextField) {
+    e.preventDefault();
+    const file = imgItem.getAsFile();
+    if (!file) return;
+
+    // OCR modal open? → auto-fill fi first, then ri
+    const ocrWrap = document.getElementById('ocr-wrap');
+    if (ocrWrap) {
+      const zone = !ocrFiles.fi ? 'fi' : !ocrFiles.ri ? 'ri' : 'fi';
+      ocrFileFromClipboard(file, zone);
+      return;
+    }
+
+    // Form image zone active?
+    if (state.activeImgVariant !== null) {
+      const vi = state.activeImgVariant;
+      handleImgFile(vi, file);
+      clearActiveImgVariant();
+      toast(`已粘贴${vi===0?'原始':'测试'+vi}图标`, 'success');
+      return;
+    }
+
+    toast('请先点击某列的「📋 粘贴图片」按钮，再 Ctrl+V', 'info');
+    return;
+  }
+
+  // ② GPLAY| text paste (numeric data from clipboard tool)
+  const text = clipData?.getData('text') || '';
   if (!text.startsWith('GPLAY|')) return;
   e.preventDefault();
   const data = parsePaste(text);
   if (!data) return;
-  if (state.activeVariant === null) { toast('请先点击某个变体的「从 Play 提取」按钮', 'info'); return; }
+  if (state.activeVariant === null) { toast('请先点击某列的「📋 粘贴 Play 数据」按钮', 'info'); return; }
   const i = state.activeVariant;
   const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) { el.value = val; el.dispatchEvent(new Event('input')); } };
   setVal(`v${i}_fi`, data.fi); setVal(`v${i}_ciL`, data.ciL); setVal(`v${i}_ciH`, data.ciH); setVal(`v${i}_ri`, data.ri);
   if (data.ciL !== undefined && data.ciH !== undefined) updateEffectBadge(i);
   state.activeVariant = null;
   document.querySelectorAll('.paste-active-hint').forEach(el => el.remove());
-  toast(`已自动填入${i === 0 ? '原始' : `测试${i}`}的数据`, 'success');
+  toast(`已填入${i===0?'原始':'测试'+i}数据`, 'success');
 });
+
+function handleImgFile(i, file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  formState.images[i] = file;
+  const r = new FileReader();
+  r.onload = ev => showPreview(i, ev.target.result);
+  r.readAsDataURL(file);
+}
+
+function activatePasteImg(i) {
+  state.activeImgVariant = i;
+  document.querySelectorAll('.vc-img-zone').forEach(z => z.classList.remove('paste-ready'));
+  document.querySelector(`.variant-col[data-vi="${i}"] .vc-img-zone`)?.classList.add('paste-ready');
+  document.querySelectorAll('.vc-paste-img-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`paste-img-btn-${i}`)?.classList.add('active');
+  toast(`已激活，请按 Ctrl+V 粘贴${i===0?'原始':'测试'+i}图标截图`, 'info');
+}
+
+function clearActiveImgVariant() {
+  state.activeImgVariant = null;
+  document.querySelectorAll('.vc-img-zone.paste-ready').forEach(z => z.classList.remove('paste-ready'));
+  document.querySelectorAll('.vc-paste-img-btn.active').forEach(b => b.classList.remove('active'));
+}
+
+function ocrFileFromClipboard(file, zone) {
+  ocrFiles[zone] = file;
+  const thumbEl = document.getElementById(`ocr-${zone}-thumb`);
+  if (thumbEl) {
+    const r = new FileReader();
+    r.onload = ev => {
+      thumbEl.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid var(--border)"/>`;
+    };
+    r.readAsDataURL(file);
+  }
+  document.getElementById(`ocr-${zone}-area`)?.classList.add('paste-filled');
+  const runBtn = document.getElementById('ocr-run-btn');
+  if (runBtn) runBtn.disabled = false;
+  toast(`已粘贴${zone==='fi'?'首次安装':'保留安装'}数据截图，可继续粘贴另一张或直接开始识别`, 'success');
+}
 
 function parsePaste(text) {
   try {
@@ -651,8 +722,9 @@ function buildVariantCol(i, test) {
         <span class="vc-label">${label}</span>
         <span class="variant-status ${statusCls}">${statusLabel}</span>
       </div>
-      <div class="vc-img-zone">
+      <div class="vc-img-zone" id="img-zone-${i}">
         ${buildImgCell(i, v)}
+        <button type="button" class="vc-paste-img-btn" id="paste-img-btn-${i}" onclick="activatePasteImg(${i})" title="点击激活后 Ctrl+V 粘贴截图">📋 粘贴图片</button>
       </div>
       <div class="vc-data">
         <div class="vc-field-group">
@@ -751,7 +823,7 @@ function renderFormView() {
 function buildImgCell(i, v={}) {
   const src = formState.previews[i];
   if (src) return `<div class="img-cell-wrap"><img class="img-preview-sm" src="${src}" onclick="openLightbox('${src}')"/><button type="button" class="img-remove" onclick="removeImg(${i})">✕</button></div>`;
-  return `<div class="img-upload-sm" id="uarea-${i}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,${i})"><span class="upload-icon">📤</span><span>点击上传</span><input type="file" accept="image/*" onchange="handleImgSelect(event,${i})"/></div>`;
+  return `<div class="img-upload-sm" id="uarea-${i}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,${i})"><span class="upload-icon">📤</span><span>点击/拖拽上传</span><input type="file" accept="image/*" onchange="handleImgSelect(event,${i})"/></div>`;
 }
 
 function buildCICell(i, v={}, isEmp=false) {
@@ -869,17 +941,17 @@ function openOCRModal() {
       <p>上传 Google Play Console 实验截图，自动识别各变体的安装数和置信区间（本地运行，无需 API）</p>
       <div class="ocr-uploads">
         <div>
-          <div class="ocr-upload-label">首次安装数截图</div>
-          <div class="img-upload-area" id="ocr-fi-area" style="min-height:90px">
-            <span class="upload-icon">📤</span><span class="upload-hint">点击上传</span>
+          <div class="ocr-upload-label">首次安装数截图 <span class="ocr-paste-hint">（可 Ctrl+V 粘贴）</span></div>
+          <div class="img-upload-area ocr-drop-zone" id="ocr-fi-area" style="min-height:90px">
+            <span class="upload-icon">📤</span><span class="upload-hint">点击上传 / Ctrl+V 粘贴截图</span>
             <input type="file" accept="image/*" onchange="ocrFileSelected(event,'fi')"/>
           </div>
           <div id="ocr-fi-thumb"></div>
         </div>
         <div>
-          <div class="ocr-upload-label">保留安装数截图</div>
-          <div class="img-upload-area" id="ocr-ri-area" style="min-height:90px">
-            <span class="upload-icon">📤</span><span class="upload-hint">点击上传</span>
+          <div class="ocr-upload-label">保留安装数截图 <span class="ocr-paste-hint">（可 Ctrl+V 粘贴）</span></div>
+          <div class="img-upload-area ocr-drop-zone" id="ocr-ri-area" style="min-height:90px">
+            <span class="upload-icon">📤</span><span class="upload-hint">点击上传 / Ctrl+V 粘贴截图</span>
             <input type="file" accept="image/*" onchange="ocrFileSelected(event,'ri')"/>
           </div>
           <div id="ocr-ri-thumb"></div>
@@ -1280,7 +1352,8 @@ Object.assign(window, {
   navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, toggleCard, editTest, deleteTestRecord, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
-  activatePaste, toggleEmp, updateBadge, updateEffectBadge, openLightbox,
+  activatePaste, activatePasteImg, clearActiveImgVariant,
+  toggleEmp, updateBadge, updateEffectBadge, openLightbox,
   changeCode, makeAdmin, revokeUser,
   addProjectItem, removeProject, addTesterItem, removeTesterItem,
   addRatioPresetItem, removeRatioPresetItem,

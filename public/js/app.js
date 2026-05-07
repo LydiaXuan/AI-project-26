@@ -43,7 +43,9 @@ function compressImage(file, maxPx = 480, quality = 0.72) {
 const state = {
   user: null, userData: null, settings: null,
   view: 'dashboard', tests: [], projects: [],
-  filterProject: 'all', editTestId: null, activeVariant: null,
+  filterProject: 'all', filterEffect: 'all', filterBiType: 'all',
+  filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
+  editTestId: null, activeVariant: null,
   _unsubTests: null, _unsubProjects: null,
 };
 const formState = { images: [null,null,null,null], previews: [null,null,null,null] };
@@ -324,50 +326,139 @@ function initCharts(tests) {
 // ── Timeline ──────────────────────────────────────────────────
 function renderTimeline() {
   const projOpts = state.projects.map(p=>`<option value="${p.id}" ${state.filterProject===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
-  let tests = state.filterProject==='all' ? state.tests : state.tests.filter(t=>t.projectId===state.filterProject);
+  const allBiTypes = [...new Set(state.tests.map(t=>t.biVizType).filter(Boolean))].sort();
+
+  const EFFECT_OPTS = [
+    {val:'all',label:'全部表现'},
+    {val:'great',label:'🏆 很好'},
+    {val:'good',label:'✅ 不错'},
+    {val:'neutral_p',label:'⚖️ 持平(+)'},
+    {val:'neutral_n',label:'⚖️ 持平(-)'},
+    {val:'bad',label:'📉 不好'},
+    {val:'empirical',label:'📈 经验决策'},
+  ];
+  const effectOpts = EFFECT_OPTS.map(o=>`<option value="${o.val}" ${state.filterEffect===o.val?'selected':''}>${o.label}</option>`).join('');
+  const biTypeOpts = [`<option value="all" ${state.filterBiType==='all'?'selected':''}>全部截图类型</option>`,
+    ...allBiTypes.map(b=>`<option value="${b}" ${state.filterBiType===b?'selected':''}>${escHtml(b)}</option>`)
+  ].join('');
+
+  // Apply filters
+  let tests = [...state.tests];
+  if (state.filterProject !== 'all') tests = tests.filter(t=>t.projectId===state.filterProject);
+  if (state.filterEffect !== 'all') tests = tests.filter(t=>(t.variants||[]).some((v,i)=>i>0&&v.effect===state.filterEffect));
+  if (state.filterBiType !== 'all') tests = tests.filter(t=>t.biVizType===state.filterBiType);
+  if (state.filterVarCount !== 'all') {
+    const need = parseInt(state.filterVarCount);
+    tests = tests.filter(t=>{
+      const active = (t.variants||[]).filter((v,i)=>i===0||(v.imageUrl||v.firstInstalls!=null)).length;
+      return active === need;
+    });
+  }
+  if (state.searchQuery) {
+    const q = state.searchQuery.toLowerCase();
+    tests = tests.filter(t=>
+      t.projectName?.toLowerCase().includes(q)||
+      t.tester?.toLowerCase().includes(q)||
+      t.notes?.change?.toLowerCase().includes(q)||
+      t.notes?.purpose?.toLowerCase().includes(q)||
+      t.notes?.design?.toLowerCase().includes(q)
+    );
+  }
+  tests.sort((a,b)=>state.sortOrder==='desc'
+    ? new Date(b.startDate)-new Date(a.startDate)
+    : new Date(a.startDate)-new Date(b.startDate)
+  );
+
+  const activeFilters = [
+    state.filterProject!=='all', state.filterEffect!=='all',
+    state.filterBiType!=='all', state.filterVarCount!=='all', !!state.searchQuery
+  ].filter(Boolean).length;
 
   const body = tests.length===0
-    ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>暂无测试记录</p></div>`
+    ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>暂无匹配记录</p><button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="resetTimelineFilters()">清除筛选</button></div>`
     : `<div class="timeline">${tests.map(t=>buildTestCard(t)).join('')}</div>`;
 
   renderShell(`
-    <div class="page-header"><div class="page-title">历史时间线</div></div>
-    <div class="timeline-filters">
-      <label style="font-size:13px;color:var(--text-muted);font-weight:600">筛选项目：</label>
-      <select class="form-control" style="width:200px" onchange="filterTimeline(this.value)">
-        <option value="all" ${state.filterProject==='all'?'selected':''}>全部项目</option>${projOpts}
-      </select>
-      <span style="font-size:12px;color:var(--text-muted)">共 ${tests.length} 条记录</span>
+    <div class="page-header">
+      <div class="page-title">历史时间线</div>
+      <span class="tl-count-badge">${tests.length} / ${state.tests.length} 条记录</span>
+    </div>
+    <div class="tl-filter-bar">
+      <div class="tl-filter-row">
+        <select class="form-control tl-select" id="tl-sort" onchange="applyTimelineFilters()">
+          <option value="desc" ${state.sortOrder==='desc'?'selected':''}>⬇ 最新优先</option>
+          <option value="asc" ${state.sortOrder==='asc'?'selected':''}>⬆ 最早优先</option>
+        </select>
+        <select class="form-control tl-select" id="tl-project" onchange="applyTimelineFilters()">
+          <option value="all" ${state.filterProject==='all'?'selected':''}>全部项目</option>${projOpts}
+        </select>
+        <select class="form-control tl-select" id="tl-varcount" onchange="applyTimelineFilters()">
+          <option value="all" ${state.filterVarCount==='all'?'selected':''}>全部实验类型</option>
+          <option value="2" ${state.filterVarCount==='2'?'selected':''}>A/B 两组</option>
+          <option value="3" ${state.filterVarCount==='3'?'selected':''}>A/B/C 三组</option>
+          <option value="4" ${state.filterVarCount==='4'?'selected':''}>四组测试</option>
+        </select>
+        <select class="form-control tl-select" id="tl-effect" onchange="applyTimelineFilters()">
+          ${effectOpts}
+        </select>
+        <select class="form-control tl-select" id="tl-bitype" onchange="applyTimelineFilters()">
+          ${biTypeOpts}
+        </select>
+        <input class="form-control tl-search" id="tl-search" type="search" placeholder="🔍 搜索项目、备注、测试人…" value="${escHtml(state.searchQuery)}" oninput="applyTimelineFilters()"/>
+        ${activeFilters>0?`<button class="btn btn-secondary btn-sm tl-reset" onclick="resetTimelineFilters()">重置 (${activeFilters})</button>`:''}
+      </div>
     </div>
     ${body}
   `, 'timeline');
 }
 
+function applyTimelineFilters() {
+  state.sortOrder    = document.getElementById('tl-sort')?.value    || 'desc';
+  state.filterProject= document.getElementById('tl-project')?.value || 'all';
+  state.filterVarCount=document.getElementById('tl-varcount')?.value|| 'all';
+  state.filterEffect = document.getElementById('tl-effect')?.value  || 'all';
+  state.filterBiType = document.getElementById('tl-bitype')?.value  || 'all';
+  state.searchQuery  = document.getElementById('tl-search')?.value  || '';
+  renderTimeline();
+}
+function resetTimelineFilters() {
+  state.sortOrder='desc'; state.filterProject='all'; state.filterEffect='all';
+  state.filterBiType='all'; state.filterVarCount='all'; state.searchQuery='';
+  renderTimeline();
+}
 function filterTimeline(val) { state.filterProject=val; renderTimeline(); }
 
 function buildTestCard(t) {
   const vars = t.variants||[];
-  // Best performance calculation (among test variants only)
+  const effectScore = {great:6,good:5,neutral_p:4,neutral_n:3,empirical:2,bad:1,control:0};
   const testVars = vars.filter((_,i)=>i>0);
   const bestFI = testVars.length ? Math.max(...testVars.map(v=>v.firstInstalls||0)) : 0;
   const bestRI = testVars.length ? Math.max(...testVars.map(v=>v.retainedInstalls||0)) : 0;
-  const effectScore = {great:6,good:5,neutral_p:4,neutral_n:3,empirical:2,bad:1,control:0};
   const bestEffectScore = testVars.reduce((m,v)=>Math.max(m, effectScore[v.effect||'empirical']||0), 0);
+
+  // Applied variant
+  const appliedIdx = vars.findIndex((v,i)=>i>0&&v.applied);
+  const appliedVar = appliedIdx>=0 ? vars[appliedIdx] : null;
+  const appliedChip = appliedVar
+    ? `<span class="applied-chip">✓ 测试${appliedIdx} 已采用</span>`
+    : `<span class="not-applied-chip">暂未应用</span>`;
 
   const thumbs = vars.map((v,i)=>`
     <div class="variant-thumb-wrap">
-      ${v.imageUrl ? `<img class="variant-thumb${v.applied?' applied-thumb':''}" src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>` : `<div class="variant-thumb-placeholder">🖼</div>`}
-      ${v.applied ? '<div class="thumb-applied-label">✓ 已应用</div>' : ''}
+      ${v.imageUrl ? `<img class="variant-thumb${v.applied?' applied-thumb':''}" src="${v.imageUrl}" onclick="event.stopPropagation();openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>` : `<div class="variant-thumb-placeholder">🖼</div>`}
+      ${v.applied ? '<div class="thumb-applied-label">✓ 采用</div>' : ''}
       <div class="variant-label">${i===0?'原始':`测试${i}`}</div>
     </div>`).join('');
+
   const badges = vars.map((v,i)=>i===0?'':effectBadgeHTML(v.effect||'empirical')).join(' ');
+
   const rows = vars.map((v,i)=>{
     const isBestFI = i>0 && bestFI>0 && v.firstInstalls===bestFI;
     const isBestRI = i>0 && bestRI>0 && v.retainedInstalls===bestRI;
     const isBestEffect = i>0 && bestEffectScore>0 && (effectScore[v.effect||'empirical']||0)===bestEffectScore;
     return `
     <tr${v.applied&&i>0?' class="applied-row"':''}>
-      <td><div class="variant-img-cell">${v.imageUrl?`<img src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>`:'<span style="font-size:18px">🖼</span>'}<span>${i===0?'🔵 原始':`🔴 测试${i}`}</span></div></td>
+      <td><div class="variant-img-cell">${v.imageUrl?`<img src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>`:'<span style="font-size:18px">🖼</span>'}<span>${i===0?'🔵 原始':`🔴 测试${i}`}${v.applied?' 🏳️':''}</span></div></td>
       <td>${v.firstInstalls??'-'}${isBestFI?'<span class="best-tag">🥇</span>':''}</td>
       <td>${(v.ciLower!==null&&v.ciLower!==''&&v.ciLower!==undefined)?`[${v.ciLower}%, ${v.ciUpper}%]`:(v.empiricalDelta!=null?`增幅 ${v.empiricalDelta}%`:'-')}</td>
       <td>${v.retainedInstalls??'-'}${isBestRI?'<span class="best-tag">🥇</span>':''}</td>
@@ -376,26 +467,50 @@ function buildTestCard(t) {
     </tr>`;
   }).join('');
 
+  // "当前最终采用版本" section
+  const adoptedSection = appliedVar ? `
+    <div class="adopted-section">
+      <div class="adopted-header">当前最终采用版本</div>
+      <div class="adopted-body">
+        ${appliedVar.imageUrl ? `<img class="adopted-img" src="${appliedVar.imageUrl}" onclick="openLightbox('${appliedVar.imageUrl}')" style="cursor:zoom-in"/>` : '<div class="adopted-img-ph">🖼</div>'}
+        <div class="adopted-meta">
+          <div class="adopted-name">测试 ${appliedIdx}${effectBadgeHTML(appliedVar.effect||'empirical')}</div>
+          <div class="adopted-stats">
+            ${appliedVar.firstInstalls!=null?`<span class="a-stat">首次安装 <strong>${appliedVar.firstInstalls}</strong></span>`:''}
+            ${appliedVar.retainedInstalls!=null?`<span class="a-stat">保留安装 <strong>${appliedVar.retainedInstalls}</strong></span>`:''}
+            ${appliedVar.ciLower!=null?`<span class="a-stat">CI <strong>[${appliedVar.ciLower}%, ${appliedVar.ciUpper}%]</strong></span>`:''}
+            ${appliedVar.empiricalDelta!=null?`<span class="a-stat">增幅 <strong>${appliedVar.empiricalDelta}%</strong></span>`:''}
+          </div>
+        </div>
+      </div>
+    </div>` : '';
+
   return `
     <div class="timeline-item">
-      <div class="timeline-dot"></div>
+      <div class="timeline-dot${appliedVar?' dot-applied':''}"></div>
       <div class="test-card" id="card-${t.id}">
         <div class="test-card-header" onclick="toggleCard('${t.id}')">
           <div class="test-card-meta">
-            <h3>${escHtml(t.projectName||'')} <span class="badge badge-blue">${escHtml(t.tester||'')}</span></h3>
+            <div class="card-title-row">
+              <h3>${escHtml(t.projectName||'')} <span class="badge badge-blue">${escHtml(t.tester||'')}</span></h3>
+              ${appliedChip}
+            </div>
             <div class="meta-row">
               <span class="meta-chip">📅 ${t.startDate||''} → ${t.endDate||''}</span>
               <span class="meta-chip">置信度 ${t.confidence}%</span>
-              <span class="meta-chip">比例 ${escHtml(t.testRatio||'')}</span>
+              ${t.testRatio?`<span class="meta-chip">比例 ${escHtml(t.testRatio)}</span>`:''}
               ${t.biVizType?`<span class="bi-type-tag">${escHtml(t.biVizType)}</span>`:''}
             </div>
             <div class="meta-row" style="margin-top:6px">${badges}</div>
+            ${t.notes?.change?`<div class="card-note-preview">💬 ${escHtml(t.notes.change)}</div>`:''}
           </div>
           <div class="test-card-images">${thumbs}</div>
           <div class="test-card-expand"><span class="expand-icon">▼</span></div>
         </div>
         <div class="test-card-body">
+          ${adoptedSection}
           ${buildProgressBlock(t)}
+          <div class="data-cmp-title">📊 实验数据对比</div>
           <table class="variants-table">
             <thead><tr><th>变体</th><th>首次安装数</th><th>置信区间</th><th>保留安装数</th><th>测试效果</th><th>是否应用</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -1154,7 +1269,7 @@ async function removeTesterItem(name) {
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop,
-  navigate, filterTimeline, toggleCard, editTest, deleteTestRecord, handleRatioChange,
+  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, toggleCard, editTest, deleteTestRecord, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
   activatePaste, toggleEmp, updateBadge, updateEffectBadge, openLightbox,

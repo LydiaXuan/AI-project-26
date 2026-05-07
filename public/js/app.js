@@ -5,9 +5,6 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import {
-  getStorage, ref as storageRef, uploadBytes, getDownloadURL
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
 import { FIREBASE_CONFIG, SUPER_ADMIN_EMAIL } from './config.js';
 import { calculateEffect, effectBadgeHTML } from './effects.js';
 import {
@@ -22,8 +19,25 @@ import {
 // ── Firebase init ─────────────────────────────────────────────
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
 const auth = getAuth(firebaseApp);
-const storage = getStorage(firebaseApp);
 initDB(firebaseApp);
+
+// 客户端图片压缩（存 base64，无需 Storage）
+function compressImage(file, maxPx = 480, quality = 0.72) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = url;
+  });
+}
 
 // ── State ─────────────────────────────────────────────────────
 const state = {
@@ -564,9 +578,7 @@ async function handleFormSubmit(e) {
     const testRatio = document.getElementById('f-ratio').value;
     const biVizType = document.getElementById('f-bitype').value;
     const existV = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.variants||[]) : [];
-
     const variants = [];
-    const docId = state.editTestId || `tmp_${Date.now()}`;
     for (let i=0;i<VDEFS.length;i++) {
       const fi=document.getElementById(`v${i}_fi`)?.value;
       const ri=document.getElementById(`v${i}_ri`)?.value;
@@ -578,9 +590,7 @@ async function handleFormSubmit(e) {
       const effect=i===0?'control':calculateEffect(ciL!==''&&ciL!=null?parseFloat(ciL):null, ciH!==''&&ciH!=null?parseFloat(ciH):null);
       let imageUrl=existV[i]?.imageUrl||null;
       if (formState.images[i]) {
-        const ref = storageRef(storage, `tests/${docId}/${i}_${Date.now()}`);
-        await uploadBytes(ref, formState.images[i]);
-        imageUrl = await getDownloadURL(ref);
+        imageUrl = await compressImage(formState.images[i]);
       }
       variants.push({
         firstInstalls: fi!==''&&fi!=null?Number(fi):null,

@@ -327,6 +327,7 @@ select.form-control { cursor: pointer; }
 .ocr-preview-table th { background:var(--neutral-bg); padding:7px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); }
 .ocr-preview-table td { padding:7px 10px; border-bottom:1px solid var(--border); }
 .ocr-actions { display:flex; gap:8px; justify-content:flex-end; }
+.ocr-edit { padding:4px 7px !important; font-size:12px !important; }
 
 /* ── Crop Modal ───────────────────────────────────────────── */
 #crop-canvas-wrap { position:relative; margin:12px 0; }

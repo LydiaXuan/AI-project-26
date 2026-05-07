@@ -843,21 +843,21 @@ async function runOCR() {
       Object.keys(riParsed).forEach(v => { ocrData[v] = { ...(ocrData[v]||{}), ...riParsed[v] }; });
     }
 
-    // Show preview table
+    // Show editable preview table
     const tbody = document.getElementById('ocr-tbody');
     const variantMap = { control:'原始(控制)', A:'测试1', B:'测试2', C:'测试3' };
     tbody.innerHTML = Object.entries(ocrData).map(([k,d])=>`
-      <tr>
+      <tr data-ocr-key="${k}">
         <td>${variantMap[k]||k}</td>
-        <td>${d.firstInstalls??'—'}</td>
-        <td>${d.ciLower??'—'}</td>
-        <td>${d.ciUpper??'—'}</td>
-        <td>${d.retainedInstalls??'—'}</td>
+        <td><input class="form-control ocr-edit" data-field="firstInstalls" type="number" value="${d.firstInstalls??''}" placeholder="—" style="width:90px"/></td>
+        <td><input class="form-control ocr-edit" data-field="ciLower" type="number" step="0.1" value="${d.ciLower??''}" placeholder="—" style="width:70px"/></td>
+        <td><input class="form-control ocr-edit" data-field="ciUpper" type="number" step="0.1" value="${d.ciUpper??''}" placeholder="—" style="width:70px"/></td>
+        <td><input class="form-control ocr-edit" data-field="retainedInstalls" type="number" value="${d.retainedInstalls??''}" placeholder="—" style="width:90px"/></td>
       </tr>`).join('');
     document.getElementById('ocr-status').style.display = 'none';
     document.getElementById('ocr-preview-wrap').style.display = 'block';
     document.getElementById('ocr-apply-btn').disabled = false;
-    toast('识别完成，请确认数据后点击「填入表单」','success');
+    toast('识别完成，可直接修改数据后点击「填入表单」','success');
   } catch(err) {
     document.getElementById('ocr-status').style.display = 'none';
     toast('识别失败：'+err.message,'error');
@@ -917,17 +917,19 @@ function parseRetainedOCR(text) {
 }
 
 function applyOCRData() {
-  // Map A→i=1, B→i=2, C→i=3, control→i=0
   const varMap = { control:0, A:1, B:2, C:3 };
-  Object.entries(ocrData).forEach(([key, d]) => {
+  // Read from editable inputs in the preview table
+  document.querySelectorAll('#ocr-tbody tr[data-ocr-key]').forEach(row => {
+    const key = row.dataset.ocrKey;
     const i = varMap[key];
     if (i === undefined) return;
-    const set = (id, val) => { const el=document.getElementById(id); if(el&&val!=null) el.value=val; };
-    set(`v${i}_fi`, d.firstInstalls);
-    set(`v${i}_ri`, d.retainedInstalls);
+    const getVal = field => { const el = row.querySelector(`[data-field="${field}"]`); return el?.value?.trim()||null; };
+    const set = (id, val) => { const el=document.getElementById(id); if(el&&val!=null&&val!=='') el.value=val; };
+    set(`v${i}_fi`, getVal('firstInstalls'));
+    set(`v${i}_ri`, getVal('retainedInstalls'));
     if (i > 0) {
-      set(`v${i}_ciL`, d.ciLower);
-      set(`v${i}_ciH`, d.ciUpper);
+      set(`v${i}_ciL`, getVal('ciLower'));
+      set(`v${i}_ciH`, getVal('ciUpper'));
       updateBadge(i);
     }
   });

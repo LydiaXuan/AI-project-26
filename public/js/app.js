@@ -1173,11 +1173,12 @@ function closeOCRModal() { document.getElementById('ocr-wrap')?.remove(); }
 let cropImg = null;
 let cropDividers = [0.25, 0.5, 0.75]; // 3 dividers for 4 regions
 let draggingDivider = null;
+let cropDirection = 'horizontal'; // 'horizontal' | 'vertical'
 const CROP_COLORS = ['#6B7280','#3B82F6','#8B5CF6','#EC4899'];
 const CROP_LABELS = ['原始','测试1','测试2','测试3'];
 
 function openCropModal() {
-  cropImg = null; cropDividers = [0.25, 0.5, 0.75];
+  cropImg = null; cropDividers = [0.25, 0.5, 0.75]; cropDirection = 'horizontal';
   setTimeout(() => { const c = document.getElementById('crop-canvas'); if(c) setupCropDrag(); }, 200);
   const wrap = document.createElement('div');
   wrap.className = 'crop-modal-wrap'; wrap.id = 'crop-wrap';
@@ -1185,6 +1186,10 @@ function openCropModal() {
     <div class="crop-modal">
       <h3>✂️ 批量裁剪图标</h3>
       <p>上传包含全部变体图标的截图，拖动分割线调整各区域，支持 1~4 个变体</p>
+      <div class="form-type-toggle" style="margin-bottom:10px">
+        <button type="button" class="type-btn active" id="crop-dir-h" onclick="switchCropDirection('horizontal')">↔ 左右裁剪</button>
+        <button type="button" class="type-btn" id="crop-dir-v" onclick="switchCropDirection('vertical')">↕ 上下裁剪</button>
+      </div>
       <div class="img-upload-area" id="crop-upload" style="min-height:80px">
         <span class="upload-icon">📤</span><span class="upload-hint">点击上传 / Ctrl+V 粘贴</span>
         <input type="file" accept="image/*" onchange="cropImgSelected(event)"/>
@@ -1200,6 +1205,14 @@ function openCropModal() {
       <div style="margin-top:12px;text-align:right"><button class="btn btn-secondary btn-sm" onclick="closeCropModal()">关闭</button></div>
     </div>`;
   document.body.appendChild(wrap);
+}
+
+function switchCropDirection(dir) {
+  cropDirection = dir;
+  document.getElementById('crop-dir-h')?.classList.toggle('active', dir === 'horizontal');
+  document.getElementById('crop-dir-v')?.classList.toggle('active', dir === 'vertical');
+  cropDividers = [0.25, 0.5, 0.75];
+  drawCropCanvas();
 }
 
 function cropFromFile(file) {
@@ -1231,51 +1244,84 @@ function cropImgSelected(e) {
 function drawCropCanvas() {
   const canvas = document.getElementById('crop-canvas'); if(!canvas||!cropImg) return;
   const MAX_W = Math.min(620, window.innerWidth - 100);
-  const scale = MAX_W / cropImg.width;
+  const MAX_H = Math.min(560, window.innerHeight - 240);
+  const scale = Math.min(MAX_W / cropImg.width, MAX_H / cropImg.height, 1);
   canvas.width = Math.round(cropImg.width * scale);
   canvas.height = Math.round(cropImg.height * scale);
   const ctx = canvas.getContext('2d');
   ctx.drawImage(cropImg, 0, 0, canvas.width, canvas.height);
-  // Draw region overlays
   const regions = [0, ...cropDividers, 1];
-  for (let i=0;i<regions.length-1;i++) {
-    const x1 = Math.round(regions[i]*canvas.width);
-    const x2 = Math.round(regions[i+1]*canvas.width);
-    ctx.fillStyle = CROP_COLORS[i]+'33';
-    ctx.fillRect(x1, 0, x2-x1, canvas.height);
-    ctx.fillStyle = CROP_COLORS[i];
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText(CROP_LABELS[i], x1+6, 20);
+  if (cropDirection === 'vertical') {
+    for (let i=0;i<regions.length-1;i++) {
+      const y1 = Math.round(regions[i]*canvas.height);
+      const y2 = Math.round(regions[i+1]*canvas.height);
+      ctx.fillStyle = CROP_COLORS[i]+'33';
+      ctx.fillRect(0, y1, canvas.width, y2-y1);
+      ctx.fillStyle = CROP_COLORS[i];
+      ctx.font = 'bold 13px sans-serif'; ctx.textAlign='left';
+      ctx.fillText(CROP_LABELS[i], 6, y1+16);
+    }
+    cropDividers.forEach(d => {
+      const y = Math.round(d*canvas.height);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+      ctx.strokeStyle='#374151'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#fff'; ctx.strokeStyle='#374151'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(canvas.width/2, y, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#374151'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('⇕', canvas.width/2, y+4);
+    });
+    canvas.style.cursor = 'ns-resize';
+  } else {
+    for (let i=0;i<regions.length-1;i++) {
+      const x1 = Math.round(regions[i]*canvas.width);
+      const x2 = Math.round(regions[i+1]*canvas.width);
+      ctx.fillStyle = CROP_COLORS[i]+'33';
+      ctx.fillRect(x1, 0, x2-x1, canvas.height);
+      ctx.fillStyle = CROP_COLORS[i];
+      ctx.font = 'bold 13px sans-serif'; ctx.textAlign='left';
+      ctx.fillText(CROP_LABELS[i], x1+6, 20);
+    }
+    cropDividers.forEach(d => {
+      const x = Math.round(d*canvas.width);
+      ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+      ctx.strokeStyle='#374151'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#fff'; ctx.strokeStyle='#374151'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(x, canvas.height/2, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#374151'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('⇔', x, canvas.height/2+4);
+    });
+    canvas.style.cursor = 'ew-resize';
   }
-  // Draw divider lines
-  cropDividers.forEach((d,i) => {
-    const x = Math.round(d*canvas.width);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-    ctx.strokeStyle = '#374151'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-    ctx.setLineDash([]);
-    // Handle
-    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#374151'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(x, canvas.height/2, 10, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('⇔', x, canvas.height/2+4);
-  });
 }
 
 function setupCropDrag() {
   const canvas = document.getElementById('crop-canvas'); if(!canvas) return;
   canvas.onmousedown = e => {
     const rect = canvas.getBoundingClientRect();
-    const xRatio = (e.clientX - rect.left) / canvas.width;
-    draggingDivider = cropDividers.findIndex(d => Math.abs(d - xRatio) < 0.04);
+    if (cropDirection === 'vertical') {
+      const yRatio = (e.clientY - rect.top) / canvas.height;
+      draggingDivider = cropDividers.findIndex(d => Math.abs(d - yRatio) < 0.04);
+    } else {
+      const xRatio = (e.clientX - rect.left) / canvas.width;
+      draggingDivider = cropDividers.findIndex(d => Math.abs(d - xRatio) < 0.04);
+    }
   };
   canvas.onmousemove = e => {
     if (draggingDivider === null || draggingDivider === -1) return;
     const rect = canvas.getBoundingClientRect();
-    let xRatio = (e.clientX - rect.left) / canvas.width;
-    xRatio = Math.max(0.05, Math.min(0.95, xRatio));
-    cropDividers[draggingDivider] = xRatio;
+    if (cropDirection === 'vertical') {
+      let r = (e.clientY - rect.top) / canvas.height;
+      cropDividers[draggingDivider] = Math.max(0.05, Math.min(0.95, r));
+    } else {
+      let r = (e.clientX - rect.left) / canvas.width;
+      cropDividers[draggingDivider] = Math.max(0.05, Math.min(0.95, r));
+    }
     cropDividers.sort((a,b)=>a-b);
     drawCropCanvas();
   };
@@ -1294,15 +1340,24 @@ function applyCrop() {
   const offscreen = document.createElement('canvas');
   const ctx = offscreen.getContext('2d');
   for (let i=0;i<regions.length-1;i++) {
-    const x1 = Math.round(regions[i]*cropImg.width);
-    const x2 = Math.round(regions[i+1]*cropImg.width);
-    const w = x2-x1;
-    offscreen.width = w; offscreen.height = cropImg.height;
-    ctx.clearRect(0,0,w,cropImg.height);
-    ctx.drawImage(cropImg, x1, 0, w, cropImg.height, 0, 0, w, cropImg.height);
+    if (cropDirection === 'vertical') {
+      const y1 = Math.round(regions[i]*cropImg.height);
+      const y2 = Math.round(regions[i+1]*cropImg.height);
+      const h = y2-y1;
+      offscreen.width = cropImg.width; offscreen.height = h;
+      ctx.clearRect(0,0,cropImg.width,h);
+      ctx.drawImage(cropImg, 0, y1, cropImg.width, h, 0, 0, cropImg.width, h);
+    } else {
+      const x1 = Math.round(regions[i]*cropImg.width);
+      const x2 = Math.round(regions[i+1]*cropImg.width);
+      const w = x2-x1;
+      offscreen.width = w; offscreen.height = cropImg.height;
+      ctx.clearRect(0,0,w,cropImg.height);
+      ctx.drawImage(cropImg, x1, 0, w, cropImg.height, 0, 0, w, cropImg.height);
+    }
     const dataUrl = offscreen.toDataURL('image/jpeg', 0.85);
     formState.previews[i] = dataUrl;
-    formState.images[i] = null; // mark as base64, not File
+    formState.images[i] = null;
     showPreview(i, dataUrl);
   }
   closeCropModal();
@@ -1442,7 +1497,7 @@ async function removeExpTypeItem(r) {
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected,
-  openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop,
+  openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
   navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,

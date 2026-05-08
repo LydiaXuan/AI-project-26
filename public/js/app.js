@@ -190,7 +190,7 @@ function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&
 function renderShell(content, activeTab) {
   const u = state.userData;
   const av = u?.photoURL ? `<img class="user-avatar" src="${u.photoURL}" />` : `<div class="user-avatar-placeholder">${(u?.name||'?')[0].toUpperCase()}</div>`;
-  const adminBtn = u?.isAdmin ? `<button class="nav-tab${activeTab==='admin'?' active':''}" onclick="navigate('admin')">⚙️ 管理</button>` : '';
+  const adminBtn = `<button class="nav-tab${activeTab==='admin'?' active':''}" onclick="navigate('admin')">⚙️ 管理</button>`;
   document.getElementById('app').innerHTML = `
     <nav class="navbar">
       <div class="navbar-brand">📊 图测记录<span>Chart Testing</span></div>
@@ -1201,7 +1201,7 @@ function applyCrop() {
 function closeCropModal() { document.getElementById('crop-wrap')?.remove(); }
 // ── Admin ─────────────────────────────────────────────────────
 async function renderAdmin() {
-  if (!state.userData?.isAdmin) { navigate('dashboard'); return; }
+  const isAdmin = !!state.userData?.isAdmin;
   const [settings, users, projects] = await Promise.all([getSettings(), getAllUsers(), getProjects()]);
   const code = settings?.accessCode || '—';
   const testers = settings?.testers || [];
@@ -1224,15 +1224,16 @@ async function renderAdmin() {
   renderShell(`
     <div class="page-header"><div class="page-title">⚙️ 管理面板</div></div>
     <div class="admin-grid">
+      ${isAdmin ? `
       <div class="admin-card" style="grid-column:1/-1">
-        <h3>🔐 入场码</h3>
+        <h3>🔐 入场码 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
         <div class="access-code-display" id="code-display">${escHtml(code)}</div>
         <div class="add-row"><input class="form-control" id="new-code" type="text" placeholder="输入新入场码…"/><button class="btn btn-primary" onclick="changeCode()">修改入场码</button></div>
       </div>
       <div class="admin-card">
-        <h3>👥 团队成员</h3>
+        <h3>👥 团队成员 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
         <ul class="admin-list">${usersHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-      </div>
+      </div>` : ''}
       <div class="admin-card">
         <h3>🧑‍💻 测试人员名单</h3>
         <ul class="admin-list">${testHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>

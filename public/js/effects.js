@@ -44,18 +44,20 @@ export function calculateEffect(ciLower, ciUpper, testFI = null, controlFI = nul
   const hi = parseFloat(ciUpper);
   if (isNaN(lo) || isNaN(hi)) return empirical();
 
-  // Interval too wide → treat as empirical
-  if (hi - lo >= 20) return empirical();
+  // CI 整体 ≥ 0（全正）
+  if (lo >= 0) return lo >= 10 ? EFFECT.SUPERB : EFFECT.GOOD;
 
-  // All positive (lo >= 0)
-  if (lo >= 0) return lo > 10 ? EFFECT.SUPERB : EFFECT.GOOD;
+  // CI 整体 < 0（全负）
+  if (hi < 0) return EFFECT.BAD;
 
-  // All negative (hi <= 0)
-  if (hi <= 0) return EFFECT.BAD;
+  // CI 跨 0（lo < 0, hi >= 0）
+  // 稳定性检查：下限 ≤ -5% 或 上限 ≥ +10% → 结果不稳定，经验决策
+  if (lo <= -5 || hi >= 10) return empirical();
 
-  // Crosses zero
-  if (lo >= -1) return EFFECT.GOOD;
-  if (lo >= -5) return EFFECT.NEUTRAL_P;
+  // 稳定跨0：用中间值判断趋势
+  const mid = (lo + hi) / 2;
+  if (mid >= 5) return EFFECT.GOOD;
+  if (mid >= 0) return EFFECT.NEUTRAL_P;
   return EFFECT.NEUTRAL_N;
 }
 

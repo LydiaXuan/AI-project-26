@@ -83,18 +83,27 @@ document.addEventListener('paste', e => {
   const imgItem = [...(clipData?.items || [])].find(it => it.type.startsWith('image/'));
   if (imgItem) {
     const isTextField = ['INPUT','TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable;
-    if (!isTextField && state.view === 'form') {
+    if (!isTextField) {
       e.preventDefault();
       const file = imgItem.getAsFile();
       if (!file) return;
-      const nextEmpty = [0,1,2,3].find(i => !formState.images[i] && !formState.previews[i]);
-      if (nextEmpty === undefined) { toast('所有变体已有图片', 'info'); return; }
-      formState.images[nextEmpty] = file;
-      const r = new FileReader();
-      r.onload = ev => showPreview(nextEmpty, ev.target.result);
-      r.readAsDataURL(file);
-      toast(`图片已粘贴到${nextEmpty === 0 ? '原始' : `测试${nextEmpty}`}`, 'success');
-      return;
+      // Crop modal open → paste into crop area
+      if (document.getElementById('crop-wrap')) {
+        cropFromFile(file);
+        toast('图片已粘贴到裁剪区', 'success');
+        return;
+      }
+      // Form open → fill next empty variant slot
+      if (state.view === 'form') {
+        const nextEmpty = [0,1,2,3].find(i => !formState.images[i] && !formState.previews[i]);
+        if (nextEmpty === undefined) { toast('所有变体已有图片', 'info'); return; }
+        formState.images[nextEmpty] = file;
+        const r = new FileReader();
+        r.onload = ev => showPreview(nextEmpty, ev.target.result);
+        r.readAsDataURL(file);
+        toast(`图片已粘贴到${nextEmpty === 0 ? '原始' : `测试${nextEmpty}`}`, 'success');
+        return;
+      }
     }
   }
 
@@ -1083,7 +1092,7 @@ function openCropModal() {
       <h3>✂️ 批量裁剪图标</h3>
       <p>上传包含全部变体图标的截图，拖动分割线调整各区域，支持 1~4 个变体</p>
       <div class="img-upload-area" id="crop-upload" style="min-height:80px">
-        <span class="upload-icon">📤</span><span class="upload-hint">点击上传截图</span>
+        <span class="upload-icon">📤</span><span class="upload-hint">点击上传 / Ctrl+V 粘贴</span>
         <input type="file" accept="image/*" onchange="cropImgSelected(event)"/>
       </div>
       <div id="crop-canvas-wrap" style="display:none;margin-top:12px">
@@ -1099,22 +1108,30 @@ function openCropModal() {
   document.body.appendChild(wrap);
 }
 
-function cropImgSelected(e) {
-  const file = e.target.files?.[0]; if(!file) return;
+function cropFromFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
   const r = new FileReader();
   r.onload = ev => {
     const img = new Image();
     img.onload = () => {
       cropImg = img;
-      document.getElementById('crop-upload').style.display = 'none';
-      document.getElementById('crop-canvas-wrap').style.display = 'block';
-      // Legend
-      document.getElementById('crop-legend').innerHTML = CROP_COLORS.map((c,i)=>`<div class="crop-legend-item"><div class="crop-legend-dot" style="background:${c}"></div><span>${CROP_LABELS[i]}</span></div>`).join('');
+      const uploadEl = document.getElementById('crop-upload');
+      const canvasWrap = document.getElementById('crop-canvas-wrap');
+      if (uploadEl) uploadEl.style.display = 'none';
+      if (canvasWrap) canvasWrap.style.display = 'block';
+      const legendEl = document.getElementById('crop-legend');
+      if (legendEl) legendEl.innerHTML = CROP_COLORS.map((c,i)=>`<div class="crop-legend-item"><div class="crop-legend-dot" style="background:${c}"></div><span>${CROP_LABELS[i]}</span></div>`).join('');
       drawCropCanvas();
+      setTimeout(() => setupCropDrag(), 50);
     };
     img.src = ev.target.result;
   };
   r.readAsDataURL(file);
+}
+
+function cropImgSelected(e) {
+  const file = e.target.files?.[0];
+  if (file) cropFromFile(file);
 }
 
 function drawCropCanvas() {

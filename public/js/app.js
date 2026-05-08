@@ -416,7 +416,7 @@ function renderTimeline() {
   const activeFilters = [
     state.filterProject!=='all', state.filterEffect!=='all',
     state.filterBiType!=='all', state.filterExpType!=='all',
-    state.filterVarCount!=='all', !!state.searchQuery
+    !!state.searchQuery
   ].filter(Boolean).length;
 
   const body = tests.length===0
@@ -437,13 +437,7 @@ function renderTimeline() {
         <select class="form-control tl-select" id="tl-project" onchange="applyTimelineFilters()">
           <option value="all" ${state.filterProject==='all'?'selected':''}>全部项目</option>${projOpts}
         </select>
-        <select class="form-control tl-select" id="tl-varcount" onchange="applyTimelineFilters()">
-          <option value="all" ${state.filterVarCount==='all'?'selected':''}>全部测试组数</option>
-          <option value="2" ${state.filterVarCount==='2'?'selected':''}>A/B 两组</option>
-          <option value="3" ${state.filterVarCount==='3'?'selected':''}>A/B/C 三组</option>
-          <option value="4" ${state.filterVarCount==='4'?'selected':''}>四组测试</option>
-        </select>
-        <select class="form-control tl-select" id="tl-exptype" onchange="applyTimelineFilters()">
+<select class="form-control tl-select" id="tl-exptype" onchange="applyTimelineFilters()">
           ${expTypeOpts}
         </select>
         <select class="form-control tl-select" id="tl-effect" onchange="applyTimelineFilters()">
@@ -469,7 +463,6 @@ function onSearchInput(val) {
 function applyTimelineFilters() {
   state.sortOrder     = document.getElementById('tl-sort')?.value     || 'desc';
   state.filterProject = document.getElementById('tl-project')?.value  || 'all';
-  state.filterVarCount= document.getElementById('tl-varcount')?.value || 'all';
   state.filterExpType = document.getElementById('tl-exptype')?.value  || 'all';
   state.filterEffect  = document.getElementById('tl-effect')?.value   || 'all';
   state.filterBiType  = document.getElementById('tl-bitype')?.value   || 'all';
@@ -477,7 +470,7 @@ function applyTimelineFilters() {
 }
 function resetTimelineFilters() {
   state.sortOrder='desc'; state.filterProject='all'; state.filterEffect='all';
-  state.filterBiType='all'; state.filterExpType='all'; state.filterVarCount='all'; state.searchQuery='';
+  state.filterBiType='all'; state.filterExpType='all'; state.searchQuery='';
   renderTimeline();
 }
 function filterTimeline(val) { state.filterProject=val; renderTimeline(); }

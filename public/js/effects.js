@@ -1,55 +1,76 @@
-// Test effect calculation based on confidence interval bounds
-
 export const EFFECT = {
-  GREAT:     'great',      // 🏆 表现很好
-  GOOD:      'good',       // ✅ 表现不错
-  NEUTRAL_P: 'neutral_p',  // ⚖️ 不相上下（中位数正）
-  NEUTRAL_N: 'neutral_n',  // ⚖️ 不相上下（中位数负，待复测）
-  BAD:       'bad',        // 📉 表现不好
-  EMPIRICAL: 'empirical',  // 📈 经验决策（无置信区间）
+  SUPERB:      'superb',      // 🏆 很好
+  GOOD:        'good',        // 👍 不错
+  BAD:         'bad',         // ❌ 很差
+  NEUTRAL_P:   'neutral_p',   // ➖ 持平(+)
+  NEUTRAL_N:   'neutral_n',   // ➖ 持平(-)
+  EMPIRICAL_P: 'empirical_p', // 📈 经验决策(+)
+  EMPIRICAL_N: 'empirical_n', // 📈 经验决策(-)
 };
 
 export const EFFECT_META = {
-  [EFFECT.GREAT]:     { label: '🏆 表现很好', cls: 'badge-great',     note: '' },
-  [EFFECT.GOOD]:      { label: '✅ 表现不错', cls: 'badge-good',      note: '' },
-  [EFFECT.NEUTRAL_P]: { label: '⚖️ 不相上下', cls: 'badge-neutral-p', note: '待复测' },
-  [EFFECT.NEUTRAL_N]: { label: '⚖️ 不相上下', cls: 'badge-neutral-n', note: '待复测' },
-  [EFFECT.BAD]:       { label: '📉 表现不好', cls: 'badge-bad',       note: '' },
-  [EFFECT.EMPIRICAL]: { label: '📈 经验决策', cls: 'badge-empirical', note: '纯增幅' },
+  [EFFECT.SUPERB]:      { label: '🏆 很好',        cls: 'badge-superb' },
+  [EFFECT.GOOD]:        { label: '👍 不错',        cls: 'badge-good' },
+  [EFFECT.BAD]:         { label: '❌ 很差',        cls: 'badge-bad' },
+  [EFFECT.NEUTRAL_P]:   { label: '➖ 持平(+)',     cls: 'badge-neutral-p' },
+  [EFFECT.NEUTRAL_N]:   { label: '➖ 持平(-)',     cls: 'badge-neutral-n' },
+  [EFFECT.EMPIRICAL_P]: { label: '📈 经验决策(+)', cls: 'badge-empirical-p' },
+  [EFFECT.EMPIRICAL_N]: { label: '📈 经验决策(-)', cls: 'badge-empirical-n' },
+};
+
+// Legacy effect keys from old data
+const LEGACY_MAP = {
+  great: 'superb',
+  empirical: 'empirical_p',
 };
 
 /**
- * @param {number|null} ciLower  - CI 下限（%），如 -5.2
- * @param {number|null} ciUpper  - CI 上限（%），如 10.8
- * @returns {string} EFFECT constant
+ * @param {number|null} ciLower   CI 下限 (%)
+ * @param {number|null} ciUpper   CI 上限 (%)
+ * @param {number|null} testFI    测试组首次安装数
+ * @param {number|null} controlFI 原始组首次安装数
  */
-export function calculateEffect(ciLower, ciUpper) {
-  if (ciLower === null || ciUpper === null || ciLower === '' || ciUpper === '') {
-    return EFFECT.EMPIRICAL;
+export function calculateEffect(ciLower, ciUpper, testFI = null, controlFI = null) {
+  const hasCI = ciLower !== null && ciUpper !== null && ciLower !== '' && ciUpper !== '';
+
+  function empirical() {
+    return (testFI != null && controlFI != null && Number(testFI) > Number(controlFI))
+      ? EFFECT.EMPIRICAL_P : EFFECT.EMPIRICAL_N;
   }
+
+  if (!hasCI) return empirical();
 
   const lo = parseFloat(ciLower);
   const hi = parseFloat(ciUpper);
+  if (isNaN(lo) || isNaN(hi)) return empirical();
 
-  if (isNaN(lo) || isNaN(hi)) return EFFECT.EMPIRICAL;
+  // Interval too wide → treat as empirical
+  if (hi - lo >= 20) return empirical();
 
-  const median = (lo + hi) / 2;
+  // All positive (lo >= 0)
+  if (lo >= 0) return lo > 10 ? EFFECT.SUPERB : EFFECT.GOOD;
 
-  if (hi < 0) return EFFECT.BAD;                      // 区间全负
-  if (median < 0) return EFFECT.BAD;                  // 中位数为负
+  // All negative (hi <= 0)
+  if (hi <= 0) return EFFECT.BAD;
 
-  if (lo < 0 && hi > 0) {
-    return median >= 0 ? EFFECT.NEUTRAL_P : EFFECT.NEUTRAL_N;
-  }
-
-  // lo >= 0, hi > 0, median > 0
-  if (median > 10) return EFFECT.GREAT;
-  if (median > 5)  return EFFECT.GOOD;
-  return EFFECT.GOOD;                                  // 区间全正但中位数≤5%，仍算不错
+  // Crosses zero
+  if (lo >= -1) return EFFECT.GOOD;
+  if (lo >= -5) return EFFECT.NEUTRAL_P;
+  return EFFECT.NEUTRAL_N;
 }
 
 export function effectBadgeHTML(effect) {
-  const m = EFFECT_META[effect] || EFFECT_META[EFFECT.EMPIRICAL];
-  const note = m.note ? `<span class="badge-note">${m.note}</span>` : '';
-  return `<span class="effect-badge ${m.cls}">${m.label}${note}</span>`;
+  const key = LEGACY_MAP[effect] || effect;
+  const m = EFFECT_META[key] || EFFECT_META[EFFECT.EMPIRICAL_N];
+  return `<span class="effect-badge ${m.cls}">${m.label}</span>`;
 }
+
+export const EFFECT_OPTIONS = [
+  { val: EFFECT.SUPERB,      label: '🏆 很好' },
+  { val: EFFECT.GOOD,        label: '👍 不错' },
+  { val: EFFECT.BAD,         label: '❌ 很差' },
+  { val: EFFECT.NEUTRAL_P,   label: '➖ 持平(+)' },
+  { val: EFFECT.NEUTRAL_N,   label: '➖ 持平(-)' },
+  { val: EFFECT.EMPIRICAL_P, label: '📈 经验决策(+)' },
+  { val: EFFECT.EMPIRICAL_N, label: '📈 经验决策(-)' },
+];

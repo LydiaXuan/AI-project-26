@@ -6,7 +6,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { FIREBASE_CONFIG, SUPER_ADMIN_EMAIL } from './config.js';
-import { calculateEffect, effectBadgeHTML } from './effects.js';
+import { calculateEffect, effectBadgeHTML, EFFECT_OPTIONS, EFFECT } from './effects.js';
 import {
   initDB, getSettings, createSettings, updateSettings,
   getUser, getAllUsers, setUser, updateUser,
@@ -44,8 +44,8 @@ const state = {
   user: null, userData: null, settings: null,
   view: 'dashboard', tests: [], projects: [],
   filterProject: 'all', filterEffect: 'all', filterBiType: 'all',
-  filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
-  editTestId: null, activeVariant: null, activeImgVariant: null,
+  filterExpType: 'all', filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
+  editTestId: null, activeVariant: null,
   _unsubTests: null, _unsubProjects: null,
 };
 const formState = { images: [null,null,null,null], previews: [null,null,null,null] };
@@ -74,92 +74,45 @@ function openLightbox(src) {
 }
 
 // ── Paste handler ─────────────────────────────────────────────
+let _searchTimer = null;
+
 document.addEventListener('paste', e => {
-  const isTextField = ['INPUT','TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable;
   const clipData = e.clipboardData || window.clipboardData;
 
-  // ① Image paste (icons or data screenshots)
-  const imgItem = [...(clipData?.items||[])].find(it => it.type.startsWith('image/'));
-  if (imgItem && !isTextField) {
-    e.preventDefault();
-    const file = imgItem.getAsFile();
-    if (!file) return;
-
-    // OCR modal open? → auto-fill fi first, then ri
-    const ocrWrap = document.getElementById('ocr-wrap');
-    if (ocrWrap) {
-      const zone = !ocrFiles.fi ? 'fi' : !ocrFiles.ri ? 'ri' : 'fi';
-      ocrFileFromClipboard(file, zone);
+  // Image paste → fill next empty variant slot
+  const imgItem = [...(clipData?.items || [])].find(it => it.type.startsWith('image/'));
+  if (imgItem) {
+    const isTextField = ['INPUT','TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable;
+    if (!isTextField && state.view === 'form') {
+      e.preventDefault();
+      const file = imgItem.getAsFile();
+      if (!file) return;
+      const nextEmpty = [0,1,2,3].find(i => !formState.images[i] && !formState.previews[i]);
+      if (nextEmpty === undefined) { toast('所有变体已有图片', 'info'); return; }
+      formState.images[nextEmpty] = file;
+      const r = new FileReader();
+      r.onload = ev => showPreview(nextEmpty, ev.target.result);
+      r.readAsDataURL(file);
+      toast(`图片已粘贴到${nextEmpty === 0 ? '原始' : `测试${nextEmpty}`}`, 'success');
       return;
     }
-
-    // Form image zone active?
-    if (state.activeImgVariant !== null) {
-      const vi = state.activeImgVariant;
-      handleImgFile(vi, file);
-      clearActiveImgVariant();
-      toast(`已粘贴${vi===0?'原始':'测试'+vi}图标`, 'success');
-      return;
-    }
-
-    toast('请先点击某列的「📋 粘贴图片」按钮，再 Ctrl+V', 'info');
-    return;
   }
 
-  // ② GPLAY| text paste (numeric data from clipboard tool)
+  // GPLAY| text paste
   const text = clipData?.getData('text') || '';
   if (!text.startsWith('GPLAY|')) return;
   e.preventDefault();
   const data = parsePaste(text);
   if (!data) return;
-  if (state.activeVariant === null) { toast('请先点击某列的「📋 粘贴 Play 数据」按钮', 'info'); return; }
+  if (state.activeVariant === null) { toast('请先点击某个变体的「粘贴 Play 数据」按钮', 'info'); return; }
   const i = state.activeVariant;
   const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) { el.value = val; el.dispatchEvent(new Event('input')); } };
   setVal(`v${i}_fi`, data.fi); setVal(`v${i}_ciL`, data.ciL); setVal(`v${i}_ciH`, data.ciH); setVal(`v${i}_ri`, data.ri);
-  if (data.ciL !== undefined && data.ciH !== undefined) updateEffectBadge(i);
+  if (data.ciL !== undefined && data.ciH !== undefined) updateEffectSelect(i);
   state.activeVariant = null;
-  document.querySelectorAll('.paste-active-hint').forEach(el => el.remove());
-  toast(`已填入${i===0?'原始':'测试'+i}数据`, 'success');
+  toast(`已自动填入${i === 0 ? '原始' : `测试${i}`}的数据`, 'success');
 });
 
-function handleImgFile(i, file) {
-  if (!file || !file.type.startsWith('image/')) return;
-  formState.images[i] = file;
-  const r = new FileReader();
-  r.onload = ev => showPreview(i, ev.target.result);
-  r.readAsDataURL(file);
-}
-
-function activatePasteImg(i) {
-  state.activeImgVariant = i;
-  document.querySelectorAll('.vc-img-zone').forEach(z => z.classList.remove('paste-ready'));
-  document.querySelector(`.variant-col[data-vi="${i}"] .vc-img-zone`)?.classList.add('paste-ready');
-  document.querySelectorAll('.vc-paste-img-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(`paste-img-btn-${i}`)?.classList.add('active');
-  toast(`已激活，请按 Ctrl+V 粘贴${i===0?'原始':'测试'+i}图标截图`, 'info');
-}
-
-function clearActiveImgVariant() {
-  state.activeImgVariant = null;
-  document.querySelectorAll('.vc-img-zone.paste-ready').forEach(z => z.classList.remove('paste-ready'));
-  document.querySelectorAll('.vc-paste-img-btn.active').forEach(b => b.classList.remove('active'));
-}
-
-function ocrFileFromClipboard(file, zone) {
-  ocrFiles[zone] = file;
-  const thumbEl = document.getElementById(`ocr-${zone}-thumb`);
-  if (thumbEl) {
-    const r = new FileReader();
-    r.onload = ev => {
-      thumbEl.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid var(--border)"/>`;
-    };
-    r.readAsDataURL(file);
-  }
-  document.getElementById(`ocr-${zone}-area`)?.classList.add('paste-filled');
-  const runBtn = document.getElementById('ocr-run-btn');
-  if (runBtn) runBtn.disabled = false;
-  toast(`已粘贴${zone==='fi'?'首次安装':'保留安装'}数据截图，可继续粘贴另一张或直接开始识别`, 'success');
-}
 
 function parsePaste(text) {
   try {
@@ -340,9 +293,9 @@ function initCharts(tests) {
   });
 
   // 2. Effect distribution
-  const EC={}, EL={great:'🏆 很好',good:'✅ 不错',neutral_p:'⚖️ 持平(+)',neutral_n:'⚖️ 持平(-)',bad:'📉 不好',empirical:'📈 经验'};
-  const EBG={great:'#DCFCE7',good:'#D1FAE5',neutral_p:'#FEF3C7',neutral_n:'#F3F4F6',bad:'#FEE2E2',empirical:'#DBEAFE'};
-  const EB={great:'#14532D',good:'#065F46',neutral_p:'#92400E',neutral_n:'#374151',bad:'#7F1D1D',empirical:'#1E3A8A'};
+  const EC={}, EL={superb:'🏆 很好',good:'👍 不错',bad:'❌ 很差',neutral_p:'➖ 持平(+)',neutral_n:'➖ 持平(-)',empirical_p:'📈 经验(+)',empirical_n:'📈 经验(-)',great:'🏆 很好',empirical:'📈 经验'};
+  const EBG={superb:'#DCFCE7',good:'#D1FAE5',neutral_p:'#FEF3C7',neutral_n:'#F3F4F6',bad:'#FEE2E2',empirical_p:'#DBEAFE',empirical_n:'#EEF2FF',great:'#DCFCE7',empirical:'#DBEAFE'};
+  const EB={superb:'#14532D',good:'#065F46',neutral_p:'#92400E',neutral_n:'#374151',bad:'#7F1D1D',empirical_p:'#1E3A8A',empirical_n:'#3730A3',great:'#14532D',empirical:'#1E3A8A'};
   tests.forEach(t=>(t.variants||[]).forEach((v,i)=>{ if(i===0)return; const e=v.effect||'empirical'; EC[e]=(EC[e]||0)+1; }));
   const eKeys=Object.keys(EC);
   charts.effects = new Chart(document.getElementById('ch-effects'), {
@@ -395,29 +348,36 @@ function initCharts(tests) {
 }
 
 // ── Timeline ──────────────────────────────────────────────────
+const BI_TYPE_OPTS = ['icon','五图','置顶','视频'];
+
 function renderTimeline() {
   const projOpts = state.projects.map(p=>`<option value="${p.id}" ${state.filterProject===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
-  const allBiTypes = [...new Set(state.tests.map(t=>t.biVizType).filter(Boolean))].sort();
+  const expTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
 
-  const EFFECT_OPTS = [
-    {val:'all',label:'全部表现'},
-    {val:'great',label:'🏆 很好'},
-    {val:'good',label:'✅ 不错'},
-    {val:'neutral_p',label:'⚖️ 持平(+)'},
-    {val:'neutral_n',label:'⚖️ 持平(-)'},
-    {val:'bad',label:'📉 不好'},
-    {val:'empirical',label:'📈 经验决策'},
+  const TL_EFFECT_OPTS = [
+    {val:'all',       label:'全部表现'},
+    {val:'superb',    label:'🏆 很好'},
+    {val:'good',      label:'👍 不错'},
+    {val:'bad',       label:'❌ 很差'},
+    {val:'neutral_p', label:'➖ 持平(+)'},
+    {val:'neutral_n', label:'➖ 持平(-)'},
+    {val:'empirical_p',label:'📈 经验决策(+)'},
+    {val:'empirical_n',label:'📈 经验决策(-)'},
   ];
-  const effectOpts = EFFECT_OPTS.map(o=>`<option value="${o.val}" ${state.filterEffect===o.val?'selected':''}>${o.label}</option>`).join('');
+  const effectOpts = TL_EFFECT_OPTS.map(o=>`<option value="${o.val}" ${state.filterEffect===o.val?'selected':''}>${o.label}</option>`).join('');
   const biTypeOpts = [`<option value="all" ${state.filterBiType==='all'?'selected':''}>全部截图类型</option>`,
-    ...allBiTypes.map(b=>`<option value="${b}" ${state.filterBiType===b?'selected':''}>${escHtml(b)}</option>`)
+    ...BI_TYPE_OPTS.map(b=>`<option value="${b}" ${state.filterBiType===b?'selected':''}>${b}</option>`)
+  ].join('');
+  const expTypeOpts = [`<option value="all" ${state.filterExpType==='all'?'selected':''}>全部实验类型</option>`,
+    ...expTypes.map(b=>`<option value="${b}" ${state.filterExpType===b?'selected':''}>${escHtml(b)}</option>`)
   ].join('');
 
   // Apply filters
   let tests = [...state.tests];
   if (state.filterProject !== 'all') tests = tests.filter(t=>t.projectId===state.filterProject);
-  if (state.filterEffect !== 'all') tests = tests.filter(t=>(t.variants||[]).some((v,i)=>i>0&&v.effect===state.filterEffect));
+  if (state.filterEffect !== 'all') tests = tests.filter(t=>(t.variants||[]).some((v,i)=>i>0&&(v.effect===state.filterEffect||(state.filterEffect==='superb'&&v.effect==='great'))));
   if (state.filterBiType !== 'all') tests = tests.filter(t=>t.biVizType===state.filterBiType);
+  if (state.filterExpType !== 'all') tests = tests.filter(t=>t.experimentType===state.filterExpType);
   if (state.filterVarCount !== 'all') {
     const need = parseInt(state.filterVarCount);
     tests = tests.filter(t=>{
@@ -432,7 +392,8 @@ function renderTimeline() {
       t.tester?.toLowerCase().includes(q)||
       t.notes?.change?.toLowerCase().includes(q)||
       t.notes?.purpose?.toLowerCase().includes(q)||
-      t.notes?.design?.toLowerCase().includes(q)
+      t.notes?.design?.toLowerCase().includes(q)||
+      t.conclusion?.toLowerCase().includes(q)
     );
   }
   tests.sort((a,b)=>state.sortOrder==='desc'
@@ -442,7 +403,8 @@ function renderTimeline() {
 
   const activeFilters = [
     state.filterProject!=='all', state.filterEffect!=='all',
-    state.filterBiType!=='all', state.filterVarCount!=='all', !!state.searchQuery
+    state.filterBiType!=='all', state.filterExpType!=='all',
+    state.filterVarCount!=='all', !!state.searchQuery
   ].filter(Boolean).length;
 
   const body = tests.length===0
@@ -464,10 +426,13 @@ function renderTimeline() {
           <option value="all" ${state.filterProject==='all'?'selected':''}>全部项目</option>${projOpts}
         </select>
         <select class="form-control tl-select" id="tl-varcount" onchange="applyTimelineFilters()">
-          <option value="all" ${state.filterVarCount==='all'?'selected':''}>全部实验类型</option>
+          <option value="all" ${state.filterVarCount==='all'?'selected':''}>全部测试组数</option>
           <option value="2" ${state.filterVarCount==='2'?'selected':''}>A/B 两组</option>
           <option value="3" ${state.filterVarCount==='3'?'selected':''}>A/B/C 三组</option>
           <option value="4" ${state.filterVarCount==='4'?'selected':''}>四组测试</option>
+        </select>
+        <select class="form-control tl-select" id="tl-exptype" onchange="applyTimelineFilters()">
+          ${expTypeOpts}
         </select>
         <select class="form-control tl-select" id="tl-effect" onchange="applyTimelineFilters()">
           ${effectOpts}
@@ -475,7 +440,7 @@ function renderTimeline() {
         <select class="form-control tl-select" id="tl-bitype" onchange="applyTimelineFilters()">
           ${biTypeOpts}
         </select>
-        <input class="form-control tl-search" id="tl-search" type="search" placeholder="🔍 搜索项目、备注、测试人…" value="${escHtml(state.searchQuery)}" oninput="applyTimelineFilters()"/>
+        <input class="form-control tl-search" id="tl-search" type="search" placeholder="🔍 搜索项目、备注、测试人…" value="${escHtml(state.searchQuery)}" oninput="onSearchInput(this.value)"/>
         ${activeFilters>0?`<button class="btn btn-secondary btn-sm tl-reset" onclick="resetTimelineFilters()">重置 (${activeFilters})</button>`:''}
       </div>
     </div>
@@ -483,34 +448,42 @@ function renderTimeline() {
   `, 'timeline');
 }
 
+function onSearchInput(val) {
+  state.searchQuery = val;
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => { if (state.view === 'timeline') renderTimeline(); }, 350);
+}
+
 function applyTimelineFilters() {
-  state.sortOrder    = document.getElementById('tl-sort')?.value    || 'desc';
-  state.filterProject= document.getElementById('tl-project')?.value || 'all';
-  state.filterVarCount=document.getElementById('tl-varcount')?.value|| 'all';
-  state.filterEffect = document.getElementById('tl-effect')?.value  || 'all';
-  state.filterBiType = document.getElementById('tl-bitype')?.value  || 'all';
-  state.searchQuery  = document.getElementById('tl-search')?.value  || '';
+  state.sortOrder     = document.getElementById('tl-sort')?.value     || 'desc';
+  state.filterProject = document.getElementById('tl-project')?.value  || 'all';
+  state.filterVarCount= document.getElementById('tl-varcount')?.value || 'all';
+  state.filterExpType = document.getElementById('tl-exptype')?.value  || 'all';
+  state.filterEffect  = document.getElementById('tl-effect')?.value   || 'all';
+  state.filterBiType  = document.getElementById('tl-bitype')?.value   || 'all';
   renderTimeline();
 }
 function resetTimelineFilters() {
   state.sortOrder='desc'; state.filterProject='all'; state.filterEffect='all';
-  state.filterBiType='all'; state.filterVarCount='all'; state.searchQuery='';
+  state.filterBiType='all'; state.filterExpType='all'; state.filterVarCount='all'; state.searchQuery='';
   renderTimeline();
 }
 function filterTimeline(val) { state.filterProject=val; renderTimeline(); }
 
 function buildTestCard(t) {
   const vars = t.variants||[];
-  const effectScore = {great:6,good:5,neutral_p:4,neutral_n:3,empirical:2,bad:1,control:0};
+  const effectScore = {superb:7,good:6,neutral_p:5,neutral_n:4,empirical_p:3,empirical_n:2,bad:1,control:0,great:7,empirical:3};
   const testVars = vars.filter((_,i)=>i>0);
   const bestFI = testVars.length ? Math.max(...testVars.map(v=>v.firstInstalls||0)) : 0;
   const bestRI = testVars.length ? Math.max(...testVars.map(v=>v.retainedInstalls||0)) : 0;
-  const bestEffectScore = testVars.reduce((m,v)=>Math.max(m, effectScore[v.effect||'empirical']||0), 0);
+  const normEffect = e => e==='great'?'superb':e==='empirical'?'empirical_p':e||'empirical_n';
+  const bestEffectScore = testVars.reduce((m,v)=>Math.max(m, effectScore[normEffect(v.effect)]||0), 0);
 
-  // Applied variant
   const appliedIdx = vars.findIndex((v,i)=>i>0&&v.applied);
   const appliedVar = appliedIdx>=0 ? vars[appliedIdx] : null;
-  const appliedChip = appliedVar
+  const anyApplied = appliedVar !== null;
+
+  const appliedChip = anyApplied
     ? `<span class="applied-chip">✓ 测试${appliedIdx} 已采用</span>`
     : `<span class="not-applied-chip">暂未应用</span>`;
 
@@ -521,45 +494,56 @@ function buildTestCard(t) {
       <div class="variant-label">${i===0?'原始':`测试${i}`}</div>
     </div>`).join('');
 
-  const badges = vars.map((v,i)=>i===0?'':effectBadgeHTML(v.effect||'empirical')).join(' ');
+  const bigThumbs = vars.filter(v=>v.imageUrl).map((v,i)=>`
+    <div class="variant-thumb-wrap">
+      <img class="variant-thumb-lg${v.applied?' applied-thumb':''}" src="${v.imageUrl}" onclick="event.stopPropagation();openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>
+      ${v.applied ? '<div class="thumb-applied-label">✓ 采用</div>' : ''}
+      <div class="variant-label">${vars.indexOf(v)===0?'原始':`测试${vars.indexOf(v)}`}</div>
+    </div>`).join('');
+
+  const badges = vars.map((v,i)=>i===0?'':effectBadgeHTML(normEffect(v.effect))).join(' ');
 
   const rows = vars.map((v,i)=>{
     const isBestFI = i>0 && bestFI>0 && v.firstInstalls===bestFI;
     const isBestRI = i>0 && bestRI>0 && v.retainedInstalls===bestRI;
-    const isBestEffect = i>0 && bestEffectScore>0 && (effectScore[v.effect||'empirical']||0)===bestEffectScore;
+    const isBestEffect = i>0 && bestEffectScore>0 && (effectScore[normEffect(v.effect)]||0)===bestEffectScore;
     return `
     <tr${v.applied&&i>0?' class="applied-row"':''}>
       <td><div class="variant-img-cell">${v.imageUrl?`<img src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>`:'<span style="font-size:18px">🖼</span>'}<span>${i===0?'🔵 原始':`🔴 测试${i}`}${v.applied?' 🏳️':''}</span></div></td>
       <td>${v.firstInstalls??'-'}${isBestFI?'<span class="best-tag">🥇</span>':''}</td>
-      <td>${(v.ciLower!==null&&v.ciLower!==''&&v.ciLower!==undefined)?`[${v.ciLower}%, ${v.ciUpper}%]`:(v.empiricalDelta!=null?`增幅 ${v.empiricalDelta}%`:'-')}</td>
+      <td>${(v.ciLower!==null&&v.ciLower!==''&&v.ciLower!==undefined)?`[${v.ciLower}%, ${v.ciUpper}%]`:'-'}</td>
       <td>${v.retainedInstalls??'-'}${isBestRI?'<span class="best-tag">🥇</span>':''}</td>
-      <td>${i===0?'<span style="color:var(--text-muted)">基准</span>':effectBadgeHTML(v.effect||'empirical')}${isBestEffect&&i>0?'<span class="best-tag">⭐</span>':''}</td>
+      <td>${i===0?'<span style="color:var(--text-muted)">基准</span>':effectBadgeHTML(normEffect(v.effect))}${isBestEffect&&i>0?'<span class="best-tag">⭐</span>':''}</td>
       <td>${i===0?'-':v.applied?'<span class="applied-yes">✓ 已应用</span>':'<span class="applied-no">未应用</span>'}</td>
     </tr>`;
   }).join('');
 
-  // "当前最终采用版本" section
   const adoptedSection = appliedVar ? `
     <div class="adopted-section">
       <div class="adopted-header">当前最终采用版本</div>
       <div class="adopted-body">
         ${appliedVar.imageUrl ? `<img class="adopted-img" src="${appliedVar.imageUrl}" onclick="openLightbox('${appliedVar.imageUrl}')" style="cursor:zoom-in"/>` : '<div class="adopted-img-ph">🖼</div>'}
         <div class="adopted-meta">
-          <div class="adopted-name">测试 ${appliedIdx}${effectBadgeHTML(appliedVar.effect||'empirical')}</div>
+          <div class="adopted-name">测试 ${appliedIdx} ${effectBadgeHTML(normEffect(appliedVar.effect))}</div>
           <div class="adopted-stats">
             ${appliedVar.firstInstalls!=null?`<span class="a-stat">首次安装 <strong>${appliedVar.firstInstalls}</strong></span>`:''}
             ${appliedVar.retainedInstalls!=null?`<span class="a-stat">保留安装 <strong>${appliedVar.retainedInstalls}</strong></span>`:''}
             ${appliedVar.ciLower!=null?`<span class="a-stat">CI <strong>[${appliedVar.ciLower}%, ${appliedVar.ciUpper}%]</strong></span>`:''}
-            ${appliedVar.empiricalDelta!=null?`<span class="a-stat">增幅 <strong>${appliedVar.empiricalDelta}%</strong></span>`:''}
           </div>
         </div>
       </div>
     </div>` : '';
 
+  const conclusionBlock = t.conclusion ? `
+    <div class="conc-block conc-manual">
+      <div class="conc-title">📝 实验小结</div>
+      <div class="conc-body">${escHtml(t.conclusion)}</div>
+    </div>` : '';
+
   return `
     <div class="timeline-item">
-      <div class="timeline-dot${appliedVar?' dot-applied':''}"></div>
-      <div class="test-card" id="card-${t.id}">
+      <div class="timeline-dot${anyApplied?' dot-applied':''}"></div>
+      <div class="test-card${anyApplied?' has-applied':''}" id="card-${t.id}">
         <div class="test-card-header" onclick="toggleCard('${t.id}')">
           <div class="test-card-meta">
             <div class="card-title-row">
@@ -570,6 +554,7 @@ function buildTestCard(t) {
               <span class="meta-chip">📅 ${t.startDate||''} → ${t.endDate||''}</span>
               <span class="meta-chip">置信度 ${t.confidence}%</span>
               ${t.testRatio?`<span class="meta-chip">比例 ${escHtml(t.testRatio)}</span>`:''}
+              ${t.experimentType?`<span class="bi-type-tag">${escHtml(t.experimentType)}</span>`:''}
               ${t.biVizType?`<span class="bi-type-tag">${escHtml(t.biVizType)}</span>`:''}
             </div>
             <div class="meta-row" style="margin-top:6px">${badges}</div>
@@ -581,12 +566,13 @@ function buildTestCard(t) {
         <div class="test-card-body">
           ${adoptedSection}
           ${buildProgressBlock(t)}
+          ${bigThumbs ? `<div class="big-thumbs-row">${bigThumbs}</div>` : ''}
           <div class="data-cmp-title">📊 实验数据对比</div>
           <table class="variants-table">
             <thead><tr><th>变体</th><th>首次安装数</th><th>置信区间</th><th>保留安装数</th><th>测试效果</th><th>是否应用</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
-          ${buildConclusionBlock(t)}
+          ${conclusionBlock}
           ${t.notes?.change||t.notes?.purpose||t.notes?.design?`
           <div class="card-notes">
             ${t.notes.change?`<div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div>`:''}
@@ -619,40 +605,6 @@ function buildProgressBlock(t) {
   </div>`;
 }
 
-function buildConclusionBlock(t) {
-  const vars = t.variants||[];
-  const effectScore = {great:6,good:5,neutral_p:4,neutral_n:3,empirical:2,bad:1,control:0};
-  const testVars = vars.map((v,i)=>({v,i})).filter(({i})=>i>0);
-  if (!testVars.length) return '';
-  const sorted = [...testVars].sort((a,b)=>(effectScore[b.v.effect||'empirical']||0)-(effectScore[a.v.effect||'empirical']||0));
-  const {v:best, i:bestIdx} = sorted[0];
-  if (!best.effect || best.effect==='control') return '';
-
-  let improvement = null;
-  if (best.ciLower != null && best.ciUpper != null) improvement = ((parseFloat(best.ciLower)+parseFloat(best.ciUpper))/2).toFixed(1);
-  else if (best.empiricalDelta != null) improvement = parseFloat(best.empiricalDelta).toFixed(1);
-
-  const isSignificant = best.ciLower != null && parseFloat(best.ciLower) > 0;
-  const anyApplied = vars.some((v,i)=>i>0&&v.applied);
-  let rec, recCls;
-  if (best.effect==='great'||best.effect==='good') {
-    rec = anyApplied ? `测试${bestIdx} 已应用，效果良好` : `建议应用测试${bestIdx}`;
-    recCls = 'conc-good';
-  } else if (best.effect==='neutral_p'||best.effect==='neutral_n') {
-    rec = '效果不显著，建议继续观察或重新设计测试方案'; recCls='conc-neutral';
-  } else {
-    rec = '各组效果不佳，建议重新设计创意'; recCls='conc-bad';
-  }
-  return `<div class="conc-block ${recCls}">
-    <div class="conc-title">🤖 实验小结</div>
-    <div class="conc-body">
-      最佳变体：<strong>测试${bestIdx}</strong>
-      ${improvement!=null?`，预估提升 <strong>${improvement}%</strong>`:''}
-      ${isSignificant?' <span class="sig-badge">统计显著</span>':''}
-    </div>
-    <div class="conc-rec">${rec}</div>
-  </div>`;
-}
 
 function toggleCard(id) { document.getElementById('card-'+id)?.classList.toggle('expanded'); }
 function editTest(id) { state.editTestId=id; navigate('form'); }
@@ -668,8 +620,9 @@ const VDEFS = [
   {key:'test2',  label:'🟣 测试2',cls:'t2'},
   {key:'test3',  label:'🩷 测试3',cls:'t3'},
 ];
-const BI_TYPES = ['折线图','柱状图','饼图','散点图','漏斗图','热力图','面积图','其他'];
+const BI_TYPES = ['icon','五图','置顶','视频'];
 const RATIO_PRESETS = ['50/50','33/33/33','25/25/25/25','20/20/20/20/20','25/75','10/90'];
+const DEFAULT_EXPERIMENT_TYPES = ['自定义商品详情','主要商品详情','本地化 VN','本地化 ID','本地化 US','本地化 JP','本地化 KR','本地化 BR','本地化 IN'];
 function handleRatioChange(val) {
   const inp = document.getElementById('f-ratio');
   if (!inp) return;
@@ -690,18 +643,19 @@ function buildVariantCol(i, test) {
 
   const hasImg = !!(v.imageUrl || formState.previews[i]);
   let statusLabel, statusCls;
-  if (i > 0 && v.applied)      { statusLabel='当前应用中'; statusCls='vs-applied'; }
-  else if (!hasImg)             { statusLabel='未上传';    statusCls='vs-empty'; }
-  else if (v.firstInstalls != null && (i===0 || v.ciLower != null || v.empiricalDelta != null))
-                                { statusLabel='数据已填写'; statusCls='vs-complete'; }
-  else                          { statusLabel='已上传';    statusCls='vs-uploaded'; }
-
-  const isEmp = !!(v.empiricalDelta != null && !v.ciLower && !v.ciUpper);
+  if (i > 0 && v.applied)   { statusLabel='当前应用中'; statusCls='vs-applied'; }
+  else if (!hasImg)          { statusLabel='未上传';    statusCls='vs-empty'; }
+  else if (v.firstInstalls != null && (i===0 || v.ciLower != null))
+                             { statusLabel='数据已填写'; statusCls='vs-complete'; }
+  else                       { statusLabel='已上传';    statusCls='vs-uploaded'; }
 
   const ciBlock = i === 0 ? '' : `
     <div class="vc-field-group">
-      <div class="vc-field-label">置信区间</div>
-      <div id="v${i}_ciwrap">${buildCICell(i, v, isEmp)}</div>
+      <div class="vc-field-label">置信区间下限 / 上限 %</div>
+      <div class="ci-pair">
+        <input class="form-control" id="v${i}_ciL" type="number" step="0.1" placeholder="下限%" value="${v.ciLower??''}" oninput="updateEffectSelect(${i})"/>
+        <input class="form-control" id="v${i}_ciH" type="number" step="0.1" placeholder="上限%" value="${v.ciUpper??''}" oninput="updateEffectSelect(${i})"/>
+      </div>
     </div>`;
 
   const appliedBlock = i === 0 ? '' : `
@@ -710,11 +664,13 @@ function buildVariantCol(i, test) {
       <label class="toggle"><input type="checkbox" id="v${i}_applied" ${v.applied?'checked':''}/><span class="toggle-slider"></span></label>
     </div>`;
 
+  const savedEffect = v.effect && v.effect !== 'control' ? v.effect : '';
+  const effectSelectOpts = EFFECT_OPTIONS.map(o=>`<option value="${o.val}" ${savedEffect===o.val?'selected':''}>${o.label}</option>`).join('');
   const effectBlock = i === 0 ? '' : `
-    <div class="vg-badge" id="ebadge-${i}">${effectBadgeHTML(v.effect||calculateEffect(v.ciLower??null,v.ciUpper??null))}</div>`;
-
-  const pasteBtn = i === 0 ? '' : `
-    <button type="button" class="vc-paste-btn" onclick="activatePaste(${i})" title="复制 GPLAY| 数据后点此粘贴">📋 粘贴 Play 数据</button>`;
+    <div class="vc-field-group">
+      <div class="vc-field-label">测试效果</div>
+      <select class="form-control" id="eselect-${i}" style="font-size:12px">${effectSelectOpts}</select>
+    </div>`;
 
   return `
     <div class="variant-col" data-vi="${i}">
@@ -722,14 +678,13 @@ function buildVariantCol(i, test) {
         <span class="vc-label">${label}</span>
         <span class="variant-status ${statusCls}">${statusLabel}</span>
       </div>
-      <div class="vc-img-zone" id="img-zone-${i}">
+      <div class="vc-img-zone">
         ${buildImgCell(i, v)}
-        <button type="button" class="vc-paste-img-btn" id="paste-img-btn-${i}" onclick="activatePasteImg(${i})" title="点击激活后 Ctrl+V 粘贴截图">📋 粘贴图片</button>
       </div>
       <div class="vc-data">
         <div class="vc-field-group">
           <div class="vc-field-label">首次安装数（调整）</div>
-          <input class="form-control" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}"/>
+          <input class="form-control" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}" oninput="updateEffectSelect(${i})"/>
         </div>
         ${ciBlock}
         <div class="vc-field-group">
@@ -738,7 +693,6 @@ function buildVariantCol(i, test) {
         </div>
         ${appliedBlock}
         ${effectBlock}
-        ${pasteBtn}
       </div>
     </div>`;
 }
@@ -752,6 +706,8 @@ function renderFormView() {
   const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
   const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
   const biOpts = BI_TYPES.map(b=>`<option value="${b}" ${test?.biVizType===b?'selected':''}>${b}</option>`).join('');
+  const allExpTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
+  const expTypeOpts = allExpTypes.map(b=>`<option value="${b}" ${test?.experimentType===b?'selected':''}>${escHtml(b)}</option>`).join('');
 
   const allRatioPresets = state.settings?.ratioPresets || RATIO_PRESETS;
   const isCustomRatio = !!(test?.testRatio && !allRatioPresets.includes(test.testRatio));
@@ -777,7 +733,7 @@ function renderFormView() {
                 <div class="form-group"><label class="form-label">开始日期</label><input class="form-control" id="f-start" type="date" required value="${test?.startDate||''}"/></div>
                 <div class="form-group"><label class="form-label">结束日期</label><input class="form-control" id="f-end" type="date" value="${test?.endDate||''}"/></div>
               </div>
-              <div class="form-row-3">
+              <div class="form-row-4">
                 <div class="form-group" style="grid-column:span 1"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
                 <div class="form-group"><label class="form-label">测试比例</label>
                   <select class="form-control" id="f-ratio-sel" onchange="handleRatioChange(this.value)">
@@ -787,6 +743,7 @@ function renderFormView() {
                   <input class="form-control" id="f-ratio" type="text" placeholder="输入自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
                 </div>
                 <div class="form-group"><label class="form-label">截图类型</label><select class="form-control" id="f-bitype"><option value="">不指定</option>${biOpts}</select></div>
+                <div class="form-group"><label class="form-label">实验类型</label><select class="form-control" id="f-exptype"><option value="">不指定</option>${expTypeOpts}</select></div>
               </div>
               <div class="form-group"><label class="form-label">备注说明</label>
                 <div class="notes-grid">
@@ -810,6 +767,13 @@ function renderFormView() {
               </div>
             </div>
 
+            <div class="form-section">
+              <div class="form-section-title">📝 实验小结</div>
+              <div class="form-group">
+                <textarea class="form-control" id="f-conclusion" rows="3" placeholder="填写实验结论、分析和建议…" style="resize:vertical">${escHtml(test?.conclusion||'')}</textarea>
+              </div>
+            </div>
+
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" onclick="navigate('timeline')">取消</button>
               <button type="submit" class="btn btn-primary" id="f-submit">${isEdit?'💾 保存修改':'🚀 提交记录'}</button>
@@ -823,34 +787,26 @@ function renderFormView() {
 function buildImgCell(i, v={}) {
   const src = formState.previews[i];
   if (src) return `<div class="img-cell-wrap"><img class="img-preview-sm" src="${src}" onclick="openLightbox('${src}')"/><button type="button" class="img-remove" onclick="removeImg(${i})">✕</button></div>`;
-  return `<div class="img-upload-sm" id="uarea-${i}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,${i})"><span class="upload-icon">📤</span><span>点击/拖拽上传</span><input type="file" accept="image/*" onchange="handleImgSelect(event,${i})"/></div>`;
-}
-
-function buildCICell(i, v={}, isEmp=false) {
-  const empCheck = `<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;margin-bottom:4px"><input type="checkbox" id="v${i}_emp" ${isEmp?'checked':''} onchange="toggleEmp(${i})"/> 经验决策</label>`;
-  if (isEmp) return empCheck + `<input class="form-control" id="v${i}_delta" type="number" step="0.1" placeholder="增幅%" value="${v.empiricalDelta??''}" oninput="updateBadge(${i})"/>`;
-  return empCheck + `<div class="ci-pair"><input class="form-control" id="v${i}_ciL" type="number" step="0.1" placeholder="下限%" value="${v.ciLower??''}" oninput="updateBadge(${i})"/><input class="form-control" id="v${i}_ciH" type="number" step="0.1" placeholder="上限%" value="${v.ciUpper??''}" oninput="updateBadge(${i})"/></div>`;
+  return `<div class="img-upload-sm" id="uarea-${i}" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,${i})"><span class="upload-icon">📤</span><span>点击 / 拖拽 / Ctrl+V</span><input type="file" accept="image/*" onchange="handleImgSelect(event,${i})"/></div>`;
 }
 
 function activatePaste(i) {
   state.activeVariant = i;
-  toast('请到提取工具复制数据，然后 Ctrl+V 粘贴', 'info');
+  toast('请复制 GPLAY| 数据，然后 Ctrl+V 粘贴', 'info');
 }
-function toggleEmp(i) {
-  const checked = document.getElementById(`v${i}_emp`).checked;
-  const v = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.variants?.[i]||{}) : {};
-  document.getElementById(`v${i}_ciwrap`).innerHTML = buildCICell(i, v, checked);
-  updateBadge(i);
-}
-function updateBadge(i) {
-  const badge = document.getElementById(`ebadge-${i}`); if(!badge||i===0) return;
-  const emp = document.getElementById(`v${i}_emp`)?.checked;
-  if (emp) { badge.innerHTML = effectBadgeHTML('empirical'); return; }
+
+function updateEffectSelect(i) {
+  const sel = document.getElementById(`eselect-${i}`);
+  if (!sel || i === 0) return;
+  const controlFI = parseFloat(document.getElementById('v0_fi')?.value) || null;
+  const testFI    = parseFloat(document.getElementById(`v${i}_fi`)?.value) || null;
   const lo = document.getElementById(`v${i}_ciL`)?.value;
   const hi = document.getElementById(`v${i}_ciH`)?.value;
-  badge.innerHTML = effectBadgeHTML(calculateEffect(lo!==''&&lo!=null?parseFloat(lo):null, hi!==''&&hi!=null?parseFloat(hi):null));
+  const ciL = lo !== '' && lo != null ? parseFloat(lo) : null;
+  const ciH = hi !== '' && hi != null ? parseFloat(hi) : null;
+  sel.value = calculateEffect(ciL, ciH, testFI, controlFI);
 }
-function updateEffectBadge(i) { updateBadge(i); }
+function updateEffectBadge(i) { updateEffectSelect(i); }
 
 function handleImgSelect(e, i) {
   const file = e.target.files?.[0]; if(!file) return;
@@ -899,6 +855,8 @@ async function handleFormSubmit(e) {
     const ratioSel = document.getElementById('f-ratio-sel')?.value;
     const testRatio = ratioSel === 'custom' ? (document.getElementById('f-ratio')?.value||'') : (ratioSel||'');
     const biVizType = document.getElementById('f-bitype').value;
+    const experimentType = document.getElementById('f-exptype')?.value || '';
+    const conclusion = document.getElementById('f-conclusion')?.value?.trim() || '';
     const notes = {
       change: document.getElementById('f-note-change')?.value?.trim() || '',
       purpose: document.getElementById('f-note-purpose')?.value?.trim() || '',
@@ -909,17 +867,16 @@ async function handleFormSubmit(e) {
     for (let i=0;i<VDEFS.length;i++) {
       const fi=document.getElementById(`v${i}_fi`)?.value;
       const ri=document.getElementById(`v${i}_ri`)?.value;
-      const emp=document.getElementById(`v${i}_emp`)?.checked;
-      const ciL=emp?null:(document.getElementById(`v${i}_ciL`)?.value??null);
-      const ciH=emp?null:(document.getElementById(`v${i}_ciH`)?.value??null);
-      const delta=emp?(document.getElementById(`v${i}_delta`)?.value??null):null;
+      const ciL=document.getElementById(`v${i}_ciL`)?.value??null;
+      const ciH=document.getElementById(`v${i}_ciH`)?.value??null;
       const applied=i>0?(document.getElementById(`v${i}_applied`)?.checked||false):false;
-      const effect=i===0?'control':calculateEffect(ciL!==''&&ciL!=null?parseFloat(ciL):null,ciH!==''&&ciH!=null?parseFloat(ciH):null);
+      const effect=i===0?'control':(document.getElementById(`eselect-${i}`)?.value||'empirical_n');
       let imageUrl=existV[i]?.imageUrl||null;
       if (formState.images[i]) imageUrl = await compressImage(formState.images[i]);
-      variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, empiricalDelta:delta!==''&&delta!=null?parseFloat(delta):null, applied, effect, imageUrl });
+      else if (formState.previews[i] && formState.previews[i] !== imageUrl) imageUrl = formState.previews[i];
+      variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, applied, effect, imageUrl });
     }
-    const data={projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,notes,variants};
+    const data={projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,conclusion,notes,variants};
     if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
     else { await createTest(data); toast('记录已提交','success'); }
     formState.images=[null,null,null,null]; formState.previews=[null,null,null,null];
@@ -1100,7 +1057,7 @@ function applyOCRData() {
     if (i > 0) {
       set(`v${i}_ciL`, getVal('ciLower'));
       set(`v${i}_ciH`, getVal('ciUpper'));
-      updateBadge(i);
+      updateEffectSelect(i);
     }
   });
   closeOCRModal();
@@ -1249,6 +1206,7 @@ async function renderAdmin() {
   const code = settings?.accessCode || '—';
   const testers = settings?.testers || [];
   const ratioPresets = settings?.ratioPresets || RATIO_PRESETS;
+  const experimentTypes = settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
 
   const usersHTML = users.map(u=>`
     <li>
@@ -1261,6 +1219,7 @@ async function renderAdmin() {
   const projHTML = projects.map(p=>`<li><span>${escHtml(p.name)}</span><button class="btn btn-danger btn-sm" onclick="removeProject('${p.id}')">移除</button></li>`).join('');
   const testHTML = testers.map(n=>`<li><span>${escHtml(n)}</span><button class="btn btn-danger btn-sm" onclick="removeTesterItem('${escHtml(n)}')">移除</button></li>`).join('');
   const ratioHTML = ratioPresets.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeRatioPresetItem('${escHtml(r)}')">移除</button></li>`).join('');
+  const expTypeHTML = experimentTypes.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeExpTypeItem('${escHtml(r)}')">移除</button></li>`).join('');
 
   renderShell(`
     <div class="page-header"><div class="page-title">⚙️ 管理面板</div></div>
@@ -1284,6 +1243,12 @@ async function renderAdmin() {
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「测试比例」下拉框中显示</p>
         <ul class="admin-list">${ratioHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
         <div class="add-row"><input class="form-control" id="add-ratio" type="text" placeholder="如 40/30/30 或 20/80"/><button class="btn btn-primary" onclick="addRatioPresetItem()">添加</button></div>
+      </div>
+      <div class="admin-card">
+        <h3>🧪 实验类型选项</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「实验类型」下拉框中显示</p>
+        <ul class="admin-list">${expTypeHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
+        <div class="add-row"><input class="form-control" id="add-exptype" type="text" placeholder="如 本地化 TH 或 主图测试"/><button class="btn btn-primary" onclick="addExpTypeItem()">添加</button></div>
       </div>
       <div class="admin-card" style="grid-column:1/-1">
         <h3>📁 项目管理</h3>
@@ -1344,17 +1309,33 @@ async function removeRatioPresetItem(r) {
   state.settings = await getSettings();
   toast('已移除','success'); renderAdmin();
 }
+async function addExpTypeItem() {
+  const n = document.getElementById('add-exptype').value.trim(); if(!n) return;
+  const s = await getSettings();
+  const types = s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
+  if (types.includes(n)) { toast('该选项已存在','info'); return; }
+  await updateSettings({ experimentTypes: [...types, n] });
+  state.settings = await getSettings();
+  document.getElementById('add-exptype').value = '';
+  toast('实验类型已添加','success'); renderAdmin();
+}
+async function removeExpTypeItem(r) {
+  if (!confirm(`移除实验类型「${r}」？`)) return;
+  const s = await getSettings();
+  await updateSettings({ experimentTypes: (s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES).filter(p=>p!==r) });
+  state.settings = await getSettings();
+  toast('已移除','success'); renderAdmin();
+}
 
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop,
-  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, toggleCard, editTest, deleteTestRecord, handleRatioChange,
+  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
-  activatePaste, activatePasteImg, clearActiveImgVariant,
-  toggleEmp, updateBadge, updateEffectBadge, openLightbox,
+  activatePaste, updateEffectSelect, updateEffectBadge, openLightbox,
   changeCode, makeAdmin, revokeUser,
   addProjectItem, removeProject, addTesterItem, removeTesterItem,
-  addRatioPresetItem, removeRatioPresetItem,
+  addRatioPresetItem, removeRatioPresetItem, addExpTypeItem, removeExpTypeItem,
 });

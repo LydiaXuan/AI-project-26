@@ -87,6 +87,12 @@ document.addEventListener('paste', e => {
       e.preventDefault();
       const file = imgItem.getAsFile();
       if (!file) return;
+      // OCR modal open → paste into active OCR zone
+      if (document.getElementById('ocr-wrap')) {
+        ocrReceiveFile(file, activeOcrZone);
+        toast(`已粘贴到${activeOcrZone==='fi'?'首次安装数':'保留安装数'}截图区`, 'success');
+        return;
+      }
       // Crop modal open → paste into crop area
       if (document.getElementById('crop-wrap')) {
         cropFromFile(file);
@@ -1004,6 +1010,21 @@ async function handleFormSubmit(e) {
 // ── OCR Modal (Tesseract.js, no API needed) ───────────────────
 let ocrFiles = { fi: null, ri: null };
 let ocrData  = {};
+let activeOcrZone = 'fi';
+
+function setActiveOcrZone(zone) { activeOcrZone = zone; }
+
+function ocrReceiveFile(file, type) {
+  if (!file) return;
+  ocrFiles[type] = file;
+  const thumbEl = document.getElementById(`ocr-${type}-thumb`);
+  if (!thumbEl) return;
+  const r = new FileReader();
+  r.onload = ev => { thumbEl.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid var(--border)"/>`; };
+  r.readAsDataURL(file);
+  const runBtn = document.getElementById('ocr-run-btn');
+  if (runBtn && (ocrFiles.fi || ocrFiles.ri)) runBtn.disabled = false;
+}
 
 function openOCRModal() {
   ocrFiles = { fi: null, ri: null }; ocrData = {};
@@ -1016,7 +1037,7 @@ function openOCRModal() {
       <div class="ocr-uploads">
         <div>
           <div class="ocr-upload-label">首次安装数截图 <span class="ocr-paste-hint">（可 Ctrl+V 粘贴）</span></div>
-          <div class="img-upload-area ocr-drop-zone" id="ocr-fi-area" style="min-height:90px">
+          <div class="img-upload-area ocr-drop-zone" id="ocr-fi-area" style="min-height:90px" onmouseenter="setActiveOcrZone('fi')" onclick="setActiveOcrZone('fi')">
             <span class="upload-icon">📤</span><span class="upload-hint">点击上传 / Ctrl+V 粘贴截图</span>
             <input type="file" accept="image/*" onchange="ocrFileSelected(event,'fi')"/>
           </div>
@@ -1024,7 +1045,7 @@ function openOCRModal() {
         </div>
         <div>
           <div class="ocr-upload-label">保留安装数截图 <span class="ocr-paste-hint">（可 Ctrl+V 粘贴）</span></div>
-          <div class="img-upload-area ocr-drop-zone" id="ocr-ri-area" style="min-height:90px">
+          <div class="img-upload-area ocr-drop-zone" id="ocr-ri-area" style="min-height:90px" onmouseenter="setActiveOcrZone('ri')" onclick="setActiveOcrZone('ri')">
             <span class="upload-icon">📤</span><span class="upload-hint">点击上传 / Ctrl+V 粘贴截图</span>
             <input type="file" accept="image/*" onchange="ocrFileSelected(event,'ri')"/>
           </div>
@@ -1051,14 +1072,7 @@ function openOCRModal() {
   document.body.appendChild(wrap);
 }
 
-function ocrFileSelected(e, type) {
-  const file = e.target.files?.[0]; if(!file) return;
-  ocrFiles[type] = file;
-  const thumbEl = document.getElementById(`ocr-${type}-thumb`);
-  const r = new FileReader(); r.onload = ev => { thumbEl.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid var(--border)"/>`; };
-  r.readAsDataURL(file);
-  if (ocrFiles.fi || ocrFiles.ri) document.getElementById('ocr-run-btn').disabled = false;
-}
+function ocrFileSelected(e, type) { ocrReceiveFile(e.target.files?.[0], type); }
 
 async function runOCR() {
   if (!ocrFiles.fi && !ocrFiles.ri) { toast('请至少上传一张截图','error'); return; }
@@ -1567,7 +1581,7 @@ async function removeExpTypeItem(r) {
 
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
-  openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected,
+  openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected, setActiveOcrZone,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
   navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,

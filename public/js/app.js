@@ -540,11 +540,12 @@ function buildTestCard(t) {
       </div>
     </div>` : '';
 
-  const conclusionBlock = t.conclusion ? `
+  const conclusionBlock = `
     <div class="conc-block conc-manual">
       <div class="conc-title">📝 实验小结</div>
-      <div class="conc-body">${escHtml(t.conclusion)}</div>
-    </div>` : '';
+      <textarea class="form-control" id="conc-${t.id}" rows="3" placeholder="填写实验结论、分析和建议…" style="resize:vertical;margin-top:6px;font-size:13px">${escHtml(t.conclusion||'')}</textarea>
+      <div style="text-align:right;margin-top:6px"><button class="btn btn-primary btn-sm" onclick="saveConclusion('${t.id}')">💾 保存小结</button></div>
+    </div>`;
 
   return `
     <div class="timeline-item">
@@ -657,6 +658,11 @@ function editTest(id) { const t=state.tests.find(tt=>tt.id===id); state.formType
 async function deleteTestRecord(id) {
   if (!confirm('确认删除？此操作不可撤销。')) return;
   try { await deleteTest(id); toast('已删除','success'); } catch(e) { toast('删除失败：'+e.message,'error'); }
+}
+async function saveConclusion(id) {
+  const val = document.getElementById(`conc-${id}`)?.value ?? '';
+  try { await updateTest(id, { conclusion: val.trim() }); toast('实验小结已保存','success'); }
+  catch(e) { toast('保存失败：'+e.message,'error'); }
 }
 
 // ── Form ──────────────────────────────────────────────────────
@@ -844,12 +850,7 @@ function renderFormView() {
           <div class="variant-columns">${cols}</div>
         </div>
       </div>
-      <div class="form-section">
-        <div class="form-section-title">📝 实验小结</div>
-        <div class="form-group">
-          <textarea class="form-control" id="f-conclusion" rows="3" placeholder="填写实验结论、分析和建议…" style="resize:vertical">${escHtml(test?.conclusion||'')}</textarea>
-        </div>
-      </div>`;
+      `;
   }
 
   renderShell(`
@@ -970,7 +971,6 @@ async function handleFormSubmit(e) {
       const ratioSel = document.getElementById('f-ratio-sel')?.value;
       const testRatio = ratioSel === 'custom' ? (document.getElementById('f-ratio')?.value||'') : (ratioSel||'');
       const experimentType = document.getElementById('f-exptype')?.value || '';
-      const conclusion = document.getElementById('f-conclusion')?.value?.trim() || '';
       const notes = {
         change: document.getElementById('f-note-change')?.value?.trim() || '',
         purpose: document.getElementById('f-note-purpose')?.value?.trim() || '',
@@ -990,7 +990,7 @@ async function handleFormSubmit(e) {
         else if (formState.previews[i] && formState.previews[i] !== imageUrl) imageUrl = formState.previews[i];
         variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, applied, effect, imageUrl });
       }
-      const data={type:'test',projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,conclusion,notes,variants};
+      const data={type:'test',projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,notes,variants};
       if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
       else { await createTest(data); toast('记录已提交','success'); }
     }
@@ -1511,7 +1511,7 @@ async function removeExpTypeItem(r) {
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
-  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, handleRatioChange,
+  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
   activatePaste, setActiveImgZone, clearActiveImgZone, switchFormType,

@@ -45,7 +45,7 @@ const state = {
   view: 'dashboard', tests: [], projects: [],
   filterProject: 'all', filterEffect: 'all', filterBiType: 'all',
   filterExpType: 'all', filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
-  editTestId: null, activeVariant: null,
+  editTestId: null, activeVariant: null, activeImgVariant: null, formType: 'test',
   _unsubTests: null, _unsubProjects: null,
 };
 const formState = { images: [null,null,null,null], previews: [null,null,null,null] };
@@ -79,7 +79,7 @@ let _searchTimer = null;
 document.addEventListener('paste', e => {
   const clipData = e.clipboardData || window.clipboardData;
 
-  // Image paste → fill next empty variant slot
+  // Image paste
   const imgItem = [...(clipData?.items || [])].find(it => it.type.startsWith('image/'));
   if (imgItem) {
     const isTextField = ['INPUT','TEXTAREA'].includes(e.target?.tagName) || e.target?.isContentEditable;
@@ -93,17 +93,18 @@ document.addEventListener('paste', e => {
         toast('图片已粘贴到裁剪区', 'success');
         return;
       }
-      // Form open → fill next empty variant slot
-      if (state.view === 'form') {
-        const nextEmpty = [0,1,2,3].find(i => !formState.images[i] && !formState.previews[i]);
-        if (nextEmpty === undefined) { toast('所有变体已有图片', 'info'); return; }
-        formState.images[nextEmpty] = file;
+      // Form open + zone hovered/clicked → paste to that specific zone
+      if (state.view === 'form' && state.activeImgVariant !== null) {
+        const vi = state.activeImgVariant;
+        formState.images[vi] = file;
         const r = new FileReader();
-        r.onload = ev => showPreview(nextEmpty, ev.target.result);
+        r.onload = ev => showPreview(vi, ev.target.result);
         r.readAsDataURL(file);
-        toast(`图片已粘贴到${nextEmpty === 0 ? '原始' : `测试${nextEmpty}`}`, 'success');
+        state.activeImgVariant = null;
+        toast(`图片已粘贴到${vi === 0 ? '原始' : `测试${vi}`}`, 'success');
         return;
       }
+      // No target — do nothing
     }
   }
 
@@ -181,7 +182,7 @@ async function startMainApp() {
 // ── Navigation ────────────────────────────────────────────────
 function navigate(view, params = {}) {
   destroyCharts(); state.view = view; Object.assign(state, params);
-  if (view !== 'form') { state.editTestId = null; formState.images = [null,null,null,null]; formState.previews = [null,null,null,null]; }
+  if (view !== 'form') { state.editTestId = null; state.formType = 'test'; formState.images = [null,null,null,null]; formState.previews = [null,null,null,null]; }
   render();
 }
 function render() {
@@ -384,12 +385,13 @@ function renderTimeline() {
   // Apply filters
   let tests = [...state.tests];
   if (state.filterProject !== 'all') tests = tests.filter(t=>t.projectId===state.filterProject);
-  if (state.filterEffect !== 'all') tests = tests.filter(t=>(t.variants||[]).some((v,i)=>i>0&&(v.effect===state.filterEffect||(state.filterEffect==='superb'&&v.effect==='great'))));
-  if (state.filterBiType !== 'all') tests = tests.filter(t=>t.biVizType===state.filterBiType);
+  if (state.filterEffect !== 'all') tests = tests.filter(t=>t.type!=='update'&&(t.variants||[]).some((v,i)=>i>0&&(v.effect===state.filterEffect||(state.filterEffect==='superb'&&v.effect==='great'))));
+  if (state.filterBiType !== 'all') tests = tests.filter(t=>{ const bt=Array.isArray(t.biVizType)?t.biVizType:(t.biVizType?[t.biVizType]:[]); return bt.includes(state.filterBiType); });
   if (state.filterExpType !== 'all') tests = tests.filter(t=>t.experimentType===state.filterExpType);
   if (state.filterVarCount !== 'all') {
     const need = parseInt(state.filterVarCount);
     tests = tests.filter(t=>{
+      if (t.type === 'update') return false;
       const active = (t.variants||[]).filter((v,i)=>i===0||(v.imageUrl||v.firstInstalls!=null)).length;
       return active === need;
     });
@@ -405,9 +407,10 @@ function renderTimeline() {
       t.conclusion?.toLowerCase().includes(q)
     );
   }
+  const dateOf = t => t.type==='update' ? (t.updateDate||'') : (t.startDate||'');
   tests.sort((a,b)=>state.sortOrder==='desc'
-    ? new Date(b.startDate)-new Date(a.startDate)
-    : new Date(a.startDate)-new Date(b.startDate)
+    ? new Date(dateOf(b))-new Date(dateOf(a))
+    : new Date(dateOf(a))-new Date(dateOf(b))
   );
 
   const activeFilters = [
@@ -418,7 +421,7 @@ function renderTimeline() {
 
   const body = tests.length===0
     ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>暂无匹配记录</p><button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="resetTimelineFilters()">清除筛选</button></div>`
-    : `<div class="timeline">${tests.map(t=>buildTestCard(t)).join('')}</div>`;
+    : `<div class="timeline">${tests.map(t=>t.type==='update'?buildUpdateCard(t):buildTestCard(t)).join('')}</div>`;
 
   renderShell(`
     <div class="page-header">
@@ -481,6 +484,7 @@ function filterTimeline(val) { state.filterProject=val; renderTimeline(); }
 
 function buildTestCard(t) {
   const vars = t.variants||[];
+  const biTypes = Array.isArray(t.biVizType) ? t.biVizType : (t.biVizType ? [t.biVizType] : []);
   const effectScore = {superb:7,good:6,neutral_p:5,neutral_n:4,empirical_p:3,empirical_n:2,bad:1,control:0,great:7,empirical:3};
   const testVars = vars.filter((_,i)=>i>0);
   const bestFI = testVars.length ? Math.max(...testVars.map(v=>v.firstInstalls||0)) : 0;
@@ -564,7 +568,7 @@ function buildTestCard(t) {
               <span class="meta-chip">置信度 ${t.confidence}%</span>
               ${t.testRatio?`<span class="meta-chip">比例 ${escHtml(t.testRatio)}</span>`:''}
               ${t.experimentType?`<span class="bi-type-tag">${escHtml(t.experimentType)}</span>`:''}
-              ${t.biVizType?`<span class="bi-type-tag">${escHtml(t.biVizType)}</span>`:''}
+              ${biTypes.map(b=>`<span class="bi-type-tag">${escHtml(b)}</span>`).join('')}
             </div>
             <div class="meta-row" style="margin-top:6px">${badges}</div>
             ${t.notes?.change?`<div class="card-note-preview">💬 ${escHtml(t.notes.change)}</div>`:''}
@@ -615,8 +619,43 @@ function buildProgressBlock(t) {
 }
 
 
+function buildUpdateCard(t) {
+  const biTypes = Array.isArray(t.biVizType) ? t.biVizType : (t.biVizType ? [t.biVizType] : []);
+  const imgHtml = t.imageUrl
+    ? `<img class="variant-thumb" src="${t.imageUrl}" onclick="event.stopPropagation();openLightbox('${t.imageUrl}')" style="cursor:zoom-in"/>`
+    : `<div class="variant-thumb-placeholder">🖼</div>`;
+  return `
+    <div class="timeline-item">
+      <div class="timeline-dot dot-update"></div>
+      <div class="test-card is-update" id="card-${t.id}">
+        <div class="test-card-header" onclick="toggleCard('${t.id}')">
+          <div class="test-card-meta">
+            <div class="card-title-row">
+              <h3>${escHtml(t.projectName||'')} <span class="badge badge-orange">🔄 直接更新</span> <span class="badge badge-blue">${escHtml(t.tester||'')}</span></h3>
+            </div>
+            <div class="meta-row">
+              <span class="meta-chip">📅 ${t.updateDate||''}</span>
+              ${biTypes.map(b=>`<span class="bi-type-tag">${escHtml(b)}</span>`).join('')}
+            </div>
+            ${t.notes?.change?`<div class="card-note-preview">💬 ${escHtml(t.notes.change)}</div>`:''}
+          </div>
+          <div class="test-card-images"><div class="variant-thumb-wrap">${imgHtml}</div></div>
+          <div class="test-card-expand"><span class="expand-icon">▼</span></div>
+        </div>
+        <div class="test-card-body">
+          ${t.imageUrl?`<div class="big-thumbs-row"><div class="variant-thumb-wrap"><img class="variant-thumb-lg" src="${t.imageUrl}" onclick="openLightbox('${t.imageUrl}')" style="cursor:zoom-in"/></div></div>`:''}
+          ${t.notes?.change?`<div class="card-notes"><div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div></div>`:''}
+          <div class="card-actions">
+            <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
+            ${state.userData?.isAdmin?`<button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>`:''}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function toggleCard(id) { document.getElementById('card-'+id)?.classList.toggle('expanded'); }
-function editTest(id) { state.editTestId=id; navigate('form'); }
+function editTest(id) { const t=state.tests.find(tt=>tt.id===id); state.formType=t?.type==='update'?'update':'test'; state.editTestId=id; navigate('form'); }
 async function deleteTestRecord(id) {
   if (!confirm('确认删除？此操作不可撤销。')) return;
   try { await deleteTest(id); toast('已删除','success'); } catch(e) { toast('删除失败：'+e.message,'error'); }
@@ -687,7 +726,7 @@ function buildVariantCol(i, test) {
         <span class="vc-label">${label}</span>
         <span class="variant-status ${statusCls}">${statusLabel}</span>
       </div>
-      <div class="vc-img-zone">
+      <div class="vc-img-zone" onmouseenter="setActiveImgZone(${i})" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(${i})">
         ${buildImgCell(i, v)}
       </div>
       <div class="vc-data">
@@ -709,80 +748,111 @@ function buildVariantCol(i, test) {
 function renderFormView() {
   const isEdit = !!state.editTestId;
   const test = isEdit ? state.tests.find(t=>t.id===state.editTestId) : null;
-  if (test) test.variants?.forEach((v,i)=>{ if(v.imageUrl&&!formState.previews[i]) formState.previews[i]=v.imageUrl; });
+  const ft = state.formType || 'test';
+
+  if (test && ft === 'test') test.variants?.forEach((v,i)=>{ if(v.imageUrl&&!formState.previews[i]) formState.previews[i]=v.imageUrl; });
+  if (test && ft === 'update' && test.imageUrl && !formState.previews[0]) formState.previews[0] = test.imageUrl;
 
   const projOpts = state.projects.map(p=>`<option value="${p.id}" data-name="${escHtml(p.name)}" ${test?.projectId===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
   const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
-  const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
-  const biOpts = BI_TYPES.map(b=>`<option value="${b}" ${test?.biVizType===b?'selected':''}>${b}</option>`).join('');
-  const allExpTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
-  const expTypeOpts = allExpTypes.map(b=>`<option value="${b}" ${test?.experimentType===b?'selected':''}>${escHtml(b)}</option>`).join('');
 
-  const allRatioPresets = state.settings?.ratioPresets || RATIO_PRESETS;
-  const isCustomRatio = !!(test?.testRatio && !allRatioPresets.includes(test.testRatio));
-  const ratioPresetOpts = allRatioPresets.map(r=>`<option value="${r}" ${test?.testRatio===r?'selected':''}>${r}</option>`).join('');
+  const currentBiTypes = Array.isArray(test?.biVizType) ? test.biVizType : (test?.biVizType ? [test.biVizType] : []);
+  const biCheckboxes = BI_TYPES.map(b=>`<label class="checkbox-label"><input type="checkbox" id="f-bitype-${b}" value="${b}" ${currentBiTypes.includes(b)?'checked':''}/><span>${b}</span></label>`).join('');
 
-  const cols = [0,1,2,3].map(i=>buildVariantCol(i, test)).join('');
+  const typeToggle = `
+    <div class="form-type-toggle">
+      <button type="button" class="type-btn${ft==='test'?' active':''}" onclick="switchFormType('test')">A/B 测试</button>
+      <button type="button" class="type-btn${ft==='update'?' active':''}" onclick="switchFormType('update')">直接更新</button>
+    </div>`;
+
+  let formBody;
+  if (ft === 'update') {
+    formBody = `
+      <div class="form-section">
+        <div class="form-section-title">📋 基本信息</div>
+        <div class="form-row-4">
+          <div class="form-group"><label class="form-label">项目</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
+          <div class="form-group"><label class="form-label">负责人</label><select class="form-control" id="f-tester" required>${testerOpts}</select></div>
+          <div class="form-group"><label class="form-label">更新日期</label><input class="form-control" id="f-update-date" type="date" required value="${test?.updateDate||''}"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">截图类型（可多选）</label><div class="checkbox-group">${biCheckboxes}</div></div>
+        <div class="form-group"><label class="form-label">改动内容</label>
+          <input class="form-control" id="f-note-change" type="text" placeholder="做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">🖼️ 更新截图</div>
+        <div class="update-img-zone">${buildImgCell(0, {})}</div>
+      </div>`;
+  } else {
+    const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
+    const allExpTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
+    const expTypeOpts = allExpTypes.map(b=>`<option value="${b}" ${test?.experimentType===b?'selected':''}>${escHtml(b)}</option>`).join('');
+    const allRatioPresets = state.settings?.ratioPresets || RATIO_PRESETS;
+    const isCustomRatio = !!(test?.testRatio && !allRatioPresets.includes(test.testRatio));
+    const ratioPresetOpts = allRatioPresets.map(r=>`<option value="${r}" ${test?.testRatio===r?'selected':''}>${r}</option>`).join('');
+    const cols = [0,1,2,3].map(i=>buildVariantCol(i, test)).join('');
+
+    formBody = `
+      <div class="form-section">
+        <div class="form-section-title">📋 基本信息</div>
+        <div class="form-row-4">
+          <div class="form-group"><label class="form-label">项目</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
+          <div class="form-group"><label class="form-label">测试人</label><select class="form-control" id="f-tester" required>${testerOpts}</select></div>
+          <div class="form-group"><label class="form-label">开始日期</label><input class="form-control" id="f-start" type="date" required value="${test?.startDate||''}"/></div>
+          <div class="form-group"><label class="form-label">结束日期</label><input class="form-control" id="f-end" type="date" value="${test?.endDate||''}"/></div>
+        </div>
+        <div class="form-row-4">
+          <div class="form-group" style="grid-column:span 1"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
+          <div class="form-group"><label class="form-label">测试比例</label>
+            <select class="form-control" id="f-ratio-sel" onchange="handleRatioChange(this.value)">
+              ${ratioPresetOpts}
+              <option value="custom" ${isCustomRatio?'selected':''}>自定义…</option>
+            </select>
+            <input class="form-control" id="f-ratio" type="text" placeholder="输入自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+          </div>
+          <div class="form-group"><label class="form-label">截图类型（可多选）</label><div class="checkbox-group">${biCheckboxes}</div></div>
+          <div class="form-group"><label class="form-label">实验类型</label><select class="form-control" id="f-exptype"><option value="">不指定</option>${expTypeOpts}</select></div>
+        </div>
+        <div class="form-group"><label class="form-label">备注说明</label>
+          <div class="notes-grid">
+            <input class="form-control" id="f-note-change" type="text" placeholder="改动内容（做了什么改动）" value="${escHtml(test?.notes?.change||'')}"/>
+            <input class="form-control" id="f-note-purpose" type="text" placeholder="测试目的（想验证什么）" value="${escHtml(test?.notes?.purpose||'')}"/>
+            <input class="form-control" id="f-note-design" type="text" placeholder="设计思路（为什么这样设计）" value="${escHtml(test?.notes?.design||'')}"/>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title section-title-flex">
+          <span>🖼️ 变体横向对比</span>
+          <div class="section-tools">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量裁剪图标</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
+          </div>
+        </div>
+        <div class="variant-columns-wrap">
+          <div class="variant-columns">${cols}</div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-title">📝 实验小结</div>
+        <div class="form-group">
+          <textarea class="form-control" id="f-conclusion" rows="3" placeholder="填写实验结论、分析和建议…" style="resize:vertical">${escHtml(test?.conclusion||'')}</textarea>
+        </div>
+      </div>`;
+  }
 
   renderShell(`
     <div class="modal-overlay" onclick="void(0)">
       <div class="modal form-modal-wide">
         <div class="modal-header">
-          <h2>${isEdit?'✏️ 编辑测试记录':'＋ 新增测试记录'}</h2>
+          <h2>${isEdit?'✏️ 编辑记录':'＋ 新增记录'}</h2>
           <button class="modal-close" onclick="navigate('timeline')">✕</button>
         </div>
         <div class="modal-body">
+          ${typeToggle}
           <form id="test-form" onsubmit="handleFormSubmit(event)">
-
-            <div class="form-section">
-              <div class="form-section-title">📋 基本信息</div>
-              <div class="form-row-4">
-                <div class="form-group"><label class="form-label">项目</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
-                <div class="form-group"><label class="form-label">测试人</label><select class="form-control" id="f-tester" required>${testerOpts}</select></div>
-                <div class="form-group"><label class="form-label">开始日期</label><input class="form-control" id="f-start" type="date" required value="${test?.startDate||''}"/></div>
-                <div class="form-group"><label class="form-label">结束日期</label><input class="form-control" id="f-end" type="date" value="${test?.endDate||''}"/></div>
-              </div>
-              <div class="form-row-4">
-                <div class="form-group" style="grid-column:span 1"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
-                <div class="form-group"><label class="form-label">测试比例</label>
-                  <select class="form-control" id="f-ratio-sel" onchange="handleRatioChange(this.value)">
-                    ${ratioPresetOpts}
-                    <option value="custom" ${isCustomRatio?'selected':''}>自定义…</option>
-                  </select>
-                  <input class="form-control" id="f-ratio" type="text" placeholder="输入自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
-                </div>
-                <div class="form-group"><label class="form-label">截图类型</label><select class="form-control" id="f-bitype"><option value="">不指定</option>${biOpts}</select></div>
-                <div class="form-group"><label class="form-label">实验类型</label><select class="form-control" id="f-exptype"><option value="">不指定</option>${expTypeOpts}</select></div>
-              </div>
-              <div class="form-group"><label class="form-label">备注说明</label>
-                <div class="notes-grid">
-                  <input class="form-control" id="f-note-change" type="text" placeholder="改动内容（做了什么改动）" value="${escHtml(test?.notes?.change||'')}"/>
-                  <input class="form-control" id="f-note-purpose" type="text" placeholder="测试目的（想验证什么）" value="${escHtml(test?.notes?.purpose||'')}"/>
-                  <input class="form-control" id="f-note-design" type="text" placeholder="设计思路（为什么这样设计）" value="${escHtml(test?.notes?.design||'')}"/>
-                </div>
-              </div>
-            </div>
-
-            <div class="form-section">
-              <div class="form-section-title section-title-flex">
-                <span>🖼️ 变体横向对比</span>
-                <div class="section-tools">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量裁剪图标</button>
-                  <button type="button" class="btn btn-primary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
-                </div>
-              </div>
-              <div class="variant-columns-wrap">
-                <div class="variant-columns">${cols}</div>
-              </div>
-            </div>
-
-            <div class="form-section">
-              <div class="form-section-title">📝 实验小结</div>
-              <div class="form-group">
-                <textarea class="form-control" id="f-conclusion" rows="3" placeholder="填写实验结论、分析和建议…" style="resize:vertical">${escHtml(test?.conclusion||'')}</textarea>
-              </div>
-            </div>
-
+            ${formBody}
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" onclick="navigate('timeline')">取消</button>
               <button type="submit" class="btn btn-primary" id="f-submit">${isEdit?'💾 保存修改':'🚀 提交记录'}</button>
@@ -791,6 +861,13 @@ function renderFormView() {
         </div>
       </div>
     </div>`, 'timeline');
+}
+
+function switchFormType(type) {
+  state.formType = type;
+  formState.images = [null,null,null,null];
+  formState.previews = [null,null,null,null];
+  renderFormView();
 }
 
 function buildImgCell(i, v={}) {
@@ -803,6 +880,8 @@ function activatePaste(i) {
   state.activeVariant = i;
   toast('请复制 GPLAY| 数据，然后 Ctrl+V 粘贴', 'info');
 }
+function setActiveImgZone(i) { state.activeImgVariant = i; }
+function clearActiveImgZone() { state.activeImgVariant = null; }
 
 function updateEffectSelect(i) {
   const sel = document.getElementById(`eselect-${i}`);
@@ -858,36 +937,51 @@ async function handleFormSubmit(e) {
     const projectName = projEl.options[projEl.selectedIndex]?.dataset.name||'';
     if (!projectId) { toast('请选择项目','error'); btn.disabled=false; btn.textContent=state.editTestId?'💾 保存修改':'🚀 提交记录'; return; }
     const tester = document.getElementById('f-tester').value;
-    const startDate = document.getElementById('f-start').value;
-    const endDate = document.getElementById('f-end').value;
-    const confidence = Number(document.querySelector('input[name="conf"]:checked')?.value||95);
-    const ratioSel = document.getElementById('f-ratio-sel')?.value;
-    const testRatio = ratioSel === 'custom' ? (document.getElementById('f-ratio')?.value||'') : (ratioSel||'');
-    const biVizType = document.getElementById('f-bitype').value;
-    const experimentType = document.getElementById('f-exptype')?.value || '';
-    const conclusion = document.getElementById('f-conclusion')?.value?.trim() || '';
-    const notes = {
-      change: document.getElementById('f-note-change')?.value?.trim() || '',
-      purpose: document.getElementById('f-note-purpose')?.value?.trim() || '',
-      design: document.getElementById('f-note-design')?.value?.trim() || '',
-    };
-    const existV = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.variants||[]) : [];
-    const variants = [];
-    for (let i=0;i<VDEFS.length;i++) {
-      const fi=document.getElementById(`v${i}_fi`)?.value;
-      const ri=document.getElementById(`v${i}_ri`)?.value;
-      const ciL=document.getElementById(`v${i}_ciL`)?.value??null;
-      const ciH=document.getElementById(`v${i}_ciH`)?.value??null;
-      const applied=i>0?(document.getElementById(`v${i}_applied`)?.checked||false):false;
-      const effect=i===0?'control':(document.getElementById(`eselect-${i}`)?.value||'empirical_n');
-      let imageUrl=existV[i]?.imageUrl||null;
-      if (formState.images[i]) imageUrl = await compressImage(formState.images[i]);
-      else if (formState.previews[i] && formState.previews[i] !== imageUrl) imageUrl = formState.previews[i];
-      variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, applied, effect, imageUrl });
+    const biVizType = BI_TYPES.filter(b => document.getElementById(`f-bitype-${b}`)?.checked);
+    const ft = state.formType || 'test';
+
+    if (ft === 'update') {
+      const updateDate = document.getElementById('f-update-date').value;
+      const notes = { change: document.getElementById('f-note-change')?.value?.trim() || '' };
+      const existImg = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.imageUrl||null) : null;
+      let imageUrl = existImg;
+      if (formState.images[0]) imageUrl = await compressImage(formState.images[0]);
+      else if (formState.previews[0] && formState.previews[0] !== imageUrl) imageUrl = formState.previews[0];
+      const data = { type:'update', projectId, projectName, tester, updateDate, biVizType, notes, imageUrl };
+      if (state.editTestId) { await updateTest(state.editTestId, data); toast('已保存修改','success'); }
+      else { await createTest(data); toast('记录已提交','success'); }
+    } else {
+      const startDate = document.getElementById('f-start').value;
+      const endDate = document.getElementById('f-end').value;
+      const confidence = Number(document.querySelector('input[name="conf"]:checked')?.value||95);
+      const ratioSel = document.getElementById('f-ratio-sel')?.value;
+      const testRatio = ratioSel === 'custom' ? (document.getElementById('f-ratio')?.value||'') : (ratioSel||'');
+      const experimentType = document.getElementById('f-exptype')?.value || '';
+      const conclusion = document.getElementById('f-conclusion')?.value?.trim() || '';
+      const notes = {
+        change: document.getElementById('f-note-change')?.value?.trim() || '',
+        purpose: document.getElementById('f-note-purpose')?.value?.trim() || '',
+        design: document.getElementById('f-note-design')?.value?.trim() || '',
+      };
+      const existV = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.variants||[]) : [];
+      const variants = [];
+      for (let i=0;i<VDEFS.length;i++) {
+        const fi=document.getElementById(`v${i}_fi`)?.value;
+        const ri=document.getElementById(`v${i}_ri`)?.value;
+        const ciL=document.getElementById(`v${i}_ciL`)?.value??null;
+        const ciH=document.getElementById(`v${i}_ciH`)?.value??null;
+        const applied=i>0?(document.getElementById(`v${i}_applied`)?.checked||false):false;
+        const effect=i===0?'control':(document.getElementById(`eselect-${i}`)?.value||'empirical_n');
+        let imageUrl=existV[i]?.imageUrl||null;
+        if (formState.images[i]) imageUrl = await compressImage(formState.images[i]);
+        else if (formState.previews[i] && formState.previews[i] !== imageUrl) imageUrl = formState.previews[i];
+        variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, applied, effect, imageUrl });
+      }
+      const data={type:'test',projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,conclusion,notes,variants};
+      if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
+      else { await createTest(data); toast('记录已提交','success'); }
     }
-    const data={projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,conclusion,notes,variants};
-    if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
-    else { await createTest(data); toast('记录已提交','success'); }
+
     formState.images=[null,null,null,null]; formState.previews=[null,null,null,null];
     state.editTestId=null; navigate('timeline');
   } catch(err) { toast('提交失败：'+err.message,'error'); btn.disabled=false; btn.textContent=state.editTestId?'💾 保存修改':'🚀 提交记录'; }
@@ -1352,7 +1446,8 @@ Object.assign(window, {
   navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, handleRatioChange,
   signInWithGoogle, signOutUser, handleAccessCode,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
-  activatePaste, updateEffectSelect, updateEffectBadge, openLightbox,
+  activatePaste, setActiveImgZone, clearActiveImgZone, switchFormType,
+  updateEffectSelect, updateEffectBadge, openLightbox,
   changeCode, makeAdmin, revokeUser,
   addProjectItem, removeProject, addTesterItem, removeTesterItem,
   addRatioPresetItem, removeRatioPresetItem, addExpTypeItem, removeExpTypeItem,

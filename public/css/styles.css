@@ -467,7 +467,7 @@ select.form-control { cursor: pointer; }
 .type-btn.active { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.15); }
 
 /* ── Multi-select checkbox group ──────────────────────────── */
-.checkbox-group { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.checkbox-group { display:flex; flex-wrap:nowrap; gap:6px; margin-top:4px; }
 .checkbox-label { display:inline-flex; align-items:center; gap:5px; cursor:pointer; font-size:12px; padding:4px 10px; background:#F9FAFB; border:1px solid #E5E7EB; border-radius:20px; transition:all .15s; user-select:none; }
 .checkbox-label:hover { border-color:var(--primary); background:var(--primary-bg); }
 .checkbox-label input[type=checkbox] { margin:0; accent-color:var(--primary); }

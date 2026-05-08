@@ -614,9 +614,14 @@ function buildProgressBlock(t) {
 
 function buildUpdateCard(t) {
   const biTypes = Array.isArray(t.biVizType) ? t.biVizType : (t.biVizType ? [t.biVizType] : []);
-  const imgHtml = t.imageUrl
-    ? `<img class="variant-thumb" src="${t.imageUrl}" onclick="event.stopPropagation();openLightbox('${t.imageUrl}')" style="cursor:zoom-in"/>`
-    : `<div class="variant-thumb-placeholder">🖼</div>`;
+  const mkThumb = (url, label) => url
+    ? `<div class="variant-thumb-wrap"><img class="variant-thumb" src="${url}" onclick="event.stopPropagation();openLightbox('${url}')" style="cursor:zoom-in"/><div class="variant-label">${label}</div></div>`
+    : '';
+  const mkBig = (url, label) => url
+    ? `<div class="variant-thumb-wrap"><img class="variant-thumb-lg" src="${url}" onclick="openLightbox('${url}')" style="cursor:zoom-in"/><div class="variant-label">${label}</div></div>`
+    : '';
+  const thumbs = mkThumb(t.imageUrl,'原始') + mkThumb(t.newImageUrl,'更新后');
+  const bigs   = mkBig(t.imageUrl,'原始')   + mkBig(t.newImageUrl,'更新后');
   return `
     <div class="timeline-item">
       <div class="timeline-dot dot-update"></div>
@@ -632,11 +637,11 @@ function buildUpdateCard(t) {
             </div>
             ${t.notes?.change?`<div class="card-note-preview">💬 ${escHtml(t.notes.change)}</div>`:''}
           </div>
-          <div class="test-card-images"><div class="variant-thumb-wrap">${imgHtml}</div></div>
+          <div class="test-card-images">${thumbs||'<div class="variant-thumb-placeholder">🖼</div>'}</div>
           <div class="test-card-expand"><span class="expand-icon">▼</span></div>
         </div>
         <div class="test-card-body">
-          ${t.imageUrl?`<div class="big-thumbs-row"><div class="variant-thumb-wrap"><img class="variant-thumb-lg" src="${t.imageUrl}" onclick="openLightbox('${t.imageUrl}')" style="cursor:zoom-in"/></div></div>`:''}
+          ${bigs?`<div class="big-thumbs-row">${bigs}</div>`:''}
           ${t.notes?.change?`<div class="card-notes"><div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div></div>`:''}
           <div class="card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
@@ -744,7 +749,10 @@ function renderFormView() {
   const ft = state.formType || 'test';
 
   if (test && ft === 'test') test.variants?.forEach((v,i)=>{ if(v.imageUrl&&!formState.previews[i]) formState.previews[i]=v.imageUrl; });
-  if (test && ft === 'update' && test.imageUrl && !formState.previews[0]) formState.previews[0] = test.imageUrl;
+  if (test && ft === 'update') {
+    if (test.imageUrl && !formState.previews[0]) formState.previews[0] = test.imageUrl;
+    if (test.newImageUrl && !formState.previews[1]) formState.previews[1] = test.newImageUrl;
+  }
 
   const projOpts = state.projects.map(p=>`<option value="${p.id}" data-name="${escHtml(p.name)}" ${test?.projectId===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
   const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
@@ -774,8 +782,17 @@ function renderFormView() {
         </div>
       </div>
       <div class="form-section">
-        <div class="form-section-title">🖼️ 更新截图</div>
-        <div class="update-img-zone">${buildImgCell(0, {})}</div>
+        <div class="form-section-title">🖼️ 截图对比</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div>
+            <div class="form-label" style="margin-bottom:4px">原始</div>
+            <div class="update-img-zone" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:4px">更新后</div>
+            <div class="update-img-zone" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+          </div>
+        </div>
       </div>`;
   } else {
     const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
@@ -936,11 +953,14 @@ async function handleFormSubmit(e) {
     if (ft === 'update') {
       const updateDate = document.getElementById('f-update-date').value;
       const notes = { change: document.getElementById('f-note-change')?.value?.trim() || '' };
-      const existImg = state.editTestId ? (state.tests.find(t=>t.id===state.editTestId)?.imageUrl||null) : null;
-      let imageUrl = existImg;
+      const existRec = state.editTestId ? state.tests.find(t=>t.id===state.editTestId) : null;
+      let imageUrl = existRec?.imageUrl || null;
+      let newImageUrl = existRec?.newImageUrl || null;
       if (formState.images[0]) imageUrl = await compressImage(formState.images[0]);
       else if (formState.previews[0] && formState.previews[0] !== imageUrl) imageUrl = formState.previews[0];
-      const data = { type:'update', projectId, projectName, tester, updateDate, biVizType, notes, imageUrl };
+      if (formState.images[1]) newImageUrl = await compressImage(formState.images[1]);
+      else if (formState.previews[1] && formState.previews[1] !== newImageUrl) newImageUrl = formState.previews[1];
+      const data = { type:'update', projectId, projectName, tester, updateDate, biVizType, notes, imageUrl, newImageUrl };
       if (state.editTestId) { await updateTest(state.editTestId, data); toast('已保存修改','success'); }
       else { await createTest(data); toast('记录已提交','success'); }
     } else {

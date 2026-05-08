@@ -803,7 +803,8 @@ function renderFormView() {
   } else {
     const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
     const allExpTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
-    const expTypeOpts = allExpTypes.map(b=>`<option value="${b}" ${test?.experimentType===b?'selected':''}>${escHtml(b)}</option>`).join('');
+    const defaultExpType = test?.experimentType ?? '主要商品详情';
+    const expTypeOpts = allExpTypes.map(b=>`<option value="${b}" ${defaultExpType===b?'selected':''}>${escHtml(b)}</option>`).join('');
     const allRatioPresets = state.settings?.ratioPresets || RATIO_PRESETS;
     const isCustomRatio = !!(test?.testRatio && !allRatioPresets.includes(test.testRatio));
     const ratioPresetOpts = allRatioPresets.map(r=>`<option value="${r}" ${test?.testRatio===r?'selected':''}>${r}</option>`).join('');
@@ -828,7 +829,7 @@ function renderFormView() {
             <input class="form-control" id="f-ratio" type="text" placeholder="输入自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
           </div>
           <div class="form-group"><label class="form-label">截图类型（可多选）</label><div class="checkbox-group">${biCheckboxes}</div></div>
-          <div class="form-group"><label class="form-label">实验类型</label><select class="form-control" id="f-exptype"><option value="">不指定</option>${expTypeOpts}</select></div>
+          <div class="form-group"><label class="form-label">实验类型</label><select class="form-control" id="f-exptype">${expTypeOpts}</select></div>
         </div>
         <div class="form-group"><label class="form-label">备注说明</label>
           <div class="notes-grid">
@@ -1191,7 +1192,7 @@ const CROP_COLORS = ['#6B7280','#3B82F6','#8B5CF6','#EC4899'];
 const CROP_LABELS = ['原始','测试1','测试2','测试3'];
 
 function openCropModal() {
-  cropImg = null; cropDividers = [0.25, 0.5, 0.75]; cropDirection = 'horizontal';
+  cropImg = null; cropDividers = [0.25, 0.5, 0.75]; cropDirection = 'vertical';
   setTimeout(() => { const c = document.getElementById('crop-canvas'); if(c) setupCropDrag(); }, 200);
   const wrap = document.createElement('div');
   wrap.className = 'crop-modal-wrap'; wrap.id = 'crop-wrap';
@@ -1200,8 +1201,8 @@ function openCropModal() {
       <h3>✂️ 批量裁剪图标</h3>
       <p>上传包含全部变体图标的截图，拖动分割线调整各区域，支持 1~4 个变体</p>
       <div class="form-type-toggle" style="margin-bottom:10px">
-        <button type="button" class="type-btn active" id="crop-dir-h" onclick="switchCropDirection('horizontal')">↔ 左右裁剪</button>
-        <button type="button" class="type-btn" id="crop-dir-v" onclick="switchCropDirection('vertical')">↕ 上下裁剪</button>
+        <button type="button" class="type-btn" id="crop-dir-h" onclick="switchCropDirection('horizontal')">↔ 左右裁剪</button>
+        <button type="button" class="type-btn active" id="crop-dir-v" onclick="switchCropDirection('vertical')">↕ 上下裁剪</button>
       </div>
       <div class="img-upload-area" id="crop-upload" style="min-height:80px">
         <span class="upload-icon">📤</span><span class="upload-hint">点击上传 / Ctrl+V 粘贴</span>
@@ -1225,7 +1226,7 @@ function switchCropDirection(dir) {
   document.getElementById('crop-dir-h')?.classList.toggle('active', dir === 'horizontal');
   document.getElementById('crop-dir-v')?.classList.toggle('active', dir === 'vertical');
   cropDividers = [0.25, 0.5, 0.75];
-  drawCropCanvas();
+  if (dir === 'vertical' && cropImg) cropAutoDetect(); else drawCropCanvas();
 }
 
 function cropFromFile(file) {
@@ -1241,7 +1242,7 @@ function cropFromFile(file) {
       if (canvasWrap) canvasWrap.style.display = 'block';
       const legendEl = document.getElementById('crop-legend');
       if (legendEl) legendEl.innerHTML = CROP_COLORS.map((c,i)=>`<div class="crop-legend-item"><div class="crop-legend-dot" style="background:${c}"></div><span>${CROP_LABELS[i]}</span></div>`).join('');
-      drawCropCanvas();
+      if (cropDirection === 'vertical') cropAutoDetect(); else drawCropCanvas();
       setTimeout(() => setupCropDrag(), 50);
     };
     img.src = ev.target.result;
@@ -1252,6 +1253,63 @@ function cropFromFile(file) {
 function cropImgSelected(e) {
   const file = e.target.files?.[0];
   if (file) cropFromFile(file);
+}
+
+function cropAutoDetect() {
+  if (!cropImg) return;
+  const W = 200, H = Math.round(cropImg.height * 200 / cropImg.width);
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  off.getContext('2d').drawImage(cropImg, 0, 0, W, H);
+  const data = off.getContext('2d').getImageData(0, 0, W, H).data;
+
+  // Per row: std-dev of brightness in centre strip
+  const cx0 = Math.round(W * 0.2), cx1 = Math.round(W * 0.8), cw = cx1 - cx0;
+  const rowScore = new Array(H);
+  for (let y = 0; y < H; y++) {
+    let sum = 0, sum2 = 0;
+    for (let x = cx0; x < cx1; x++) {
+      const v = (data[(y*W+x)*4] + data[(y*W+x)*4+1] + data[(y*W+x)*4+2]) / 3;
+      sum += v; sum2 += v*v;
+    }
+    const mean = sum / cw;
+    rowScore[y] = Math.sqrt(Math.max(0, sum2/cw - mean*mean));
+  }
+
+  // Smooth
+  const win = Math.max(2, Math.round(H * 0.015));
+  const smooth = rowScore.map((_, y) => {
+    let s = 0, c = 0;
+    for (let dy = -win; dy <= win; dy++) {
+      const yy = y+dy;
+      if (yy >= 0 && yy < H) { s += rowScore[yy]; c++; }
+    }
+    return s/c;
+  });
+
+  let maxS = 0;
+  smooth.forEach(v => { if (v > maxS) maxS = v; });
+  const thresh = Math.max(6, maxS * 0.18);
+  const isContent = smooth.map(v => v >= thresh);
+
+  // Find content bands
+  const regions = [];
+  let inC = false, start = 0;
+  for (let y = 0; y <= H; y++) {
+    const c = y < H && isContent[y];
+    if (c && !inC) { inC = true; start = y; }
+    else if (!c && inC) { inC = false; regions.push([start/H, y/H]); }
+  }
+
+  if (regions.length >= 2) {
+    cropDividers = [];
+    for (let i = 0; i < Math.min(regions.length-1, 3); i++) {
+      cropDividers.push((regions[i][1] + regions[i+1][0]) / 2);
+    }
+    drawCropCanvas();
+    return;
+  }
+  cropAutoSplit();
 }
 
 function drawCropCanvas() {

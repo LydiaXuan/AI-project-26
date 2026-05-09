@@ -1,11 +1,6 @@
 // ================================================================
 // app.js  –  图测记录工具
 // ================================================================
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { FIREBASE_CONFIG, SUPER_ADMIN_EMAIL } from './config.js';
 import { calculateEffect, effectBadgeHTML, EFFECT_OPTIONS, EFFECT } from './effects.js';
 import {
   initDB, getSettings, createSettings, updateSettings,
@@ -16,10 +11,7 @@ import {
   subscribeTests, subscribeProjects
 } from './db.js';
 
-// ── Firebase init ─────────────────────────────────────────────
-const firebaseApp = initializeApp(FIREBASE_CONFIG);
-const auth = getAuth(firebaseApp);
-initDB(firebaseApp);
+initDB();
 
 // 客户端图片压缩（存 base64，无需 Storage）
 function compressImage(file, maxPx = 480, quality = 0.72) {
@@ -139,44 +131,61 @@ function parsePaste(text) {
 }
 
 // ── Auth ──────────────────────────────────────────────────────
-async function signInWithGoogle() {
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-  catch (err) { toast('登录失败：' + err.message, 'error'); }
+async function signIn(email, password) {
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || '登录失败', 'error'); return; }
+    localStorage.setItem('jwt_token', data.token);
+    state.user = data.user;
+    state.userData = data.user;
+    state.settings = await getSettings();
+    await startMainApp();
+  } catch (err) { toast('登录失败：' + err.message, 'error'); }
 }
+
+async function registerUser(email, name, password, accessCode) {
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, password, accessCode }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || '注册失败', 'error'); return; }
+    localStorage.setItem('jwt_token', data.token);
+    state.user = data.user;
+    state.userData = data.user;
+    state.settings = await getSettings();
+    await startMainApp();
+  } catch (err) { toast('注册失败：' + err.message, 'error'); }
+}
+
 async function signOutUser() {
   if (state._unsubTests) state._unsubTests();
   if (state._unsubProjects) state._unsubProjects();
-  await fbSignOut(auth);
+  localStorage.removeItem('jwt_token');
+  state.user = null; state.userData = null;
+  renderLogin();
 }
 
-onAuthStateChanged(auth, async user => {
-  if (!user) { state.user = null; state.userData = null; renderLogin(); return; }
-  state.user = user;
-  let userData = await getUser(user.uid);
-  const settings = await getSettings();
-  if (!settings) {
-    await createSettings({ accessCode: 'sanyi', testers: [user.displayName || user.email], allowlist: [user.email] });
-    await setUser(user.uid, { email: user.email, name: user.displayName || user.email, photoURL: user.photoURL || null, isAdmin: true, approved: true, joinedAt: new Date().toISOString() });
-    userData = await getUser(user.uid);
-  }
-  state.settings = await getSettings();
-  if (!userData || !userData.approved) { renderAccessCode(user); return; }
-  state.userData = userData;
-  await startMainApp();
-});
-
-async function handleAccessCode(code) {
-  const settings = await getSettings();
-  if (!settings || code.trim() !== settings.accessCode) { toast('入场码错误，请联系管理员', 'error'); return; }
-  const isSpecialAdmin = SUPER_ADMIN_EMAIL && state.user.email === SUPER_ADMIN_EMAIL;
-  await setUser(state.user.uid, { email: state.user.email, name: state.user.displayName || state.user.email, photoURL: state.user.photoURL || null, isAdmin: isSpecialAdmin || false, approved: true, joinedAt: new Date().toISOString() });
-  const al = settings.allowlist || [];
-  if (!al.includes(state.user.email)) await updateSettings({ allowlist: [...al, state.user.email] });
-  toast('验证成功，欢迎加入！', 'success');
-  state.userData = await getUser(state.user.uid);
-  state.settings = await getSettings();
-  await startMainApp();
-}
+// 页面加载时检查已有 token
+(async () => {
+  const token = localStorage.getItem('jwt_token');
+  if (!token) { renderLogin(); return; }
+  try {
+    const res = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) { localStorage.removeItem('jwt_token'); renderLogin(); return; }
+    const { user } = await res.json();
+    state.user = user; state.userData = user;
+    state.settings = await getSettings();
+    await startMainApp();
+  } catch { renderLogin(); }
+})();
 
 async function startMainApp() {
   state._unsubTests = subscribeTests(tests => { state.tests = tests; if (state.view === 'dashboard') renderDashboard(); if (state.view === 'timeline') renderTimeline(); });
@@ -205,7 +214,7 @@ function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&
 
 function renderShell(content, activeTab) {
   const u = state.userData;
-  const av = u?.photoURL ? `<img class="user-avatar" src="${u.photoURL}" />` : `<div class="user-avatar-placeholder">${(u?.name||'?')[0].toUpperCase()}</div>`;
+  const av = `<div class="user-avatar-placeholder">${(u?.name||'?')[0].toUpperCase()}</div>`;
   const adminBtn = `<button class="nav-tab${activeTab==='admin'?' active':''}" onclick="navigate('admin')">⚙️ 管理</button>`;
   document.getElementById('app').innerHTML = `
     <nav class="navbar">
@@ -225,37 +234,50 @@ function renderShell(content, activeTab) {
 }
 
 // ── Login ─────────────────────────────────────────────────────
-function renderLogin() {
+function renderLogin(tab = 'login') {
   document.getElementById('app').innerHTML = `
     <div class="login-page">
       <div class="login-card">
         <div class="login-logo">📊</div>
         <h1>图测记录工具</h1>
-        <p>Chart A/B Testing Tracker</p>
-        <button class="btn-google" onclick="signInWithGoogle()">
-          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
-          使用 Google 账号登录
-        </button>
+        <div class="form-type-toggle" style="margin:14px auto 20px;justify-content:center">
+          <button type="button" class="type-btn ${tab==='login'?'active':''}" onclick="renderLogin('login')">登录</button>
+          <button type="button" class="type-btn ${tab==='register'?'active':''}" onclick="renderLogin('register')">注册</button>
+        </div>
+        ${tab === 'login' ? `
+          <div class="form-group"><label>邮箱</label><input class="form-control" id="li-email" type="email" placeholder="your@email.com" autocomplete="username"/></div>
+          <div class="form-group"><label>密码</label><input class="form-control" id="li-pwd" type="password" placeholder="••••••••" autocomplete="current-password"/></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="_doLogin()">登录</button>
+        ` : `
+          <div class="form-group"><label>姓名</label><input class="form-control" id="rg-name" type="text" placeholder="你的名字"/></div>
+          <div class="form-group"><label>邮箱</label><input class="form-control" id="rg-email" type="email" placeholder="your@email.com" autocomplete="username"/></div>
+          <div class="form-group"><label>密码</label><input class="form-control" id="rg-pwd" type="password" placeholder="设置密码" autocomplete="new-password"/></div>
+          <div class="form-group"><label>入场码</label><input class="form-control" id="rg-code" type="password" placeholder="联系管理员获取"/></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="_doRegister()">注册并登录</button>
+        `}
       </div>
     </div>`;
+  const firstInput = document.querySelector('.login-card input');
+  if (firstInput) firstInput.focus();
+  document.querySelector('.login-card').addEventListener('keydown', e => {
+    if (e.key === 'Enter') tab === 'login' ? _doLogin() : _doRegister();
+  });
 }
 
-function renderAccessCode(user) {
-  document.getElementById('app').innerHTML = `
-    <div class="login-page">
-      <div class="access-card">
-        <h2>🔐 输入入场码</h2>
-        <p>你的账号尚未获得访问权限，请输入团队入场码</p>
-        <div class="user-email">${user.photoURL?`<img class="user-avatar" src="${user.photoURL}" />`:''}${escHtml(user.email)}</div>
-        <div class="form-group">
-          <input class="form-control" id="access-input" type="password" placeholder="请输入入场码" />
-          <div class="access-error" id="access-error"></div>
-        </div>
-        <button class="btn btn-primary" style="width:100%" onclick="handleAccessCode(document.getElementById('access-input').value)">确认进入</button>
-        <div style="margin-top:16px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="signOutUser()">切换账号</button></div>
-      </div>
-    </div>`;
-  document.getElementById('access-input').addEventListener('keydown', e => { if (e.key==='Enter') handleAccessCode(e.target.value); });
+function _doLogin() {
+  const email = document.getElementById('li-email')?.value.trim();
+  const pwd   = document.getElementById('li-pwd')?.value;
+  if (!email || !pwd) { toast('请输入邮箱和密码', 'error'); return; }
+  signIn(email, pwd);
+}
+
+function _doRegister() {
+  const name  = document.getElementById('rg-name')?.value.trim();
+  const email = document.getElementById('rg-email')?.value.trim();
+  const pwd   = document.getElementById('rg-pwd')?.value;
+  const code  = document.getElementById('rg-code')?.value.trim();
+  if (!name || !email || !pwd || !code) { toast('请填写所有字段', 'error'); return; }
+  registerUser(email, name, pwd, code);
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
@@ -1584,7 +1606,7 @@ Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected, setActiveOcrZone,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
   navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, handleRatioChange,
-  signInWithGoogle, signOutUser, handleAccessCode,
+  signOutUser, renderLogin, _doLogin, _doRegister,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
   activatePaste, setActiveImgZone, clearActiveImgZone, switchFormType,
   updateEffectSelect, updateEffectBadge, openLightbox,

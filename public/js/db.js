@@ -1,114 +1,115 @@
-import {
-  getFirestore, collection, doc,
-  getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
-  query, orderBy, onSnapshot, serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+// ── API client（替换 Firebase SDK）────────────────────────────
+// 所有数据请求通过 fetch 发往同源 Flask 后端
 
-let db;
+function getToken() { return localStorage.getItem('jwt_token'); }
 
-export function initDB(app) {
-  db = getFirestore(app);
+async function apiFetch(path, options = {}) {
+  const token = getToken();
+  const isFormData = options.body instanceof FormData;
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('jwt_token');
+    window.location.reload();
+    throw new Error('Unauthorized');
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
 }
 
-// ── Config / Settings ──────────────────────────────────────
+// ── 无需初始化（Firebase 遗留接口，保留兼容签名）──────────────
+export function initDB() {}
 
+// ── 设置 ──────────────────────────────────────────────────────
 export async function getSettings() {
-  const snap = await getDoc(doc(db, 'config', 'settings'));
-  return snap.exists() ? snap.data() : null;
+  try { return await apiFetch('/api/settings'); }
+  catch { return null; }
 }
 
 export async function createSettings(data) {
-  await setDoc(doc(db, 'config', 'settings'), data);
+  return apiFetch('/api/settings', { method: 'PUT', body: JSON.stringify(data) });
 }
 
 export async function updateSettings(data) {
-  await updateDoc(doc(db, 'config', 'settings'), data);
+  return apiFetch('/api/settings', { method: 'PUT', body: JSON.stringify(data) });
 }
 
-// ── Users ──────────────────────────────────────────────────
-
+// ── 用户 ──────────────────────────────────────────────────────
 export async function getUser(uid) {
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  try { return await apiFetch(`/api/users/${uid}`); }
+  catch { return null; }
 }
 
 export async function getAllUsers() {
-  const snap = await getDocs(collection(db, 'users'));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return apiFetch('/api/users');
 }
 
 export async function setUser(uid, data) {
-  await setDoc(doc(db, 'users', uid), data, { merge: true });
+  return apiFetch(`/api/users/${uid}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function updateUser(uid, data) {
-  await updateDoc(doc(db, 'users', uid), data);
+  return apiFetch(`/api/users/${uid}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function deleteUser(uid) {
-  await deleteDoc(doc(db, 'users', uid));
+  return apiFetch(`/api/users/${uid}`, { method: 'DELETE' });
 }
 
-// ── Projects ───────────────────────────────────────────────
-
+// ── 项目 ──────────────────────────────────────────────────────
 export async function getProjects() {
-  const snap = await getDocs(query(collection(db, 'projects'), orderBy('name')));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return apiFetch('/api/projects');
 }
 
 export async function addProject(name) {
-  return await addDoc(collection(db, 'projects'), { name, createdAt: serverTimestamp() });
+  return apiFetch('/api/projects', { method: 'POST', body: JSON.stringify({ name }) });
 }
 
 export async function deleteProject(id) {
-  await deleteDoc(doc(db, 'projects', id));
+  return apiFetch(`/api/projects/${id}`, { method: 'DELETE' });
 }
 
-// ── Testers (stored inside config/settings) ───────────────
-
+// ── 测试人员（存在 settings 里）──────────────────────────────
 export async function addTester(name) {
-  const settings = await getSettings();
-  const testers = settings?.testers || [];
-  if (!testers.includes(name)) {
-    await updateSettings({ testers: [...testers, name] });
-  }
+  const s = await getSettings();
+  const testers = s?.testers || [];
+  if (!testers.includes(name)) await updateSettings({ ...s, testers: [...testers, name] });
 }
 
 export async function removeTester(name) {
-  const settings = await getSettings();
-  const testers = (settings?.testers || []).filter(t => t !== name);
-  await updateSettings({ testers });
+  const s = await getSettings();
+  await updateSettings({ ...s, testers: (s?.testers || []).filter(t => t !== name) });
 }
 
-// ── Tests ──────────────────────────────────────────────────
-
+// ── 测试记录 ──────────────────────────────────────────────────
 export async function createTest(data) {
-  return await addDoc(collection(db, 'tests'), {
-    ...data,
-    createdAt: serverTimestamp()
-  });
+  return apiFetch('/api/tests', { method: 'POST', body: JSON.stringify(data) });
 }
 
 export async function updateTest(id, data) {
-  await updateDoc(doc(db, 'tests', id), { ...data, updatedAt: serverTimestamp() });
+  return apiFetch(`/api/tests/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
 export async function deleteTest(id) {
-  await deleteDoc(doc(db, 'tests', id));
+  return apiFetch(`/api/tests/${id}`, { method: 'DELETE' });
 }
 
+// 替换实时订阅（Firestore onSnapshot）→ 一次性 fetch，返回空函数作为 unsubscribe
 export function subscribeTests(callback) {
-  const q = query(collection(db, 'tests'), orderBy('startDate', 'desc'));
-  return onSnapshot(q, snap => {
-    const tests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(tests);
-  });
+  apiFetch('/api/tests').then(callback).catch(console.error);
+  return () => {};
 }
 
 export function subscribeProjects(callback) {
-  const q = query(collection(db, 'projects'), orderBy('name'));
-  return onSnapshot(q, snap => {
-    const projects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(projects);
-  });
+  apiFetch('/api/projects').then(callback).catch(console.error);
+  return () => {};
 }

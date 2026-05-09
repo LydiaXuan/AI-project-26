@@ -10,7 +10,7 @@ pip install -q pyinstaller flask flask-cors
 if errorlevel 1 ( echo 安装失败，请检查 Python 是否正确安装 & pause & exit /b 1 )
 
 echo [2/3] 打包中，请稍候...
-pyinstaller --onefile --add-data "public;public" --name "图测记录工具" --console server.py
+python -m PyInstaller --onefile --add-data "public;public" --name "图测记录工具" --console server.py
 if errorlevel 1 ( echo 打包失败 & pause & exit /b 1 )
 
 echo [3/3] 完成！

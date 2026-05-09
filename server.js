@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const url = require('url');
+const { exec } = require('child_process');
 
 const PORT = parseInt(process.env.PORT || '5000');
 const SECRET = process.env.SECRET_KEY || 'change-me-in-production';
@@ -222,6 +223,21 @@ async function handleRequest(req, res) {
     const user = requireAuth(req, res); if (!user) return;
     saveProjects(getProjects().filter(p => p.id !== pm[1]));
     return json200(res, { ok: true });
+  }
+
+  // /api/admin/update — git pull + restart
+  if (pathname === '/api/admin/update' && method === 'POST') {
+    const user = requireAuth(req, res); if (!user) return;
+    if (!user.is_admin) return jsonErr(res, 403, '仅管理员可操作');
+    exec('git pull', { cwd: __dirname }, (err, stdout, stderr) => {
+      if (err) {
+        json200(res, { ok: false, log: stderr || err.message });
+      } else {
+        json200(res, { ok: true, log: stdout || '已是最新版本' });
+        setTimeout(() => process.exit(0), 800);
+      }
+    });
+    return;
   }
 
   // /api/tests

@@ -4,10 +4,14 @@
 import { calculateEffect, effectBadgeHTML, EFFECT_OPTIONS, EFFECT } from './effects.js';
 import {
   initDB, getSettings, createSettings, updateSettings,
-  getUser, getAllUsers, setUser, updateUser,
   getProjects, addProject, deleteProject,
   addTester, removeTester,
-  createTest, updateTest, deleteTest,
+  getTests, createTest, updateTest, deleteTest,
+  isReady, resumeAccess, pickFolder, getFolderName,
+  getTrash, restoreFromTrash, purgeTrashItem,
+  getRecordHistory, rollbackRecord,
+  getDailyBackups, restoreFromBackup,
+  getPendingCount, retryPending,
   subscribeTests, subscribeProjects
 } from './db.js';
 
@@ -33,12 +37,11 @@ function compressImage(file, maxPx = 480, quality = 0.72) {
 
 // ── State ─────────────────────────────────────────────────────
 const state = {
-  user: null, userData: null, settings: null,
+  settings: null, pendingCount: 0,
   view: 'dashboard', tests: [], projects: [],
   filterProject: 'all', filterEffect: 'all', filterBiType: 'all',
   filterExpType: 'all', filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
   editTestId: null, activeVariant: null, activeImgVariant: null, formType: 'test',
-  _unsubTests: null, _unsubProjects: null,
 };
 const formState = { images: [null,null,null,null], previews: [null,null,null,null] };
 const charts = {};
@@ -130,68 +133,79 @@ function parsePaste(text) {
   } catch { return null; }
 }
 
-// ── Auth ──────────────────────────────────────────────────────
-async function signIn(email, password) {
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) { toast(data.error || '登录失败', 'error'); return; }
-    localStorage.setItem('jwt_token', data.token);
-    state.user = data.user;
-    state.userData = data.user;
-    state.settings = await getSettings();
-    await startMainApp();
-  } catch (err) { toast('登录失败：' + err.message, 'error'); }
-}
-
-async function registerUser(email, name, password, accessCode) {
-  try {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name, password, accessCode }),
-    });
-    const data = await res.json();
-    if (!res.ok) { toast(data.error || '注册失败', 'error'); return; }
-    localStorage.setItem('jwt_token', data.token);
-    state.user = data.user;
-    state.userData = data.user;
-    state.settings = await getSettings();
-    await startMainApp();
-  } catch (err) { toast('注册失败：' + err.message, 'error'); }
-}
-
-async function signOutUser() {
-  if (state._unsubTests) state._unsubTests();
-  if (state._unsubProjects) state._unsubProjects();
-  localStorage.removeItem('jwt_token');
-  state.user = null; state.userData = null;
-  renderLogin();
-}
-
-// 页面加载时检查已有 token
+// ── 启动流程：选择数据文件夹 ─────────────────────────────────
 (async () => {
-  const token = localStorage.getItem('jwt_token');
-  if (!token) { renderLogin(); return; }
-  try {
-    const res = await fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
-    if (!res.ok) { localStorage.removeItem('jwt_token'); renderLogin(); return; }
-    const { user } = await res.json();
-    state.user = user; state.userData = user;
-    state.settings = await getSettings();
-    await startMainApp();
-  } catch { renderLogin(); }
+  if (!window.showDirectoryPicker) {
+    document.getElementById('app').innerHTML = `
+      <div class="login-page"><div class="login-card">
+        <div class="login-logo">⚠️</div>
+        <h1>浏览器不支持</h1>
+        <p style="color:var(--text-muted);margin-top:12px">本工具需要 File System Access API 才能直接读写网络盘上的数据。<br/><br/>请使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 浏览器打开。</p>
+      </div></div>`;
+    return;
+  }
+  if (await isReady()) { await startMainApp(); return; }
+  // 已经选过文件夹但权限失效 → 显示恢复访问按钮
+  renderFolderPicker(true);
 })();
 
+function renderFolderPicker(canResume = false) {
+  document.getElementById('app').innerHTML = `
+    <div class="login-page">
+      <div class="login-card">
+        <div class="login-logo">📂</div>
+        <h1>图测记录工具</h1>
+        <p style="color:var(--text-muted);margin:14px 0 22px;line-height:1.6">
+          所有数据存储在群晖网络盘上的指定文件夹里，多人共享同一份数据。<br/>
+          首次使用请选择 <code style="background:#F3F4F6;padding:2px 6px;border-radius:3px">data</code> 文件夹（不存在会自动创建文件）。
+        </p>
+        ${canResume ? `<button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="_resumeFolder()">🔄 恢复访问已选文件夹</button>` : ''}
+        <button class="btn ${canResume?'btn-secondary':'btn-primary'}" style="width:100%" onclick="_pickFolder()">📁 选择数据文件夹</button>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:18px">建议：在 Windows 把群晖映射为网络盘，例如 <code>Z:\\</code>，然后选择 <code>Z:\\chart-recorder\\data</code></p>
+      </div>
+    </div>`;
+}
+
+async function _pickFolder() {
+  try {
+    await pickFolder();
+    await startMainApp();
+  } catch (err) {
+    if (err.name !== 'AbortError') toast('选择失败：' + err.message, 'error');
+  }
+}
+async function _resumeFolder() {
+  try {
+    const ok = await resumeAccess();
+    if (ok) await startMainApp();
+    else toast('权限被拒绝，请选择文件夹', 'error');
+  } catch (err) { toast('恢复失败：' + err.message, 'error'); }
+}
+
 async function startMainApp() {
-  state._unsubTests = subscribeTests(tests => { state.tests = tests; if (state.view === 'dashboard') renderDashboard(); if (state.view === 'timeline') renderTimeline(); });
-  state._unsubProjects = subscribeProjects(projects => { state.projects = projects; });
   state.settings = await getSettings();
+  state.tests = await getTests();
+  state.projects = await getProjects();
+  // 先尝试同步未保存的数据
+  await syncPending(true);
   navigate('dashboard');
+}
+
+async function refreshData() {
+  state.tests = await getTests();
+  state.projects = await getProjects();
+  state.settings = await getSettings();
+}
+
+async function syncPending(silent = false) {
+  state.pendingCount = await getPendingCount();
+  if (state.pendingCount === 0) return;
+  if (!silent) toast(`正在同步 ${state.pendingCount} 条待保存记录…`, 'info');
+  const { success, fail } = await retryPending();
+  state.pendingCount = await getPendingCount();
+  if (success > 0) await refreshData();
+  if (fail > 0 && !silent) toast(`仍有 ${fail} 条同步失败`, 'error');
+  else if (success > 0) toast(`已同步 ${success} 条`, 'success');
 }
 
 // ── Navigation ────────────────────────────────────────────────
@@ -213,9 +227,10 @@ function render() {
 function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function renderShell(content, activeTab) {
-  const u = state.userData;
-  const av = `<div class="user-avatar-placeholder">${(u?.name||'?')[0].toUpperCase()}</div>`;
-  const adminBtn = `<button class="nav-tab${activeTab==='admin'?' active':''}" onclick="navigate('admin')">⚙️ 管理</button>`;
+  const folderName = getFolderName();
+  const pending = state.pendingCount > 0
+    ? `<button class="pending-pill" onclick="_syncPending()" title="点击重试同步">⚠ ${state.pendingCount} 条未同步</button>`
+    : '';
   document.getElementById('app').innerHTML = `
     <nav class="navbar">
       <div class="navbar-brand">📊 图测记录<span>Chart Testing</span></div>
@@ -225,60 +240,22 @@ function renderShell(content, activeTab) {
         <button class="nav-tab btn-primary" style="margin-left:8px" onclick="navigate('form')">＋ 新增记录</button>
       </div>
       <div class="navbar-right">
-        ${adminBtn}
-        <div class="user-pill">${av}<span>${escHtml(u?.name||u?.email||'')}</span></div>
-        <button class="btn-icon" title="退出登录" onclick="signOutUser()">🚪</button>
+        ${pending}
+        <button class="nav-tab${activeTab==='admin'?' active':''}" onclick="navigate('admin')">⚙️ 管理</button>
+        <button class="btn-icon" title="刷新数据（从群晖重新读取）" onclick="_refreshFromDisk()">🔄</button>
+        <span class="user-pill" title="数据文件夹"><span style="font-size:14px">📂</span><span>${escHtml(folderName||'未选择')}</span></span>
       </div>
     </nav>
     <main class="page">${content}</main>`;
 }
 
-// ── Login ─────────────────────────────────────────────────────
-function renderLogin(tab = 'login') {
-  document.getElementById('app').innerHTML = `
-    <div class="login-page">
-      <div class="login-card">
-        <div class="login-logo">📊</div>
-        <h1>图测记录工具</h1>
-        <div class="form-type-toggle" style="margin:14px auto 20px;justify-content:center">
-          <button type="button" class="type-btn ${tab==='login'?'active':''}" onclick="renderLogin('login')">登录</button>
-          <button type="button" class="type-btn ${tab==='register'?'active':''}" onclick="renderLogin('register')">注册</button>
-        </div>
-        ${tab === 'login' ? `
-          <div class="form-group"><label>邮箱</label><input class="form-control" id="li-email" type="email" placeholder="your@email.com" autocomplete="username"/></div>
-          <div class="form-group"><label>密码</label><input class="form-control" id="li-pwd" type="password" placeholder="••••••••" autocomplete="current-password"/></div>
-          <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="_doLogin()">登录</button>
-        ` : `
-          <div class="form-group"><label>姓名</label><input class="form-control" id="rg-name" type="text" placeholder="你的名字"/></div>
-          <div class="form-group"><label>邮箱</label><input class="form-control" id="rg-email" type="email" placeholder="your@email.com" autocomplete="username"/></div>
-          <div class="form-group"><label>密码</label><input class="form-control" id="rg-pwd" type="password" placeholder="设置密码" autocomplete="new-password"/></div>
-          <div class="form-group"><label>入场码</label><input class="form-control" id="rg-code" type="password" placeholder="联系管理员获取"/></div>
-          <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="_doRegister()">注册并登录</button>
-        `}
-      </div>
-    </div>`;
-  const firstInput = document.querySelector('.login-card input');
-  if (firstInput) firstInput.focus();
-  document.querySelector('.login-card').addEventListener('keydown', e => {
-    if (e.key === 'Enter') tab === 'login' ? _doLogin() : _doRegister();
-  });
+async function _refreshFromDisk() {
+  await refreshData();
+  await syncPending(true);
+  render();
+  toast('已重新加载', 'success');
 }
-
-function _doLogin() {
-  const email = document.getElementById('li-email')?.value.trim();
-  const pwd   = document.getElementById('li-pwd')?.value;
-  if (!email || !pwd) { toast('请输入邮箱和密码', 'error'); return; }
-  signIn(email, pwd);
-}
-
-function _doRegister() {
-  const name  = document.getElementById('rg-name')?.value.trim();
-  const email = document.getElementById('rg-email')?.value.trim();
-  const pwd   = document.getElementById('rg-pwd')?.value;
-  const code  = document.getElementById('rg-code')?.value.trim();
-  if (!name || !email || !pwd || !code) { toast('请填写所有字段', 'error'); return; }
-  registerUser(email, name, pwd, code);
-}
+async function _syncPending() { await syncPending(); render(); }
 
 // ── Dashboard ─────────────────────────────────────────────────
 function renderDashboard() {
@@ -616,7 +593,8 @@ function buildTestCard(t) {
           </div>`:''}
           <div class="card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
-            ${state.userData?.isAdmin?`<button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>`:''}
+            <button class="btn btn-secondary btn-sm" onclick="showHistory('${t.id}')">🕘 历史</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>
           </div>
         </div>
       </div>
@@ -674,7 +652,8 @@ function buildUpdateCard(t) {
           ${t.notes?.change?`<div class="card-notes"><div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div></div>`:''}
           <div class="card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
-            ${state.userData?.isAdmin?`<button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>`:''}
+            <button class="btn btn-secondary btn-sm" onclick="showHistory('${t.id}')">🕘 历史</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>
           </div>
         </div>
       </div>
@@ -684,13 +663,78 @@ function buildUpdateCard(t) {
 function toggleCard(id) { document.getElementById('card-'+id)?.classList.toggle('expanded'); }
 function editTest(id) { const t=state.tests.find(tt=>tt.id===id); state.formType=t?.type==='update'?'update':'test'; state.editTestId=id; navigate('form'); }
 async function deleteTestRecord(id) {
-  if (!confirm('确认删除？此操作不可撤销。')) return;
-  try { await deleteTest(id); toast('已删除','success'); } catch(e) { toast('删除失败：'+e.message,'error'); }
+  if (!confirm('确认删除？删除后会进入回收站，30 天内可恢复。')) return;
+  try {
+    await deleteTest(id);
+    await refreshData();
+    toast('已删除（可在管理面板的回收站找回）','success');
+    if (state.view === 'timeline') renderTimeline();
+    else if (state.view === 'dashboard') renderDashboard();
+  } catch(e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+    render();
+  }
 }
 async function saveConclusion(id) {
   const val = document.getElementById(`conc-${id}`)?.value ?? '';
-  try { await updateTest(id, { conclusion: val.trim() }); toast('实验小结已保存','success'); }
-  catch(e) { toast('保存失败：'+e.message,'error'); }
+  try {
+    await updateTest(id, { conclusion: val.trim() });
+    await refreshData();
+    toast('实验小结已保存','success');
+  } catch(e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+    render();
+  }
+}
+
+// ── 编辑历史 ──────────────────────────────────────────────────
+async function showHistory(id) {
+  const history = await getRecordHistory(id);
+  const test = state.tests.find(t => t.id === id);
+  const wrap = document.createElement('div');
+  wrap.className = 'history-modal-wrap';
+  wrap.id = 'history-wrap';
+  const summarize = r => {
+    const parts = [];
+    if (r.projectName) parts.push(`项目：${r.projectName}`);
+    if (r.tester) parts.push(`负责人：${r.tester}`);
+    if (r.notes?.change) parts.push(`改动：${r.notes.change}`);
+    if (r.conclusion) parts.push(`小结：${r.conclusion.slice(0,40)}${r.conclusion.length>40?'…':''}`);
+    return parts.join(' · ');
+  };
+  const rows = history.length === 0
+    ? `<p style="color:var(--text-muted);text-align:center;padding:30px">暂无历史版本（此记录还没被编辑过）</p>`
+    : history.map((h,i)=>`
+        <div class="history-row">
+          <div class="history-row-meta">
+            <div class="history-time">${new Date(h.ts).toLocaleString('zh-CN')}</div>
+            <div class="history-summary">${escHtml(summarize(h.snapshot))}</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="rollbackHistory('${id}', ${i})">回滚到这版</button>
+        </div>`).join('');
+  wrap.innerHTML = `
+    <div class="ocr-modal" style="max-width:700px">
+      <h3>🕘 编辑历史 <span style="font-size:13px;font-weight:400;color:var(--text-muted)">最多保留最近 5 次编辑</span></h3>
+      <div style="margin-top:14px">${rows}</div>
+      <div class="ocr-actions"><button class="btn btn-secondary" onclick="closeHistory()">关闭</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+function closeHistory() { document.getElementById('history-wrap')?.remove(); }
+async function rollbackHistory(id, idx) {
+  if (!confirm('确认回滚到这个版本？当前版本会被替换（但仍能从更早的历史中找回）。')) return;
+  try {
+    await rollbackRecord(id, idx);
+    await refreshData();
+    closeHistory();
+    toast('已回滚','success');
+    render();
+  } catch (e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+  }
 }
 
 // ── Form ──────────────────────────────────────────────────────
@@ -789,7 +833,7 @@ function renderFormView() {
   }
 
   const projOpts = state.projects.map(p=>`<option value="${p.id}" data-name="${escHtml(p.name)}" ${test?.projectId===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
-  const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
+  const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${test?.tester===n?'selected':''}>${escHtml(n)}</option>`).join('');
 
   const currentBiTypes = Array.isArray(test?.biVizType) ? test.biVizType : (test?.biVizType ? [test.biVizType] : []);
   const biCheckboxes = BI_TYPES.map(b=>`<label class="checkbox-label"><input type="checkbox" id="f-bitype-${b}" value="${b}" ${currentBiTypes.includes(b)?'checked':''}/><span>${b}</span></label>`).join('');
@@ -993,6 +1037,7 @@ async function handleFormSubmit(e) {
       const data = { type:'update', projectId, projectName, tester, updateDate, biVizType, notes, imageUrl, newImageUrl };
       if (state.editTestId) { await updateTest(state.editTestId, data); toast('已保存修改','success'); }
       else { await createTest(data); toast('记录已提交','success'); }
+      await refreshData();
     } else {
       const startDate = document.getElementById('f-start').value;
       const endDate = document.getElementById('f-end').value;
@@ -1022,11 +1067,16 @@ async function handleFormSubmit(e) {
       const data={type:'test',projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,notes,variants};
       if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
       else { await createTest(data); toast('记录已提交','success'); }
+      await refreshData();
     }
 
     formState.images=[null,null,null,null]; formState.previews=[null,null,null,null];
     state.editTestId=null; navigate('timeline');
-  } catch(err) { toast('提交失败：'+err.message,'error'); btn.disabled=false; btn.textContent=state.editTestId?'💾 保存修改':'🚀 提交记录'; }
+  } catch(err) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+    btn.disabled=false; btn.textContent=state.editTestId?'💾 保存修改':'🚀 提交记录';
+  }
 }
 
 // ── OCR Modal (Tesseract.js, no API needed) ───────────────────
@@ -1474,39 +1524,42 @@ function applyCrop() {
 function closeCropModal() { document.getElementById('crop-wrap')?.remove(); }
 // ── Admin ─────────────────────────────────────────────────────
 async function renderAdmin() {
-  const isAdmin = !!state.userData?.isAdmin;
-  const [settings, users, projects] = await Promise.all([getSettings(), getAllUsers(), getProjects()]);
-  const code = settings?.accessCode || '—';
+  const [settings, projects, trash, backups] = await Promise.all([
+    getSettings(), getProjects(), getTrash(), getDailyBackups()
+  ]);
   const testers = settings?.testers || [];
   const ratioPresets = settings?.ratioPresets || RATIO_PRESETS;
   const experimentTypes = settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
 
-  const usersHTML = users.map(u=>`
-    <li>
-      <span>${escHtml(u.name||u.email)}<span style="font-size:11px;color:var(--text-muted)"> (${escHtml(u.email)})</span>${u.isAdmin?'<span class="admin-badge">管理员</span>':''}</span>
-      <div style="display:flex;gap:6px">
-        ${!u.isAdmin?`<button class="btn btn-secondary btn-sm" onclick="makeAdmin('${u.id}')">设为管理员</button>`:''}
-        ${u.id!==state.user.uid?`<button class="btn btn-danger btn-sm" onclick="revokeUser('${u.id}','${escHtml(u.email)}')">移除</button>`:''}
-      </div>
-    </li>`).join('');
   const projHTML = projects.map(p=>`<li><span>${escHtml(p.name)}</span><button class="btn btn-danger btn-sm" onclick="removeProject('${p.id}')">移除</button></li>`).join('');
   const testHTML = testers.map(n=>`<li><span>${escHtml(n)}</span><button class="btn btn-danger btn-sm" onclick="removeTesterItem('${escHtml(n)}')">移除</button></li>`).join('');
   const ratioHTML = ratioPresets.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeRatioPresetItem('${escHtml(r)}')">移除</button></li>`).join('');
   const expTypeHTML = experimentTypes.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeExpTypeItem('${escHtml(r)}')">移除</button></li>`).join('');
 
+  const trashHTML = trash.length === 0
+    ? '<li style="color:var(--text-muted)">回收站为空</li>'
+    : trash.map(t=>{
+        const dateInfo = t.type==='update'?(t.updateDate||''):(t.startDate||'');
+        return `<li>
+          <span>${escHtml(t.projectName||'')} <span style="font-size:11px;color:var(--text-muted)">${escHtml(t.tester||'')} · ${escHtml(dateInfo)} · 删于 ${new Date(t._deleted_at).toLocaleString('zh-CN')}</span></span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="restoreTrashItem('${t.id}')">↩ 还原</button>
+            <button class="btn btn-danger btn-sm" onclick="purgeTrashRecord('${t.id}')">永久删除</button>
+          </div>
+        </li>`;
+      }).join('');
+
+  const backupsHTML = backups.length === 0
+    ? '<li style="color:var(--text-muted)">还没有备份（每天首次保存时自动创建）</li>'
+    : backups.slice(0, 30).map(d => `
+        <li>
+          <span>📦 ${d}</span>
+          <button class="btn btn-secondary btn-sm" onclick="restoreDailyBackup('${d}')">还原到这一天</button>
+        </li>`).join('');
+
   renderShell(`
     <div class="page-header"><div class="page-title">⚙️ 管理面板</div></div>
     <div class="admin-grid">
-      ${isAdmin ? `
-      <div class="admin-card" style="grid-column:1/-1">
-        <h3>🔐 入场码 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
-        <div class="access-code-display" id="code-display">${escHtml(code)}</div>
-        <div class="add-row"><input class="form-control" id="new-code" type="text" placeholder="输入新入场码…"/><button class="btn btn-primary" onclick="changeCode()">修改入场码</button></div>
-      </div>
-      <div class="admin-card">
-        <h3>👥 团队成员 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
-        <ul class="admin-list">${usersHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-      </div>` : ''}
       <div class="admin-card">
         <h3>🧑‍💻 测试人员名单</h3>
         <ul class="admin-list">${testHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
@@ -1529,76 +1582,91 @@ async function renderAdmin() {
         <ul class="admin-list">${projHTML||'<li style="color:var(--text-muted)">暂无项目</li>'}</ul>
         <div class="add-row"><input class="form-control" id="add-proj" type="text" placeholder="新项目名称…"/><button class="btn btn-primary" onclick="addProjectItem()">添加项目</button></div>
       </div>
+      <div class="admin-card" style="grid-column:1/-1">
+        <h3>🗑 回收站 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">删除的记录保留 30 天，可一键还原</span></h3>
+        <ul class="admin-list">${trashHTML}</ul>
+      </div>
+      <div class="admin-card" style="grid-column:1/-1">
+        <h3>📦 每日整库快照 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">每天首次保存时自动备份，保留最近 30 天。万一全员都改坏了，可以一键还原到任意一天</span></h3>
+        <ul class="admin-list">${backupsHTML}</ul>
+      </div>
     </div>`, 'admin');
 }
 
-async function changeCode() {
-  const code = document.getElementById('new-code').value.trim();
-  if (!code) { toast('请输入新入场码','error'); return; }
-  await updateSettings({accessCode:code});
-  document.getElementById('code-display').textContent = code;
-  document.getElementById('new-code').value = '';
-  toast('入场码已更新','success');
+async function safeAdminAction(fn, successMsg) {
+  try {
+    await fn();
+    await refreshData();
+    if (successMsg) toast(successMsg, 'success');
+    renderAdmin();
+  } catch (e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试', 'error');
+    renderAdmin();
+  }
 }
-async function makeAdmin(uid) { await updateUser(uid,{isAdmin:true}); toast('已设为管理员','success'); renderAdmin(); }
-async function revokeUser(uid, email) {
-  if (!confirm(`确认移除 ${email} 的访问权限？`)) return;
-  await updateUser(uid,{approved:false});
-  const s = await getSettings();
-  await updateSettings({allowlist:(s?.allowlist||[]).filter(e=>e!==email)});
-  toast('已移除访问权限','success'); renderAdmin();
-}
+
 async function addProjectItem() {
   const n = document.getElementById('add-proj').value.trim(); if(!n) return;
-  await addProject(n); document.getElementById('add-proj').value='';
-  toast('项目已添加','success'); renderAdmin();
+  document.getElementById('add-proj').value='';
+  await safeAdminAction(() => addProject(n), '项目已添加');
 }
 async function removeProject(id) {
   if (!confirm('确认删除此项目？')) return;
-  await deleteProject(id); toast('已删除项目','success'); renderAdmin();
+  await safeAdminAction(() => deleteProject(id), '已删除项目');
 }
 async function addTesterItem() {
   const n = document.getElementById('add-tester').value.trim(); if(!n) return;
-  await addTester(n); document.getElementById('add-tester').value='';
-  state.settings = await getSettings(); toast('测试人员已添加','success'); renderAdmin();
+  document.getElementById('add-tester').value='';
+  await safeAdminAction(() => addTester(n), '测试人员已添加');
 }
 async function removeTesterItem(name) {
   if (!confirm(`确认移除 ${name}？`)) return;
-  await removeTester(name); state.settings=await getSettings(); toast('已移除','success'); renderAdmin();
+  await safeAdminAction(() => removeTester(name), '已移除');
 }
 async function addRatioPresetItem() {
   const n = document.getElementById('add-ratio').value.trim(); if(!n) return;
   const s = await getSettings();
   const presets = s?.ratioPresets || RATIO_PRESETS;
   if (presets.includes(n)) { toast('该选项已存在','info'); return; }
-  await updateSettings({ ratioPresets: [...presets, n] });
-  state.settings = await getSettings();
   document.getElementById('add-ratio').value = '';
-  toast('比例选项已添加','success'); renderAdmin();
+  await safeAdminAction(() => updateSettings({ ratioPresets: [...presets, n] }), '比例选项已添加');
 }
 async function removeRatioPresetItem(r) {
   if (!confirm(`移除比例选项「${r}」？`)) return;
   const s = await getSettings();
-  await updateSettings({ ratioPresets: (s?.ratioPresets || RATIO_PRESETS).filter(p=>p!==r) });
-  state.settings = await getSettings();
-  toast('已移除','success'); renderAdmin();
+  await safeAdminAction(
+    () => updateSettings({ ratioPresets: (s?.ratioPresets || RATIO_PRESETS).filter(p=>p!==r) }),
+    '已移除'
+  );
 }
 async function addExpTypeItem() {
   const n = document.getElementById('add-exptype').value.trim(); if(!n) return;
   const s = await getSettings();
   const types = s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
   if (types.includes(n)) { toast('该选项已存在','info'); return; }
-  await updateSettings({ experimentTypes: [...types, n] });
-  state.settings = await getSettings();
   document.getElementById('add-exptype').value = '';
-  toast('实验类型已添加','success'); renderAdmin();
+  await safeAdminAction(() => updateSettings({ experimentTypes: [...types, n] }), '实验类型已添加');
 }
 async function removeExpTypeItem(r) {
   if (!confirm(`移除实验类型「${r}」？`)) return;
   const s = await getSettings();
-  await updateSettings({ experimentTypes: (s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES).filter(p=>p!==r) });
-  state.settings = await getSettings();
-  toast('已移除','success'); renderAdmin();
+  await safeAdminAction(
+    () => updateSettings({ experimentTypes: (s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES).filter(p=>p!==r) }),
+    '已移除'
+  );
+}
+
+async function restoreTrashItem(id) {
+  await safeAdminAction(() => restoreFromTrash(id), '已从回收站还原');
+}
+async function purgeTrashRecord(id) {
+  if (!confirm('永久删除这条记录？无法恢复。')) return;
+  await safeAdminAction(() => purgeTrashItem(id), '已永久删除');
+}
+async function restoreDailyBackup(date) {
+  if (!confirm(`将 tests.json 还原到 ${date} 的状态？\n\n当前状态会先自动备份一份，可以再还原回来。`)) return;
+  await safeAdminAction(() => restoreFromBackup(date), `已还原到 ${date}`);
 }
 
 
@@ -1607,11 +1675,12 @@ Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected, setActiveOcrZone,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
   navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, handleRatioChange,
-  signOutUser, renderLogin, _doLogin, _doRegister,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
   activatePaste, setActiveImgZone, clearActiveImgZone, switchFormType,
   updateEffectSelect, updateEffectBadge, openLightbox,
-  changeCode, makeAdmin, revokeUser,
   addProjectItem, removeProject, addTesterItem, removeTesterItem,
   addRatioPresetItem, removeRatioPresetItem, addExpTypeItem, removeExpTypeItem,
+  showHistory, closeHistory, rollbackHistory,
+  restoreTrashItem, purgeTrashRecord, restoreDailyBackup,
+  _pickFolder, _resumeFolder, _refreshFromDisk, _syncPending,
 });

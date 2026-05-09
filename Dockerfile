@@ -1,6 +1,6 @@
-FROM python:3.11-slim
+FROM node:20-slim
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+COPY server.js .
+COPY public ./public
 EXPOSE 5000
-CMD ["python", "server.py"]
+CMD ["node", "server.js"]

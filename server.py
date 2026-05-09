@@ -4,19 +4,26 @@
 依赖: pip install flask flask-cors
 启动: python server.py
 """
-import os, json, uuid, sqlite3, hmac, hashlib, base64, time, secrets
+import sys, os, json, uuid, sqlite3, hmac, hashlib, base64, time, secrets
 from functools import wraps
 from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
 
 # ── 配置 ──────────────────────────────────────────────────────
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    # PyInstaller 打包后：静态文件在临时解压目录，数据库放在 exe 同级目录
+    BUNDLE_DIR = sys._MEIPASS
+    BASE_DIR   = os.path.dirname(sys.executable)
+else:
+    BUNDLE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR   = BUNDLE_DIR
+
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 DB_PATH  = os.path.join(DATA_DIR, 'db.sqlite')
 SECRET   = os.environ.get('SECRET_KEY', 'change-me-in-production')
 PORT     = int(os.environ.get('PORT', 5000))
 
-app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'public'), static_url_path='')
+app = Flask(__name__, static_folder=os.path.join(BUNDLE_DIR, 'public'), static_url_path='')
 CORS(app)
 
 # ── 数据库 ────────────────────────────────────────────────────

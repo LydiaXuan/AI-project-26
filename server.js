@@ -277,6 +277,8 @@ async function handleRequest(req, res) {
 
 // ── 自动更新（每小时检查一次 git pull）────────────────────────────
 function autoUpdate() {
+  const gitDir = path.join(__dirname, '.git');
+  if (!fs.existsSync(gitDir)) return;
   exec('git pull', { cwd: __dirname }, (err, stdout) => {
     if (err) return;
     const out = (stdout || '').trim();

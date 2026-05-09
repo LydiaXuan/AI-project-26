@@ -275,6 +275,19 @@ async function handleRequest(req, res) {
   jsonErr(res, 404, 'Not found');
 }
 
+// ── 自动更新（每小时检查一次 git pull）────────────────────────────
+function autoUpdate() {
+  exec('git pull', { cwd: __dirname }, (err, stdout) => {
+    if (err) return;
+    const out = (stdout || '').trim();
+    if (out && out !== 'Already up to date.') {
+      console.log('🔄 检测到新版本，即将重启…', out);
+      setTimeout(() => process.exit(0), 1000);
+    }
+  });
+}
+setInterval(autoUpdate, 60 * 60 * 1000);
+
 // ── 启动 ─────────────────────────────────────────────────────────
 ensureDataDir();
 http.createServer((req, res) => {

@@ -1503,15 +1503,6 @@ async function renderAdmin() {
         <div class="access-code-display" id="code-display">${escHtml(code)}</div>
         <div class="add-row"><input class="form-control" id="new-code" type="text" placeholder="输入新入场码…"/><button class="btn btn-primary" onclick="changeCode()">修改入场码</button></div>
       </div>
-      <div class="admin-card" style="grid-column:1/-1">
-        <h3>🔄 一键更新 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">从 GitHub 拉取最新代码，服务器自动重启（约5秒后刷新页面）</p>
-        <div class="add-row">
-          <button class="btn btn-primary" id="update-btn" onclick="triggerUpdate()">拉取更新并重启</button>
-          <span id="update-status" style="font-size:13px;color:var(--text-muted)"></span>
-        </div>
-        <pre id="update-log" style="display:none;margin-top:10px;background:var(--bg-secondary);padding:10px;border-radius:6px;font-size:12px;white-space:pre-wrap;max-height:120px;overflow:auto"></pre>
-      </div>
       <div class="admin-card">
         <h3>👥 团队成员 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
         <ul class="admin-list">${usersHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
@@ -1610,28 +1601,6 @@ async function removeExpTypeItem(r) {
   toast('已移除','success'); renderAdmin();
 }
 
-async function triggerUpdate() {
-  const btn = document.getElementById('update-btn');
-  const status = document.getElementById('update-status');
-  const log = document.getElementById('update-log');
-  btn.disabled = true;
-  status.textContent = '正在拉取更新…';
-  try {
-    const res = await apiFetch('/api/admin/update', { method: 'POST' });
-    log.style.display = 'block';
-    log.textContent = res.log || '';
-    if (res.ok) {
-      status.textContent = '更新成功，5秒后自动刷新…';
-      setTimeout(() => location.reload(), 5000);
-    } else {
-      status.textContent = '更新失败，请查看日志';
-      btn.disabled = false;
-    }
-  } catch {
-    status.textContent = '请求失败，请检查网络';
-    btn.disabled = false;
-  }
-}
 
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
@@ -1645,5 +1614,4 @@ Object.assign(window, {
   changeCode, makeAdmin, revokeUser,
   addProjectItem, removeProject, addTesterItem, removeTesterItem,
   addRatioPresetItem, removeRatioPresetItem, addExpTypeItem, removeExpTypeItem,
-  triggerUpdate,
 });

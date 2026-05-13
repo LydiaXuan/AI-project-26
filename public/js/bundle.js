@@ -1,8 +1,3 @@
-// ================================================================
-// bundle.js – effects + db + app (单文件，无 ES module，支持 file:// 直接打开)
-// ================================================================
-
-// ---- effects.js ----
 const EFFECT = {
   SUPERB:      'superb',      // 🏆 很好
   GOOD:        'good',        // 👍 不错
@@ -81,8 +76,6 @@ const EFFECT_OPTIONS = [
   { val: EFFECT.EMPIRICAL_P, label: '📈 经验决策(+)' },
   { val: EFFECT.EMPIRICAL_N, label: '📈 经验决策(-)' },
 ];
-
-// ---- db.js ----
 // ================================================================
 // db.js – 纯浏览器存储层
 //   • File System Access API 直接读写群晖网络盘上的 JSON 文件
@@ -494,11 +487,13 @@ function subscribeProjects(cb) {
 
 // ── 兼容旧接口（单纯返回） ──────────────────────────────────────
 function initDB() {}
-
-// ---- app.js ----
 // ================================================================
 // app.js  –  图测记录工具
 // ================================================================
+
+
+
+initDB();
 
 // ── 个人信息（仅存本浏览器 localStorage）─────────────────────
 function getProfile() { try { return JSON.parse(localStorage.getItem('chart-recorder-profile')||'{}'); } catch { return {}; } }
@@ -528,7 +523,7 @@ const state = {
   view: 'dashboard', tests: [], projects: [],
   filterProject: 'all', filterEffect: 'all', filterBiType: 'all',
   filterExpType: 'all', filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
-  editTestId: null, activeVariant: null, activeImgVariant: null, formType: 'test',
+  editTestId: null, activeVariant: null, activeImgVariant: null, formType: 'test', selectedTestId: null,
 };
 const formState = { images: [null,null,null,null], previews: [null,null,null,null] };
 const charts = {};
@@ -889,29 +884,7 @@ function initCharts(tests) {
 // ── Timeline ──────────────────────────────────────────────────
 const BI_TYPE_OPTS = ['icon','五图','置顶','视频'];
 
-function renderTimeline() {
-  const projOpts = state.projects.map(p=>`<option value="${p.id}" ${state.filterProject===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
-  const expTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
-
-  const TL_EFFECT_OPTS = [
-    {val:'all',       label:'全部表现'},
-    {val:'superb',    label:'🏆 很好'},
-    {val:'good',      label:'👍 不错'},
-    {val:'bad',       label:'❌ 很差'},
-    {val:'neutral_p', label:'➖ 持平(+)'},
-    {val:'neutral_n', label:'➖ 持平(-)'},
-    {val:'empirical_p',label:'📈 经验决策(+)'},
-    {val:'empirical_n',label:'📈 经验决策(-)'},
-  ];
-  const effectOpts = TL_EFFECT_OPTS.map(o=>`<option value="${o.val}" ${state.filterEffect===o.val?'selected':''}>${o.label}</option>`).join('');
-  const biTypeOpts = [`<option value="all" ${state.filterBiType==='all'?'selected':''}>全部截图类型</option>`,
-    ...BI_TYPE_OPTS.map(b=>`<option value="${b}" ${state.filterBiType===b?'selected':''}>${b}</option>`)
-  ].join('');
-  const expTypeOpts = [`<option value="all" ${state.filterExpType==='all'?'selected':''}>全部实验类型</option>`,
-    ...expTypes.map(b=>`<option value="${b}" ${state.filterExpType===b?'selected':''}>${escHtml(b)}</option>`)
-  ].join('');
-
-  // Apply filters
+function _tlFilterTests() {
   let tests = [...state.tests];
   if (state.filterProject !== 'all') tests = tests.filter(t=>t.projectId===state.filterProject);
   if (state.filterEffect !== 'all') tests = tests.filter(t=>t.type!=='update'&&(t.variants||[]).some((v,i)=>i>0&&(v.effect===state.filterEffect||(state.filterEffect==='superb'&&v.effect==='great'))));
@@ -941,6 +914,32 @@ function renderTimeline() {
     ? new Date(dateOf(b))-new Date(dateOf(a))
     : new Date(dateOf(a))-new Date(dateOf(b))
   );
+  return tests;
+}
+
+function renderTimeline() {
+  const projOpts = state.projects.map(p=>`<option value="${p.id}" ${state.filterProject===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
+  const expTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
+
+  const TL_EFFECT_OPTS = [
+    {val:'all',       label:'全部表现'},
+    {val:'superb',    label:'🏆 很好'},
+    {val:'good',      label:'👍 不错'},
+    {val:'bad',       label:'❌ 很差'},
+    {val:'neutral_p', label:'➖ 持平(+)'},
+    {val:'neutral_n', label:'➖ 持平(-)'},
+    {val:'empirical_p',label:'📈 经验决策(+)'},
+    {val:'empirical_n',label:'📈 经验决策(-)'},
+  ];
+  const effectOpts = TL_EFFECT_OPTS.map(o=>`<option value="${o.val}" ${state.filterEffect===o.val?'selected':''}>${o.label}</option>`).join('');
+  const biTypeOpts = [`<option value="all" ${state.filterBiType==='all'?'selected':''}>全部截图类型</option>`,
+    ...BI_TYPE_OPTS.map(b=>`<option value="${b}" ${state.filterBiType===b?'selected':''}>${b}</option>`)
+  ].join('');
+  const expTypeOpts = [`<option value="all" ${state.filterExpType==='all'?'selected':''}>全部实验类型</option>`,
+    ...expTypes.map(b=>`<option value="${b}" ${state.filterExpType===b?'selected':''}>${escHtml(b)}</option>`)
+  ].join('');
+
+  const tests = _tlFilterTests();
 
   const activeFilters = [
     state.filterProject!=='all', state.filterEffect!=='all',
@@ -948,9 +947,21 @@ function renderTimeline() {
     !!state.searchQuery
   ].filter(Boolean).length;
 
-  const body = tests.length===0
-    ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>暂无匹配记录</p><button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="resetTimelineFilters()">清除筛选</button></div>`
-    : `<div class="timeline">${tests.map(t=>t.type==='update'?buildUpdateCard(t):buildTestCard(t)).join('')}</div>`;
+  // Auto-select first item if none selected or selected not in filtered list
+  if (tests.length > 0) {
+    const inList = tests.some(t => t.id === state.selectedTestId);
+    if (!inList) state.selectedTestId = tests[0].id;
+  } else {
+    state.selectedTestId = null;
+  }
+
+  const selectedTest = state.selectedTestId ? state.tests.find(t => t.id === state.selectedTestId) : null;
+
+  const listHtml = tests.length === 0
+    ? `<div class="tl-list-empty"><div style="font-size:32px;margin-bottom:8px">🔍</div><p>暂无匹配记录</p><button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="resetTimelineFilters()">清除筛选</button></div>`
+    : tests.map(t => buildTlListItem(t)).join('');
+
+  const detailHtml = selectedTest ? buildTlDetail(selectedTest) : `<div class="tl-detail-empty"><div class="empty-icon">👈</div><p>请选择左侧记录查看详情</p></div>`;
 
   renderShell(`
     <div class="page-header">
@@ -966,7 +977,7 @@ function renderTimeline() {
         <select class="form-control tl-select" id="tl-project" onchange="applyTimelineFilters()">
           <option value="all" ${state.filterProject==='all'?'selected':''}>全部项目</option>${projOpts}
         </select>
-<select class="form-control tl-select" id="tl-exptype" onchange="applyTimelineFilters()">
+        <select class="form-control tl-select" id="tl-exptype" onchange="applyTimelineFilters()">
           ${expTypeOpts}
         </select>
         <select class="form-control tl-select" id="tl-effect" onchange="applyTimelineFilters()">
@@ -979,8 +990,190 @@ function renderTimeline() {
         ${activeFilters>0?`<button class="btn btn-secondary btn-sm tl-reset" onclick="resetTimelineFilters()">重置 (${activeFilters})</button>`:''}
       </div>
     </div>
-    ${body}
+    <div class="tl-split">
+      <div class="tl-list-pane" id="tl-list-pane">${listHtml}</div>
+      <div class="tl-detail-pane" id="tl-detail-pane">${detailHtml}</div>
+    </div>
   `, 'timeline');
+}
+
+function buildTlListItem(t) {
+  const isUpdate = t.type === 'update';
+  const vars = t.variants || [];
+  const anyApplied = !isUpdate && vars.some((v,i) => i > 0 && v.applied);
+  const normEffect = e => e==='great'?'superb':e==='empirical'?'empirical_p':e||'empirical_n';
+
+  const dateLines = isUpdate
+    ? `<span>${t.updateDate || ''}</span><span class="tl-date-arrow">更新</span>`
+    : `<span>${t.startDate || ''}</span><span class="tl-date-arrow">↓</span><span>${t.endDate || '进行中'}</span>`;
+
+  const thumbsHtml = isUpdate
+    ? [t.imageUrl, t.newImageUrl].filter(Boolean).slice(0,4).map(url =>
+        `<img class="tl-item-thumb" src="${url}" />`).join('')
+    : vars.slice(0,4).map(v => v.imageUrl
+        ? `<img class="tl-item-thumb" src="${v.imageUrl}" />`
+        : `<div class="tl-item-thumb-ph">🖼</div>`).join('');
+
+  const dotCls = isUpdate ? 'dot-update' : (anyApplied ? 'dot-applied' : '');
+  const badgesHtml = !isUpdate
+    ? vars.filter((_,i)=>i>0).map(v => effectBadgeHTML(normEffect(v.effect))).join('')
+    : '';
+
+  const isSelected = state.selectedTestId === t.id;
+  return `
+    <div class="tl-list-item${isSelected ? ' selected' : ''}" data-id="${t.id}" onclick="selectTimelineTest('${t.id}')">
+      <div class="tl-item-dates">${dateLines}</div>
+      <div class="tl-item-axis"><div class="tl-item-axis-dot ${dotCls}"></div></div>
+      <div class="tl-item-content">
+        <div class="tl-item-name">${escHtml(t.projectName || '')}${isUpdate ? ' <span style="font-size:11px;color:#F97316">🔄</span>' : ''}</div>
+        ${badgesHtml ? `<div class="tl-item-chips">${badgesHtml}</div>` : ''}
+        <div class="tl-item-thumbs">${thumbsHtml || '<div class="tl-item-thumb-ph">🖼</div>'}</div>
+      </div>
+    </div>`;
+}
+
+function buildTlDetail(t) {
+  if (!t) return `<div class="tl-detail-empty"><div class="empty-icon">👈</div><p>请选择左侧记录查看详情</p></div>`;
+  const isUpdate = t.type === 'update';
+  const vars = t.variants || [];
+  const biTypes = Array.isArray(t.biVizType) ? t.biVizType : (t.biVizType ? [t.biVizType] : []);
+  const normEffect = e => e==='great'?'superb':e==='empirical'?'empirical_p':e||'empirical_n';
+
+  const appliedIdx = vars.findIndex((v,i) => i > 0 && v.applied);
+  const appliedVar = appliedIdx >= 0 ? vars[appliedIdx] : null;
+
+  // Images section
+  let imagesHtml = '';
+  if (isUpdate) {
+    const pairs = [{url: t.imageUrl, label:'原始'}, {url: t.newImageUrl, label:'更新后'}].filter(p=>p.url);
+    imagesHtml = pairs.map(p=>`
+      <div class="tl-detail-img-wrap">
+        <img class="tl-detail-img" src="${p.url}" onclick="openLightbox('${p.url}')" />
+        <div class="tl-detail-img-label">${p.label}</div>
+      </div>`).join('');
+  } else {
+    imagesHtml = vars.map((v,i)=>{
+      const label = i===0 ? '🔵 原始' : `🔴 测试${i}${v.applied?' ✓':''}`;
+      return v.imageUrl ? `
+        <div class="tl-detail-img-wrap">
+          ${v.applied ? '<div class="thumb-applied-label">✓ 采用</div>' : ''}
+          <img class="tl-detail-img${v.applied?' applied-thumb':''}" src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" />
+          <div class="tl-detail-img-label">${label}</div>
+        </div>` : '';
+    }).join('');
+  }
+
+  // Header meta
+  const metaChips = isUpdate
+    ? `<span class="meta-chip">📅 ${t.updateDate||''}</span><span class="badge badge-orange">🔄 直接更新</span>${biTypes.map(b=>`<span class="bi-type-tag">${escHtml(b)}</span>`).join('')}`
+    : `<span class="meta-chip">📅 ${t.startDate||''} → ${t.endDate||'进行中'}</span>
+       <span class="meta-chip">置信度 ${t.confidence||'-'}%</span>
+       ${t.testRatio?`<span class="meta-chip">比例 ${escHtml(t.testRatio)}</span>`:''}
+       ${t.experimentType?`<span class="bi-type-tag">${escHtml(t.experimentType)}</span>`:''}
+       ${biTypes.map(b=>`<span class="bi-type-tag">${escHtml(b)}</span>`).join('')}
+       ${t.tester?`<span class="badge badge-blue">${escHtml(t.tester)}</span>`:''}
+       ${appliedVar?`<span class="applied-chip">✓ 测试${appliedIdx} 已采用</span>`:'<span class="not-applied-chip">暂未应用</span>'}`;
+
+  // Data table (test only)
+  const effectScore = {superb:7,good:6,neutral_p:5,neutral_n:4,empirical_p:3,empirical_n:2,bad:1,control:0,great:7,empirical:3};
+  const testVars = vars.filter((_,i)=>i>0);
+  const bestFI = testVars.length ? Math.max(...testVars.map(v=>v.firstInstalls||0)) : 0;
+  const bestRI = testVars.length ? Math.max(...testVars.map(v=>v.retainedInstalls||0)) : 0;
+  const bestEffectScore = testVars.reduce((m,v)=>Math.max(m, effectScore[normEffect(v.effect)]||0), 0);
+  const tableRows = vars.map((v,i)=>{
+    const isBestFI = i>0 && bestFI>0 && v.firstInstalls===bestFI;
+    const isBestRI = i>0 && bestRI>0 && v.retainedInstalls===bestRI;
+    const isBestEffect = i>0 && bestEffectScore>0 && (effectScore[normEffect(v.effect)]||0)===bestEffectScore;
+    return `<tr${v.applied&&i>0?' class="applied-row"':''}>
+      <td><div class="variant-img-cell">${v.imageUrl?`<img src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>`:'<span style="font-size:18px">🖼</span>'}<span>${i===0?'🔵 原始':`🔴 测试${i}`}${v.applied?' 🏳️':''}</span></div></td>
+      <td>${v.firstInstalls??'-'}${isBestFI?'<span class="best-tag">🥇</span>':''}</td>
+      <td>${(v.ciLower!==null&&v.ciLower!==''&&v.ciLower!==undefined)?`[${v.ciLower}%, ${v.ciUpper}%]`:'-'}</td>
+      <td>${v.retainedInstalls??'-'}${isBestRI?'<span class="best-tag">🥇</span>':''}</td>
+      <td>${i===0?'<span style="color:var(--text-muted)">基准</span>':effectBadgeHTML(normEffect(v.effect))}${isBestEffect&&i>0?'<span class="best-tag">⭐</span>':''}</td>
+      <td>${i===0?'-':v.applied?'<span class="applied-yes">✓ 已应用</span>':'<span class="applied-no">未应用</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  const tableSection = !isUpdate && vars.length > 0 ? `
+    <div class="tl-detail-section">
+      <div class="tl-detail-section-title">📊 实验数据对比</div>
+      <table class="variants-table">
+        <thead><tr><th>变体</th><th>首次安装数</th><th>置信区间</th><th>保留安装数</th><th>测试效果</th><th>是否应用</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>` : '';
+
+  // Progress block
+  const progressSection = !isUpdate ? buildProgressBlock(t) : '';
+
+  // Adopted section
+  const adoptedSection = appliedVar ? `
+    <div class="tl-detail-section">
+      <div class="adopted-section">
+        <div class="adopted-header">当前最终采用版本</div>
+        <div class="adopted-body">
+          ${appliedVar.imageUrl ? `<img class="adopted-img" src="${appliedVar.imageUrl}" onclick="openLightbox('${appliedVar.imageUrl}')" style="cursor:zoom-in"/>` : '<div class="adopted-img-ph">🖼</div>'}
+          <div class="adopted-meta">
+            <div class="adopted-name">测试 ${appliedIdx} ${effectBadgeHTML(normEffect(appliedVar.effect))}</div>
+            <div class="adopted-stats">
+              ${appliedVar.firstInstalls!=null?`<span class="a-stat">首次安装 <strong>${appliedVar.firstInstalls}</strong></span>`:''}
+              ${appliedVar.retainedInstalls!=null?`<span class="a-stat">保留安装 <strong>${appliedVar.retainedInstalls}</strong></span>`:''}
+              ${appliedVar.ciLower!=null?`<span class="a-stat">CI <strong>[${appliedVar.ciLower}%, ${appliedVar.ciUpper}%]</strong></span>`:''}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>` : '';
+
+  // Conclusion
+  const conclusionSection = !isUpdate ? `
+    <div class="tl-detail-section">
+      <div class="conc-block conc-manual">
+        <div class="conc-title">📝 实验小结</div>
+        <textarea class="form-control" id="conc-${t.id}" rows="3" placeholder="填写实验结论、分析和建议…" style="resize:vertical;margin-top:6px;font-size:13px">${escHtml(t.conclusion||'')}</textarea>
+        <div style="text-align:right;margin-top:6px"><button class="btn btn-primary btn-sm" onclick="saveConclusion('${t.id}')">💾 保存小结</button></div>
+      </div>
+    </div>` : '';
+
+  // Notes
+  const notesSection = (t.notes?.change||t.notes?.purpose||t.notes?.design) ? `
+    <div class="tl-detail-section">
+      <div class="card-notes">
+        ${t.notes.change?`<div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div>`:''}
+        ${t.notes.purpose?`<div class="note-row"><span class="note-tag">目的</span><span>${escHtml(t.notes.purpose)}</span></div>`:''}
+        ${t.notes.design?`<div class="note-row"><span class="note-tag">思路</span><span>${escHtml(t.notes.design)}</span></div>`:''}
+      </div>
+    </div>` : '';
+
+  return `<div class="tl-detail-inner">
+    <div class="tl-detail-header">
+      <div class="tl-detail-title-col">
+        <div class="tl-detail-title">${escHtml(t.projectName||'')}</div>
+        <div class="tl-detail-meta">${metaChips}</div>
+      </div>
+      <div class="tl-detail-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
+        <button class="btn btn-secondary btn-sm" onclick="showHistory('${t.id}')">🕘 历史</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>
+      </div>
+    </div>
+    ${imagesHtml ? `<div class="tl-detail-images">${imagesHtml}</div>` : ''}
+    ${adoptedSection}
+    ${progressSection}
+    ${tableSection}
+    ${conclusionSection}
+    ${notesSection}
+  </div>`;
+}
+
+function selectTimelineTest(id) {
+  state.selectedTestId = id;
+  document.querySelectorAll('.tl-list-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  const t = state.tests.find(tt => tt.id === id);
+  const detailEl = document.getElementById('tl-detail-pane');
+  if (detailEl) detailEl.innerHTML = t ? buildTlDetail(t) : `<div class="tl-detail-empty"><div class="empty-icon">👈</div><p>请选择左侧记录查看详情</p></div>`;
 }
 
 function onSearchInput(val) {
@@ -1193,7 +1386,7 @@ async function deleteTestRecord(id) {
     await refreshData();
     toast('已删除（可在管理面板的回收站找回）','success');
     if (state.view === 'form') navigate('timeline');
-    else if (state.view === 'timeline') renderTimeline();
+    else if (state.view === 'timeline') { state.selectedTestId = null; renderTimeline(); }
     else if (state.view === 'dashboard') renderDashboard();
     else render();
   } catch(e) {
@@ -2337,7 +2530,7 @@ function saveProfileName() {
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected, setActiveOcrZone,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
-  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, handleRatioChange,
+  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, selectTimelineTest, handleRatioChange,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg,
   activatePaste, setActiveImgZone, clearActiveImgZone, switchFormType,
   updateEffectSelect, updateEffectBadge, openLightbox,
@@ -2348,3 +2541,4 @@ Object.assign(window, {
   _pickFolder, _resumeFolder, _refreshFromDisk, _syncPending,
   profileAvatarSelected, removeProfileAvatar, saveProfileName,
 });
+

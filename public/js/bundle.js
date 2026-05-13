@@ -500,6 +500,10 @@ function initDB() {}
 // app.js  –  图测记录工具
 // ================================================================
 
+// ── 个人信息（仅存本浏览器 localStorage）─────────────────────
+function getProfile() { try { return JSON.parse(localStorage.getItem('chart-recorder-profile')||'{}'); } catch { return {}; } }
+function saveProfile(p) { localStorage.setItem('chart-recorder-profile', JSON.stringify(p)); }
+
 // 客户端图片压缩（存 base64，无需 Storage）
 function compressImage(file, maxPx = 480, quality = 0.72) {
   return new Promise(resolve => {
@@ -703,33 +707,48 @@ function render() {
     case 'timeline':  renderTimeline();  break;
     case 'form':      renderFormView();  break;
     case 'admin':     renderAdmin();     break;
+    case 'profile':   renderProfile();   break;
   }
 }
 
 // ── Shell ─────────────────────────────────────────────────────
 function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+function sidebarAvatarHTML(prof, cls) {
+  if (prof.avatar) return `<img class="${cls}" src="${prof.avatar}" alt="" />`;
+  const initial = (prof.name && prof.name.trim()[0]) || '👤';
+  return `<span class="${cls} placeholder">${escHtml(initial)}</span>`;
+}
+
 function renderShell(content, activeTab) {
   const folderName = getFolderName();
+  const prof = getProfile();
+  const navItem = (tab, view, icon, label) =>
+    `<button class="sidebar-nav-item${activeTab===tab?' active':''}" onclick="navigate('${view}')"><span class="sidebar-nav-icon">${icon}</span><span>${label}</span></button>`;
   const pending = state.pendingCount > 0
     ? `<button class="pending-pill" onclick="_syncPending()" title="点击重试同步">⚠ ${state.pendingCount} 条未同步</button>`
     : '';
   document.getElementById('app').innerHTML = `
-    <nav class="navbar">
-      <div class="navbar-brand">图测记录工具<span>Chart Testing</span></div>
-      <div class="nav-tabs">
-        <button class="nav-tab${activeTab==='dashboard'?' active':''}" onclick="navigate('dashboard')">仪表盘</button>
-        <button class="nav-tab${activeTab==='timeline'?' active':''}" onclick="navigate('timeline')">时间线</button>
-        <button class="nav-tab btn-primary" style="margin-left:8px" onclick="navigate('form')">＋ 新增记录</button>
-      </div>
-      <div class="navbar-right">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><span class="sidebar-logo">📊</span><span>图测记录工具</span></div>
+      <nav class="sidebar-nav">
+        <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span>＋</span><span>新增记录</span></button>
+        ${navItem('timeline','timeline','📋','时间线')}
+        ${navItem('dashboard','dashboard','📊','仪表盘')}
+        ${navItem('admin','admin','⚙️','管理')}
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-data">
+        <span class="sidebar-folder" title="${escHtml(folderName||'未选择')}">📂 ${escHtml(folderName||'未选择')}</span>
+        <button class="sidebar-data-btn" onclick="_refreshFromDisk()">🔄 刷新数据</button>
         ${pending}
-        <button class="nav-tab${activeTab==='admin'?' active':''}" onclick="navigate('admin')">⚙️ 管理</button>
-        <button class="btn-icon" title="刷新数据（从群晖重新读取）" onclick="_refreshFromDisk()">🔄</button>
-        <span class="user-pill" title="数据文件夹"><span style="font-size:14px">📂</span><span>${escHtml(folderName||'未选择')}</span></span>
       </div>
-    </nav>
-    <main class="page">${content}</main>`;
+      <button class="sidebar-profile" onclick="navigate('profile')">
+        ${sidebarAvatarHTML(prof, 'sidebar-avatar')}
+        <span class="sidebar-profile-name">${escHtml(prof.name || '设置个人信息')}</span>
+      </button>
+    </aside>
+    <main class="page-with-sidebar">${content}</main>`;
 }
 
 async function _refreshFromDisk() {
@@ -1454,7 +1473,7 @@ function renderFormView() {
           </form>
         </div>
       </div>
-    </div>`, 'timeline');
+    </div>`, 'form');
 }
 
 function switchFormType(type) {
@@ -2256,6 +2275,64 @@ async function restoreDailyBackup(date) {
 }
 
 
+// ── Profile page ──────────────────────────────────────────────
+function profileAvatarLgHTML() {
+  const prof = getProfile();
+  if (prof.avatar) return `<img class="profile-avatar-lg" id="profile-avatar-preview" src="${prof.avatar}" alt="" />`;
+  const initial = (prof.name && prof.name.trim()[0]) || '👤';
+  return `<span class="profile-avatar-lg placeholder" id="profile-avatar-preview">${escHtml(initial)}</span>`;
+}
+
+function renderProfile() {
+  const prof = getProfile();
+  renderShell(`
+    <div class="page-header"><div class="page-title">👤 个人信息</div></div>
+    <div class="admin-card" style="max-width:480px">
+      <h3>👤 个人信息</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">仅保存在当前浏览器，不会上传到群晖</p>
+      <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px">
+        ${profileAvatarLgHTML()}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">更换头像
+            <input type="file" accept="image/*" style="display:none" onchange="profileAvatarSelected(event)"/>
+          </label>
+          ${prof.avatar ? `<button class="btn btn-danger btn-sm" onclick="removeProfileAvatar()">移除头像</button>` : ''}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">姓名</label>
+        <input class="form-control" id="profile-name" type="text" placeholder="你的名字" value="${escHtml(prof.name||'')}"/>
+      </div>
+      <button class="btn btn-primary" onclick="saveProfileName()">💾 保存</button>
+    </div>
+  `, 'profile');
+}
+
+async function profileAvatarSelected(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const dataUrl = await compressImage(file, 256, 0.8);
+    const prof = getProfile();
+    saveProfile({ name: prof.name || '', avatar: dataUrl });
+    toast('头像已更新', 'success');
+    renderProfile();
+  } catch (err) { toast('头像处理失败：' + err.message, 'error'); }
+}
+
+function removeProfileAvatar() {
+  const prof = getProfile();
+  saveProfile({ name: prof.name || '', avatar: null });
+  renderProfile();
+}
+
+function saveProfileName() {
+  const name = (document.getElementById('profile-name')?.value || '').trim();
+  saveProfile({ name, avatar: getProfile().avatar || null });
+  toast('已保存', 'success');
+  renderProfile();
+}
+
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected, setActiveOcrZone,
@@ -2269,4 +2346,5 @@ Object.assign(window, {
   showHistory, closeHistory, rollbackHistory,
   restoreTrashItem, purgeTrashRecord, restoreDailyBackup,
   _pickFolder, _resumeFolder, _refreshFromDisk, _syncPending,
+  profileAvatarSelected, removeProfileAvatar, saveProfileName,
 });

@@ -233,7 +233,7 @@ function renderShell(content, activeTab) {
     : '';
   document.getElementById('app').innerHTML = `
     <nav class="navbar">
-      <div class="navbar-brand">📊 图测记录<span>Chart Testing</span></div>
+      <div class="navbar-brand">图测记录工具<span>Chart Testing</span></div>
       <div class="nav-tabs">
         <button class="nav-tab${activeTab==='dashboard'?' active':''}" onclick="navigate('dashboard')">仪表盘</button>
         <button class="nav-tab${activeTab==='timeline'?' active':''}" onclick="navigate('timeline')">时间线</button>
@@ -265,14 +265,36 @@ function renderDashboard() {
   let totalV=0, appliedV=0;
   tests.forEach(t => (t.variants||[]).forEach((v,i) => { if(i===0)return; totalV++; if(v.applied)appliedV++; }));
   const rate = totalV>0 ? Math.round(appliedV/totalV*100) : 0;
+  const projCount = state.projects.length;
+  const testerCount = (state.settings?.testers||[]).length;
 
   renderShell(`
     <div class="page-header"><div class="page-title">仪表盘</div></div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label">总测试次数</div><div class="stat-value">${tests.length}</div><div class="stat-sub">所有项目累计</div></div>
-      <div class="stat-card accent-blue"><div class="stat-label">本月测试</div><div class="stat-value">${thisMonth.length}</div><div class="stat-sub">${now.getMonth()+1} 月</div></div>
-      <div class="stat-card accent-green"><div class="stat-label">累计应用</div><div class="stat-value">${appliedV}</div><div class="stat-sub">共 ${totalV} 个测试变体</div></div>
-      <div class="stat-card accent-orange"><div class="stat-label">应用率</div><div class="stat-value">${rate}%</div><div class="stat-sub">测试变体应用比例</div></div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#EEF2FF;color:#4F6CF6">📋</div><span class="stat-label">总测试次数</span></div>
+        <div class="stat-value">${tests.length}</div><div class="stat-sub">所有项目累计</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#DBEAFE;color:#1D4ED8">📅</div><span class="stat-label">本月测试</span></div>
+        <div class="stat-value" style="color:var(--primary)">${thisMonth.length}</div><div class="stat-sub">${now.getMonth()+1} 月</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#DCFCE7;color:#15803D">✅</div><span class="stat-label">累计应用</span></div>
+        <div class="stat-value" style="color:var(--success-l)">${appliedV}</div><div class="stat-sub">共 ${totalV} 个测试变体</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#FEF3C7;color:#B45309">🎯</div><span class="stat-label">应用率</span></div>
+        <div class="stat-value" style="color:var(--warning)">${rate}%</div><div class="stat-sub">测试变体应用比例</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#F3E8FF;color:#7C3AED">📁</div><span class="stat-label">项目数</span></div>
+        <div class="stat-value" style="color:#7C3AED">${projCount}</div><div class="stat-sub">活跃项目</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#CCFBF1;color:#0F766E">👤</div><span class="stat-label">测试人员</span></div>
+        <div class="stat-value" style="color:#0F766E">${testerCount}</div><div class="stat-sub">团队成员</div>
+      </div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><h3>📅 测试时间趋势（近12周）</h3><canvas id="ch-timeline"></canvas></div>
@@ -431,7 +453,7 @@ function renderTimeline() {
   renderShell(`
     <div class="page-header">
       <div class="page-title">历史时间线</div>
-      <span class="tl-count-badge">${tests.length} / ${state.tests.length} 条记录</span>
+      <span class="tl-result-pill">共 ${tests.length} 条记录${tests.length!==state.tests.length?` / 全部 ${state.tests.length}`:''}</span>
     </div>
     <div class="tl-filter-bar">
       <div class="tl-filter-row">
@@ -1561,26 +1583,26 @@ async function renderAdmin() {
     <div class="page-header"><div class="page-title">⚙️ 管理面板</div></div>
     <div class="admin-grid">
       <div class="admin-card">
-        <h3>🧑‍💻 测试人员名单</h3>
+        <div class="admin-section-header"><h3>🧑‍💻 测试人员名单</h3><span class="badge-count">${testers.length}</span></div>
         <ul class="admin-list">${testHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
         <div class="add-row"><input class="form-control" id="add-tester" type="text" placeholder="添加测试人…"/><button class="btn btn-primary" onclick="addTesterItem()">添加</button></div>
       </div>
       <div class="admin-card">
-        <h3>📐 测试比例选项</h3>
+        <div class="admin-section-header"><h3>📐 测试比例选项</h3><span class="badge-count">${ratioPresets.length}</span></div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「测试比例」下拉框中显示</p>
         <ul class="admin-list">${ratioHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
         <div class="add-row"><input class="form-control" id="add-ratio" type="text" placeholder="如 40/30/30 或 20/80"/><button class="btn btn-primary" onclick="addRatioPresetItem()">添加</button></div>
       </div>
       <div class="admin-card">
-        <h3>🧪 实验类型选项</h3>
+        <div class="admin-section-header"><h3>🧪 实验类型选项</h3><span class="badge-count">${experimentTypes.length}</span></div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「实验类型」下拉框中显示</p>
         <ul class="admin-list">${expTypeHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
         <div class="add-row"><input class="form-control" id="add-exptype" type="text" placeholder="如 本地化 TH 或 主图测试"/><button class="btn btn-primary" onclick="addExpTypeItem()">添加</button></div>
       </div>
       <div class="admin-card" style="grid-column:1/-1">
-        <h3>📁 项目管理</h3>
+        <div class="admin-section-header"><h3>📁 项目管理</h3><span class="badge-count">${projects.length}</span></div>
         <ul class="admin-list">${projHTML||'<li style="color:var(--text-muted)">暂无项目</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-proj" type="text" placeholder="新项目名称…"/><button class="btn btn-primary" onclick="addProjectItem()">添加项目</button></div>
+        <div class="add-row" style="align-items:flex-end"><textarea class="form-control" id="add-proj" rows="3" placeholder="每行一个项目名，或用英文逗号隔开，批量添加" style="resize:vertical;min-height:70px"></textarea><button class="btn btn-primary" onclick="addProjectItem()">批量添加</button></div>
       </div>
       <div class="admin-card" style="grid-column:1/-1">
         <h3>🗑 回收站 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">删除的记录保留 30 天，可一键还原</span></h3>
@@ -1607,9 +1629,23 @@ async function safeAdminAction(fn, successMsg) {
 }
 
 async function addProjectItem() {
-  const n = document.getElementById('add-proj').value.trim(); if(!n) return;
-  document.getElementById('add-proj').value='';
-  await safeAdminAction(() => addProject(n), '项目已添加');
+  const raw = document.getElementById('add-proj').value;
+  // Split by newline and comma, trim each, filter empty, deduplicate
+  const names = [...new Set(
+    raw.split(/[\n,]/).map(s=>s.trim()).filter(s=>s.length>0)
+  )];
+  if (names.length === 0) return;
+  document.getElementById('add-proj').value = '';
+  try {
+    for (const n of names) { await addProject(n); }
+    await refreshData();
+    toast(`已添加 ${names.length} 个项目`, 'success');
+    renderAdmin();
+  } catch (e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试', 'error');
+    renderAdmin();
+  }
 }
 async function removeProject(id) {
   if (!confirm('确认删除此项目？')) return;

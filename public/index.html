@@ -533,6 +533,37 @@ select.form-control { cursor: pointer; }
 @media (max-width: 1024px) {
   .admin-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Form polish (新增记录面板可视化优化) ──────────────────── */
+.form-section { margin-bottom: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.form-section-title { font-size: 13px; font-weight: 700; color: var(--text); padding: 0 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.form-section-title::before { content: ''; }
+.form-row-4 { gap: 14px; row-gap: 16px; }
+.notes-grid { gap: 8px; }
+.notes-grid .form-control { background: #FAFBFC; }
+/* 变体列做成卡片感 */
+.variant-col { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: box-shadow .15s; }
+.variant-col:hover { box-shadow: 0 2px 8px rgba(0,0,0,.10); }
+.vc-header { padding: 10px 12px; font-weight: 700; }
+.vc-label { font-size: 13px; font-weight: 700; }
+.vc-img-zone { background: #FBFCFD; min-height: 110px; }
+.vc-data { padding: 12px; gap: 12px; }
+.vc-field-label { font-size: 10px; color: var(--text-muted); margin-bottom: 3px; }
+.ci-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+/* 截图类型 chip 换行更好看 */
+.checkbox-group { flex-wrap: wrap; }
+/* 表单内的 section tools 按钮组 */
+.section-tools { display: flex; gap: 8px; }
+@media (max-width: 760px) {
+  .section-title-flex { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .section-tools { flex-wrap: wrap; }
+}
+/* OCR 预览表格更清晰 */
+.ocr-preview-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+.ocr-preview-table th { background: var(--neutral-bg); padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--border); }
+.ocr-preview-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.ocr-preview-table tr:last-child td { border-bottom: none; }
+.ocr-preview-table input.form-control { padding: 6px 8px; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -1715,8 +1746,10 @@ async function deleteTestRecord(id) {
     await deleteTest(id);
     await refreshData();
     toast('已删除（可在管理面板的回收站找回）','success');
-    if (state.view === 'timeline') renderTimeline();
+    if (state.view === 'form') navigate('timeline');
+    else if (state.view === 'timeline') renderTimeline();
     else if (state.view === 'dashboard') renderDashboard();
+    else render();
   } catch(e) {
     state.pendingCount = await getPendingCount();
     toast('保存到群晖失败，已暂存本地稍后重试','error');
@@ -1984,9 +2017,12 @@ function renderFormView() {
           ${typeToggle}
           <form id="test-form" onsubmit="handleFormSubmit(event)">
             ${formBody}
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" onclick="navigate('timeline')">取消</button>
-              <button type="submit" class="btn btn-primary" id="f-submit">${isEdit?'💾 保存修改':'🚀 提交记录'}</button>
+            <div class="modal-footer" style="${isEdit?'justify-content:space-between':''}">
+              ${isEdit?`<button type="button" class="btn btn-danger" onclick="deleteTestRecord('${state.editTestId}')">🗑 删除此记录</button>`:''}
+              <div style="display:flex;gap:8px;margin-left:auto">
+                <button type="button" class="btn btn-secondary" onclick="navigate('timeline')">取消</button>
+                <button type="submit" class="btn btn-primary" id="f-submit">${isEdit?'💾 保存修改':'🚀 提交记录'}</button>
+              </div>
             </div>
           </form>
         </div>
@@ -2193,6 +2229,37 @@ function openOCRModal() {
 
 function ocrFileSelected(e, type) { ocrReceiveFile(e.target.files?.[0], type); }
 
+// 把截图放大 + 灰度化，显著提高 Tesseract 识别率
+function preprocessForOCR(file, scale = 2.4) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, w, h);
+      // 灰度 + 轻度对比增强
+      try {
+        const data = ctx.getImageData(0, 0, w, h);
+        const d = data.data;
+        for (let i = 0; i < d.length; i += 4) {
+          let g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+          g = g < 140 ? g * 0.6 : 255 - (255 - g) * 0.6; // 拉开黑白
+          d[i] = d[i+1] = d[i+2] = g;
+        }
+        ctx.putImageData(data, 0, 0);
+      } catch {}
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => resolve(b || file), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 async function runOCR() {
   if (!ocrFiles.fi && !ocrFiles.ri) { toast('请至少上传一张截图','error'); return; }
   document.getElementById('ocr-status').style.display = 'block';
@@ -2202,39 +2269,55 @@ async function runOCR() {
   ocrData = {};
 
   try {
-    const logger = m => {
-      if (m.status === 'recognizing text') {
-        const p = document.getElementById('ocr-progress');
-        if (p) p.textContent = `进度 ${Math.round(m.progress*100)}%`;
-      }
+    const setProg = (label, prog) => {
+      const p = document.getElementById('ocr-progress');
+      if (p) p.textContent = `${label}${prog!=null?` ${Math.round(prog*100)}%`:''}`;
+    };
+    const logger = m => { if (m.status === 'recognizing text') setProg('识别中', m.progress); };
+    const tessOpts = {
+      logger,
+      tessedit_pageseg_mode: '6',           // 当作整块文本（表格行更稳）
+      tessedit_char_whitelist: '0123456789.,%+-±ABCDabcd ',
+      preserve_interword_spaces: '1',
     };
 
     if (ocrFiles.fi) {
-      const r = await Tesseract.recognize(ocrFiles.fi, 'eng', { logger });
-      const fiParsed = parseFirstInstallOCR(r.data.text);
+      setProg('预处理首次安装截图…');
+      const prepped = await preprocessForOCR(ocrFiles.fi);
+      const r = await Tesseract.recognize(prepped, 'eng', tessOpts);
+      const fiParsed = parseGPlayTable(r.data.text, 'firstInstalls');
       Object.keys(fiParsed).forEach(v => { ocrData[v] = { ...(ocrData[v]||{}), ...fiParsed[v] }; });
     }
     if (ocrFiles.ri) {
-      const r2 = await Tesseract.recognize(ocrFiles.ri, 'eng', { logger });
-      const riParsed = parseRetainedOCR(r2.data.text);
+      setProg('预处理保留安装截图…');
+      const prepped = await preprocessForOCR(ocrFiles.ri);
+      const r2 = await Tesseract.recognize(prepped, 'eng', tessOpts);
+      const riParsed = parseGPlayTable(r2.data.text, 'retainedInstalls');
       Object.keys(riParsed).forEach(v => { ocrData[v] = { ...(ocrData[v]||{}), ...riParsed[v] }; });
     }
 
-    // Show editable preview table
+    // 保证四个变体行都出现（即使没识别到也给空行让用户手填）
+    ['control','A','B','C'].forEach(k => { if (!ocrData[k]) ocrData[k] = {}; });
+
     const tbody = document.getElementById('ocr-tbody');
-    const variantMap = { control:'原始(控制)', A:'测试1', B:'测试2', C:'测试3' };
-    tbody.innerHTML = Object.entries(ocrData).map(([k,d])=>`
+    const variantMap = { control:'原始 (控制组)', A:'测试 1 (A)', B:'测试 2 (B)', C:'测试 3 (C)' };
+    const order = ['control','A','B','C'];
+    tbody.innerHTML = order.filter(k=>ocrData[k]).map(k=>{
+      const d = ocrData[k];
+      return `
       <tr data-ocr-key="${k}">
-        <td>${variantMap[k]||k}</td>
-        <td><input class="form-control ocr-edit" data-field="firstInstalls" type="number" value="${d.firstInstalls??''}" placeholder="—" style="width:90px"/></td>
+        <td><strong>${variantMap[k]||k}</strong></td>
+        <td><input class="form-control ocr-edit" data-field="firstInstalls" type="number" value="${d.firstInstalls??''}" placeholder="—" style="width:100px"/></td>
         <td><input class="form-control ocr-edit" data-field="ciLower" type="number" step="0.1" value="${d.ciLower??''}" placeholder="—" style="width:70px"/></td>
         <td><input class="form-control ocr-edit" data-field="ciUpper" type="number" step="0.1" value="${d.ciUpper??''}" placeholder="—" style="width:70px"/></td>
-        <td><input class="form-control ocr-edit" data-field="retainedInstalls" type="number" value="${d.retainedInstalls??''}" placeholder="—" style="width:90px"/></td>
-      </tr>`).join('');
+        <td><input class="form-control ocr-edit" data-field="retainedInstalls" type="number" value="${d.retainedInstalls??''}" placeholder="—" style="width:100px"/></td>
+      </tr>`;
+    }).join('');
     document.getElementById('ocr-status').style.display = 'none';
     document.getElementById('ocr-preview-wrap').style.display = 'block';
     document.getElementById('ocr-apply-btn').disabled = false;
-    toast('识别完成，可直接修改数据后点击「填入表单」','success');
+    const detectedCount = order.filter(k => ocrData[k] && (ocrData[k].firstInstalls!=null || ocrData[k].retainedInstalls!=null)).length;
+    toast(detectedCount>1 ? `识别到 ${detectedCount} 个变体，请核对数据后点「填入表单」` : '识别结果可能不准，请手动核对/补充后再填入', detectedCount>1?'success':'info');
   } catch(err) {
     document.getElementById('ocr-status').style.display = 'none';
     toast('识别失败：'+err.message,'error');
@@ -2242,54 +2325,69 @@ async function runOCR() {
   }
 }
 
-function parseFirstInstallOCR(text) {
-  const result = {};
-  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
-  for (const line of lines) {
-    // Match lines starting with single letter A/B/C (variant)
-    const vm = line.match(/^([A-C])\s/);
-    if (!vm) continue;
-    const variant = vm[1];
-    // Extract all numbers (strip commas)
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>100);
-    // Adjusted installs = largest number
-    const firstInstalls = nums.length ? Math.max(...nums) : null;
-    // CI: look for signed percentages
-    const pcts = [...line.matchAll(/([+-]?\d+\.?\d*)\s*%/g)].map(m=>parseFloat(m[1]));
-    const ciLower = pcts.find(p=>p<0) ?? null;
-    const ciUpper = pcts.find(p=>p>0) ?? null;
-    result[variant] = { firstInstalls, ciLower, ciUpper };
-  }
-  // Also try to find control row (line with 70% or highest audience %)
-  for (const line of lines) {
-    if (line.match(/^[A-C]\s/)) continue; // skip variant rows
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>1000);
-    if (nums.length >= 2) {
-      result['control'] = { firstInstalls: Math.max(...nums) };
-      break;
-    }
-  }
-  return result;
+// ── Google Play 实验表格解析 ─────────────────────────────────
+// 表格列：变体 | 受众群体% | 安装人数(当前) | 安装人数(已调整) | 效果(95% CI)
+// 我们要的是「已调整」那列（行内较大的安装数），以及 CI 上下限
+function _stripNum(s) { return parseInt(String(s).replace(/[.,\s]/g,''), 10); }
+function _extractInstalls(str, threshold = 1000) {
+  // 匹配带千位分隔（逗号或点）的数，或 4 位以上纯数字
+  const out = [];
+  const re = /\d{1,3}(?:[.,]\d{3})+|\d{4,}/g;
+  let m;
+  while ((m = re.exec(str))) { const n = _stripNum(m[0]); if (!isNaN(n) && n >= threshold) out.push({ val:n, idx:m.index, raw:m[0] }); }
+  return out;
+}
+function _extractPercents(str) {
+  return [...str.matchAll(/([+-]?\d+(?:\.\d+)?)\s*%/g)].map(m => ({ val: parseFloat(m[1]), idx: m.index }));
 }
 
-function parseRetainedOCR(text) {
+function parseGPlayTable(text, field) {
   const result = {};
-  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
-  for (const line of lines) {
-    const vm = line.match(/^([A-C])\s/);
+  const lines = text.split('\n').map(l => l.replace(/\s+/g,' ').trim()).filter(Boolean);
+
+  // 1) 变体行：行内有独立的 A / B / C / D 字母
+  for (const rawLine of lines) {
+    const line = rawLine;
+    const vm = line.match(/(?:^|[^A-Za-z])([A-Da-d])(?:[^A-Za-z]|$)/);
     if (!vm) continue;
-    const variant = vm[1];
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>100);
-    result[variant] = { retainedInstalls: nums.length ? Math.max(...nums) : null };
-  }
-  for (const line of lines) {
-    if (line.match(/^[A-C]\s/)) continue;
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>1000);
-    if (nums.length >= 2) {
-      result['control'] = { retainedInstalls: Math.max(...nums) };
-      break;
+    const variant = vm[1].toUpperCase();
+    if (variant === 'D' || result[variant]) continue; // 只支持 A/B/C，首次匹配为准
+
+    const installs = _extractInstalls(line, 1000);
+    if (installs.length === 0) continue;
+    const adjusted = Math.max(...installs.map(x => x.val));   // 已调整 = 行内较大的安装数
+    const lastInstallIdx = Math.max(...installs.map(x => x.idx));
+
+    // CI 百分比：出现在最后一个安装数之后的百分比
+    const pcts = _extractPercents(line).filter(p => p.idx > lastInstallIdx);
+    let ciLower = null, ciUpper = null;
+    if (pcts.length >= 2) {
+      const pair = pcts.slice(-2).map(p=>p.val).sort((a,b)=>a-b);
+      ciLower = pair[0]; ciUpper = pair[1];
+    } else if (pcts.length === 1) {
+      if (pcts[0].val < 0) ciLower = pcts[0].val; else ciUpper = pcts[0].val;
     }
+    result[variant] = field === 'retainedInstalls'
+      ? { retainedInstalls: adjusted }
+      : { firstInstalls: adjusted, ciLower, ciUpper };
   }
+
+  // 2) 控制组行：没有 A/B/C 字母、行内有 ≥2 个安装数；取受众%最大的那一行（一般是 70%）
+  let bestNums = null, bestLeadPct = -1;
+  for (const line of lines) {
+    if (/(?:^|[^A-Za-z])[A-Da-d](?:[^A-Za-z]|$)/.test(line)) continue;
+    const installs = _extractInstalls(line, 1000);
+    if (installs.length < 2) continue;
+    const pcts = _extractPercents(line);
+    const lead = pcts.length ? Math.abs(pcts[0].val) : 0;
+    if (lead >= bestLeadPct) { bestLeadPct = lead; bestNums = installs.map(x=>x.val); }
+  }
+  if (bestNums) {
+    result['control'] = field === 'retainedInstalls'
+      ? { retainedInstalls: Math.max(...bestNums) }
+      : { firstInstalls: Math.max(...bestNums) };
+  }
+
   return result;
 }
 

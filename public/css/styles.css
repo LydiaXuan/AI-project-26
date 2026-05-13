@@ -524,3 +524,34 @@ select.form-control { cursor: pointer; }
 @media (max-width: 1024px) {
   .admin-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Form polish (新增记录面板可视化优化) ──────────────────── */
+.form-section { margin-bottom: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.form-section-title { font-size: 13px; font-weight: 700; color: var(--text); padding: 0 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.form-section-title::before { content: ''; }
+.form-row-4 { gap: 14px; row-gap: 16px; }
+.notes-grid { gap: 8px; }
+.notes-grid .form-control { background: #FAFBFC; }
+/* 变体列做成卡片感 */
+.variant-col { background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.06); transition: box-shadow .15s; }
+.variant-col:hover { box-shadow: 0 2px 8px rgba(0,0,0,.10); }
+.vc-header { padding: 10px 12px; font-weight: 700; }
+.vc-label { font-size: 13px; font-weight: 700; }
+.vc-img-zone { background: #FBFCFD; min-height: 110px; }
+.vc-data { padding: 12px; gap: 12px; }
+.vc-field-label { font-size: 10px; color: var(--text-muted); margin-bottom: 3px; }
+.ci-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+/* 截图类型 chip 换行更好看 */
+.checkbox-group { flex-wrap: wrap; }
+/* 表单内的 section tools 按钮组 */
+.section-tools { display: flex; gap: 8px; }
+@media (max-width: 760px) {
+  .section-title-flex { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .section-tools { flex-wrap: wrap; }
+}
+/* OCR 预览表格更清晰 */
+.ocr-preview-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+.ocr-preview-table th { background: var(--neutral-bg); padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--border); }
+.ocr-preview-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.ocr-preview-table tr:last-child td { border-bottom: none; }
+.ocr-preview-table input.form-control { padding: 6px 8px; font-size: 13px; }

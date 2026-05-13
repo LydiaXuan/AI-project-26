@@ -1454,60 +1454,93 @@ function _extractInstalls(str, threshold = 1000) {
   return out;
 }
 function _extractPercents(str) {
-  return [...str.matchAll(/([+-]?\d+(?:\.\d+)?)\s*%/g)].map(m => ({ val: parseFloat(m[1]), idx: m.index }));
+  // Handle optional space between sign/number and %, comma as decimal separator
+  const re = /([+-]?\s*\d+(?:[.,]\d+)?)\s*%/g;
+  return [...str.matchAll(re)].map(m => ({
+    val: parseFloat(m[1].replace(/\s/g,'').replace(',','.')),
+    idx: m.index
+  }));
 }
 
 function parseGPlayTable(text, field) {
   const result = {};
   const lines = text.split('\n').map(l => l.replace(/\s+/g,' ').trim()).filter(Boolean);
 
-  // 1) 变体行：行内有独立的 A / B / C / D 字母
-  for (const rawLine of lines) {
-    const line = rawLine;
-    const vm = line.match(/(?:^|[^A-Za-z])([A-Da-d])(?:[^A-Za-z]|$)/);
-    if (!vm) continue;
-    const variant = vm[1].toUpperCase();
-    if (variant === 'D' || result[variant]) continue; // 只支持 A/B/C，首次匹配为准
+  // Step 1: find every line that contains install-sized numbers
+  const installRows = [];
+  for (let i = 0; i < lines.length; i++) {
+    const installs = _extractInstalls(lines[i], 1000);
+    if (!installs.length) continue;
+    const sorted = [...installs].sort((a,b) => a.idx - b.idx);
 
-    const installs = _extractInstalls(line, 1000);
-    if (installs.length === 0) continue;
-    const sortedByPos = [...installs].sort((a,b)=>a.idx-b.idx);
-    // 已调整首次安装 = 前两个安装数中的较大值（前2列=raw+adjusted FI, 后2列=raw+adjusted RI）
-    const firstTwo = sortedByPos.slice(0, 2);
-    const adjusted = firstTwo.length >= 2 ? Math.max(...firstTwo.map(x=>x.val)) : sortedByPos[0].val;
-    // CI 百分比：出现在第一个安装数之后（受众%在第一个安装数之前）
-    const firstInstallIdx = sortedByPos[0].idx;
-    const pcts = _extractPercents(line).filter(p => p.idx > firstInstallIdx);
-    let ciLower = null, ciUpper = null;
-    if (pcts.length >= 2) {
-      const pair = pcts.slice(0, 2).map(p=>p.val).sort((a,b)=>a-b);
-      ciLower = pair[0]; ciUpper = pair[1];
-    } else if (pcts.length === 1) {
-      if (pcts[0].val < 0) ciLower = pcts[0].val; else ciUpper = pcts[0].val;
+    // Variant letter: scan ±2-line window (A/B/C may be on thumbnail/label row)
+    let variantLetter = null;
+    for (let j = Math.max(0, i-2); j <= Math.min(lines.length-1, i+2) && !variantLetter; j++) {
+      const m = lines[j].match(/(?:^|[^A-Za-z])([A-Ca-c])(?:[^A-Za-z]|$)/);
+      if (m) variantLetter = m[1].toUpperCase();
     }
-    result[variant] = field === 'retainedInstalls'
+
+    // CI: same line (after first install) OR next 2 lines (bar annotations often on separate line)
+    const firstInstallIdx = sorted[0].idx;
+    let ciPcts = _extractPercents(lines[i]).filter(p => p.idx > firstInstallIdx);
+    if (ciPcts.length < 2) {
+      for (let j = i + 1; j <= Math.min(lines.length-1, i+2); j++) {
+        const p2 = _extractPercents(lines[j]);
+        if (p2.length >= 2) { ciPcts = p2; break; }
+      }
+    }
+
+    // Audience % = percents BEFORE first install number (like "70%")
+    const audiencePcts = _extractPercents(lines[i]).filter(p => p.idx < firstInstallIdx);
+
+    installRows.push({ lineIdx:i, installs:sorted, ciPcts, variantLetter, audiencePct: audiencePcts[0]?.val ?? -1 });
+  }
+
+  if (!installRows.length) return result;
+
+  // Step 2: deduplicate rows with same variant letter (keep first)
+  const seenLetters = new Set();
+  const unique = installRows.filter(r => {
+    if (!r.variantLetter) return true;
+    if (seenLetters.has(r.variantLetter)) return false;
+    seenLetters.add(r.variantLetter); return true;
+  });
+
+  // Step 3: separate control vs variant rows
+  const lettered   = unique.filter(r =>  r.variantLetter);
+  const unlettered = unique.filter(r => !r.variantLetter);
+
+  let controlRow, variantRows;
+  if (lettered.length > 0) {
+    controlRow  = unlettered.sort((a,b) => b.audiencePct - a.audiencePct)[0] || null;
+    variantRows = lettered;
+  } else {
+    // Fallback: no A/B/C found — assign by audience% (highest = control) then doc order
+    const byAudience = [...unique].sort((a,b) => b.audiencePct - a.audiencePct);
+    controlRow = byAudience[0];
+    const rest = unique.filter(r => r !== controlRow).sort((a,b) => a.lineIdx - b.lineIdx);
+    rest.forEach((r, idx) => { if (idx < 3) r.variantLetter = 'ABC'[idx]; });
+    variantRows = rest.filter(r => r.variantLetter);
+  }
+
+  // Step 4: extract adjusted install number + CI pair
+  const extractVal = row => {
+    const firstTwo = row.installs.slice(0, 2);
+    const adjusted = firstTwo.length >= 2 ? Math.max(...firstTwo.map(x=>x.val)) : firstTwo[0].val;
+    const vals = row.ciPcts.length >= 2 ? row.ciPcts.slice(0,2).map(p=>p.val).sort((a,b)=>a-b) : null;
+    return { adjusted, ciLower: vals?.[0] ?? null, ciUpper: vals?.[1] ?? null };
+  };
+
+  if (controlRow) {
+    const { adjusted } = extractVal(controlRow);
+    result['control'] = field === 'retainedInstalls' ? { retainedInstalls: adjusted } : { firstInstalls: adjusted };
+  }
+  for (const row of variantRows) {
+    const { adjusted, ciLower, ciUpper } = extractVal(row);
+    result[row.variantLetter] = field === 'retainedInstalls'
       ? { retainedInstalls: adjusted }
       : { firstInstalls: adjusted, ciLower, ciUpper };
   }
-
-  // 2) 控制组行：没有 A/B/C 字母、行内有 ≥2 个安装数；取受众%最大的那一行（一般是 70%）
-  let bestNums = null, bestLeadPct = -1;
-  for (const line of lines) {
-    if (/(?:^|[^A-Za-z])[A-Da-d](?:[^A-Za-z]|$)/.test(line)) continue;
-    const installs = _extractInstalls(line, 1000);
-    if (installs.length < 2) continue;
-    const pcts = _extractPercents(line);
-    const lead = pcts.length ? Math.abs(pcts[0].val) : 0;
-    if (lead >= bestLeadPct) { bestLeadPct = lead; bestNums = [...installs].sort((a,b)=>a.idx-b.idx); }
-  }
-  if (bestNums) {
-    const firstTwo = bestNums.slice(0, 2);
-    const controlVal = firstTwo.length >= 2 ? Math.max(...firstTwo.map(x=>x.val)) : bestNums[0].val;
-    result['control'] = field === 'retainedInstalls'
-      ? { retainedInstalls: controlVal }
-      : { firstInstalls: controlVal };
-  }
-
   return result;
 }
 

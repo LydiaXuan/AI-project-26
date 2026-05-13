@@ -1010,15 +1010,11 @@ function buildTlListItem(t) {
   const thumbsHtml = isUpdate
     ? [t.imageUrl, t.newImageUrl].filter(Boolean).slice(0,4).map(url =>
         `<img class="tl-item-thumb" src="${url}" />`).join('')
-    : vars.slice(0,4).map(v => v.imageUrl
-        ? `<img class="tl-item-thumb" src="${v.imageUrl}" />`
+    : vars.slice(0,5).map(v => v.imageUrl
+        ? `<img class="tl-item-thumb${v.applied?' tl-thumb-applied':''}" src="${v.imageUrl}" />`
         : `<div class="tl-item-thumb-ph">🖼</div>`).join('');
 
   const dotCls = isUpdate ? 'dot-update' : (anyApplied ? 'dot-applied' : '');
-  const badgesHtml = !isUpdate
-    ? vars.filter((_,i)=>i>0).map(v => effectBadgeHTML(normEffect(v.effect))).join('')
-    : '';
-
   const isSelected = state.selectedTestId === t.id;
   return `
     <div class="tl-list-item${isSelected ? ' selected' : ''}" data-id="${t.id}" onclick="selectTimelineTest('${t.id}')">
@@ -1026,7 +1022,6 @@ function buildTlListItem(t) {
       <div class="tl-item-axis"><div class="tl-item-axis-dot ${dotCls}"></div></div>
       <div class="tl-item-content">
         <div class="tl-item-name">${escHtml(t.projectName || '')}${isUpdate ? ' <span style="font-size:11px;color:#F97316">🔄</span>' : ''}</div>
-        ${badgesHtml ? `<div class="tl-item-chips">${badgesHtml}</div>` : ''}
         <div class="tl-item-thumbs">${thumbsHtml || '<div class="tl-item-thumb-ph">🖼</div>'}</div>
       </div>
     </div>`;
@@ -1038,11 +1033,10 @@ function buildTlDetail(t) {
   const vars = t.variants || [];
   const biTypes = Array.isArray(t.biVizType) ? t.biVizType : (t.biVizType ? [t.biVizType] : []);
   const normEffect = e => e==='great'?'superb':e==='empirical'?'empirical_p':e||'empirical_n';
-
   const appliedIdx = vars.findIndex((v,i) => i > 0 && v.applied);
   const appliedVar = appliedIdx >= 0 ? vars[appliedIdx] : null;
 
-  // Images section
+  // Images with inline stats below each
   let imagesHtml = '';
   if (isUpdate) {
     const pairs = [{url: t.imageUrl, label:'原始'}, {url: t.newImageUrl, label:'更新后'}].filter(p=>p.url);
@@ -1053,13 +1047,24 @@ function buildTlDetail(t) {
       </div>`).join('');
   } else {
     imagesHtml = vars.map((v,i)=>{
-      const label = i===0 ? '🔵 原始' : `🔴 测试${i}${v.applied?' ✓':''}`;
-      return v.imageUrl ? `
-        <div class="tl-detail-img-wrap">
-          ${v.applied ? '<div class="thumb-applied-label">✓ 采用</div>' : ''}
-          <img class="tl-detail-img${v.applied?' applied-thumb':''}" src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" />
-          <div class="tl-detail-img-label">${label}</div>
+      if (!v.imageUrl) return '';
+      const labelText = i===0 ? '🔵 原始' : `🔴 测试${i}`;
+      const ciText = (v.ciLower!=null&&v.ciLower!=='') ? `CI [${v.ciLower}%, ${v.ciUpper}%]` : '';
+      const fiText = v.firstInstalls!=null ? `安装 ${v.firstInstalls}` : '';
+      const effectHtml = i>0 ? effectBadgeHTML(normEffect(v.effect)) : '';
+      const statsHtml = (fiText||ciText||effectHtml) ? `
+        <div class="tl-img-stats">
+          ${fiText ? `<div class="tl-img-stat">${fiText}</div>` : ''}
+          ${ciText ? `<div class="tl-img-stat tl-img-ci">${ciText}</div>` : ''}
+          ${effectHtml ? `<div style="margin-top:3px">${effectHtml}</div>` : ''}
         </div>` : '';
+      return `
+        <div class="tl-detail-img-wrap${v.applied?' is-applied':''}">
+          <img class="tl-detail-img" src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" />
+          <div class="tl-detail-img-label">${labelText}</div>
+          ${v.applied ? '<div class="tl-applied-bar">✓ 已采用</div>' : ''}
+          ${statsHtml}
+        </div>`;
     }).join('');
   }
 
@@ -1074,56 +1079,8 @@ function buildTlDetail(t) {
        ${t.tester?`<span class="badge badge-blue">${escHtml(t.tester)}</span>`:''}
        ${appliedVar?`<span class="applied-chip">✓ 测试${appliedIdx} 已采用</span>`:'<span class="not-applied-chip">暂未应用</span>'}`;
 
-  // Data table (test only)
-  const effectScore = {superb:7,good:6,neutral_p:5,neutral_n:4,empirical_p:3,empirical_n:2,bad:1,control:0,great:7,empirical:3};
-  const testVars = vars.filter((_,i)=>i>0);
-  const bestFI = testVars.length ? Math.max(...testVars.map(v=>v.firstInstalls||0)) : 0;
-  const bestRI = testVars.length ? Math.max(...testVars.map(v=>v.retainedInstalls||0)) : 0;
-  const bestEffectScore = testVars.reduce((m,v)=>Math.max(m, effectScore[normEffect(v.effect)]||0), 0);
-  const tableRows = vars.map((v,i)=>{
-    const isBestFI = i>0 && bestFI>0 && v.firstInstalls===bestFI;
-    const isBestRI = i>0 && bestRI>0 && v.retainedInstalls===bestRI;
-    const isBestEffect = i>0 && bestEffectScore>0 && (effectScore[normEffect(v.effect)]||0)===bestEffectScore;
-    return `<tr${v.applied&&i>0?' class="applied-row"':''}>
-      <td><div class="variant-img-cell">${v.imageUrl?`<img src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" style="cursor:zoom-in"/>`:'<span style="font-size:18px">🖼</span>'}<span>${i===0?'🔵 原始':`🔴 测试${i}`}${v.applied?' 🏳️':''}</span></div></td>
-      <td>${v.firstInstalls??'-'}${isBestFI?'<span class="best-tag">🥇</span>':''}</td>
-      <td>${(v.ciLower!==null&&v.ciLower!==''&&v.ciLower!==undefined)?`[${v.ciLower}%, ${v.ciUpper}%]`:'-'}</td>
-      <td>${v.retainedInstalls??'-'}${isBestRI?'<span class="best-tag">🥇</span>':''}</td>
-      <td>${i===0?'<span style="color:var(--text-muted)">基准</span>':effectBadgeHTML(normEffect(v.effect))}${isBestEffect&&i>0?'<span class="best-tag">⭐</span>':''}</td>
-      <td>${i===0?'-':v.applied?'<span class="applied-yes">✓ 已应用</span>':'<span class="applied-no">未应用</span>'}</td>
-    </tr>`;
-  }).join('');
-
-  const tableSection = !isUpdate && vars.length > 0 ? `
-    <div class="tl-detail-section">
-      <div class="tl-detail-section-title">📊 实验数据对比</div>
-      <table class="variants-table">
-        <thead><tr><th>变体</th><th>首次安装数</th><th>置信区间</th><th>保留安装数</th><th>测试效果</th><th>是否应用</th></tr></thead>
-        <tbody>${tableRows}</tbody>
-      </table>
-    </div>` : '';
-
   // Progress block
   const progressSection = !isUpdate ? buildProgressBlock(t) : '';
-
-  // Adopted section
-  const adoptedSection = appliedVar ? `
-    <div class="tl-detail-section">
-      <div class="adopted-section">
-        <div class="adopted-header">当前最终采用版本</div>
-        <div class="adopted-body">
-          ${appliedVar.imageUrl ? `<img class="adopted-img" src="${appliedVar.imageUrl}" onclick="openLightbox('${appliedVar.imageUrl}')" style="cursor:zoom-in"/>` : '<div class="adopted-img-ph">🖼</div>'}
-          <div class="adopted-meta">
-            <div class="adopted-name">测试 ${appliedIdx} ${effectBadgeHTML(normEffect(appliedVar.effect))}</div>
-            <div class="adopted-stats">
-              ${appliedVar.firstInstalls!=null?`<span class="a-stat">首次安装 <strong>${appliedVar.firstInstalls}</strong></span>`:''}
-              ${appliedVar.retainedInstalls!=null?`<span class="a-stat">保留安装 <strong>${appliedVar.retainedInstalls}</strong></span>`:''}
-              ${appliedVar.ciLower!=null?`<span class="a-stat">CI <strong>[${appliedVar.ciLower}%, ${appliedVar.ciUpper}%]</strong></span>`:''}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>` : '';
 
   // Conclusion
   const conclusionSection = !isUpdate ? `
@@ -1158,9 +1115,7 @@ function buildTlDetail(t) {
       </div>
     </div>
     ${imagesHtml ? `<div class="tl-detail-images">${imagesHtml}</div>` : ''}
-    ${adoptedSection}
     ${progressSection}
-    ${tableSection}
     ${conclusionSection}
     ${notesSection}
   </div>`;
@@ -1632,7 +1587,7 @@ function renderFormView() {
       </div>
       <div class="form-section">
         <div class="form-section-title section-title-flex">
-          <span>🖼️ 变体横向对比</span>
+          <span></span>
           <div class="section-tools">
             <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量裁剪图标</button>
             <button type="button" class="btn btn-primary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
@@ -1994,14 +1949,16 @@ function parseGPlayTable(text, field) {
 
     const installs = _extractInstalls(line, 1000);
     if (installs.length === 0) continue;
-    const adjusted = Math.max(...installs.map(x => x.val));   // 已调整 = 行内较大的安装数
-    const lastInstallIdx = Math.max(...installs.map(x => x.idx));
-
-    // CI 百分比：出现在最后一个安装数之后的百分比
-    const pcts = _extractPercents(line).filter(p => p.idx > lastInstallIdx);
+    const sortedByPos = [...installs].sort((a,b)=>a.idx-b.idx);
+    // 已调整首次安装 = 前两个安装数中的较大值（前2列=raw+adjusted FI, 后2列=raw+adjusted RI）
+    const firstTwo = sortedByPos.slice(0, 2);
+    const adjusted = firstTwo.length >= 2 ? Math.max(...firstTwo.map(x=>x.val)) : sortedByPos[0].val;
+    // CI 百分比：出现在第一个安装数之后（受众%在第一个安装数之前）
+    const firstInstallIdx = sortedByPos[0].idx;
+    const pcts = _extractPercents(line).filter(p => p.idx > firstInstallIdx);
     let ciLower = null, ciUpper = null;
     if (pcts.length >= 2) {
-      const pair = pcts.slice(-2).map(p=>p.val).sort((a,b)=>a-b);
+      const pair = pcts.slice(0, 2).map(p=>p.val).sort((a,b)=>a-b);
       ciLower = pair[0]; ciUpper = pair[1];
     } else if (pcts.length === 1) {
       if (pcts[0].val < 0) ciLower = pcts[0].val; else ciUpper = pcts[0].val;
@@ -2019,12 +1976,14 @@ function parseGPlayTable(text, field) {
     if (installs.length < 2) continue;
     const pcts = _extractPercents(line);
     const lead = pcts.length ? Math.abs(pcts[0].val) : 0;
-    if (lead >= bestLeadPct) { bestLeadPct = lead; bestNums = installs.map(x=>x.val); }
+    if (lead >= bestLeadPct) { bestLeadPct = lead; bestNums = [...installs].sort((a,b)=>a.idx-b.idx); }
   }
   if (bestNums) {
+    const firstTwo = bestNums.slice(0, 2);
+    const controlVal = firstTwo.length >= 2 ? Math.max(...firstTwo.map(x=>x.val)) : bestNums[0].val;
     result['control'] = field === 'retainedInstalls'
-      ? { retainedInstalls: Math.max(...bestNums) }
-      : { firstInstalls: Math.max(...bestNums) };
+      ? { retainedInstalls: controlVal }
+      : { firstInstalls: controlVal };
   }
 
   return result;
@@ -2315,10 +2274,10 @@ async function renderAdmin() {
   const ratioPresets = settings?.ratioPresets || RATIO_PRESETS;
   const experimentTypes = settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
 
-  const projHTML = projects.map(p=>`<li><span>${escHtml(p.name)}</span><button class="btn btn-danger btn-sm" onclick="removeProject('${p.id}')">移除</button></li>`).join('');
-  const testHTML = testers.map(n=>`<li><span>${escHtml(n)}</span><button class="btn btn-danger btn-sm" onclick="removeTesterItem('${escHtml(n)}')">移除</button></li>`).join('');
-  const ratioHTML = ratioPresets.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeRatioPresetItem('${escHtml(r)}')">移除</button></li>`).join('');
-  const expTypeHTML = experimentTypes.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeExpTypeItem('${escHtml(r)}')">移除</button></li>`).join('');
+  const projHTML = projects.map(p=>`<span class="admin-chip">${escHtml(p.name)}<button onclick="removeProject('${p.id}')">×</button></span>`).join('');
+  const testHTML = testers.map(n=>`<span class="admin-chip">${escHtml(n)}<button onclick="removeTesterItem('${escHtml(n)}')">×</button></span>`).join('');
+  const ratioHTML = ratioPresets.map(r=>`<span class="admin-chip admin-chip-mono">${escHtml(r)}<button onclick="removeRatioPresetItem('${escHtml(r)}')">×</button></span>`).join('');
+  const expTypeHTML = experimentTypes.map(r=>`<span class="admin-chip admin-chip-accent">${escHtml(r)}<button onclick="removeExpTypeItem('${escHtml(r)}')">×</button></span>`).join('');
 
   const trashHTML = trash.length === 0
     ? '<li style="color:var(--text-muted)">回收站为空</li>'
@@ -2343,35 +2302,33 @@ async function renderAdmin() {
 
   renderShell(`
     <div class="page-header"><div class="page-title">⚙️ 管理面板</div></div>
-    <div class="admin-grid">
+    <div class="admin-grid-2">
       <div class="admin-card">
         <div class="admin-section-header"><h3>🧑‍💻 测试人员名单</h3><span class="badge-count">${testers.length}</span></div>
-        <ul class="admin-list">${testHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-tester" type="text" placeholder="添加测试人…"/><button class="btn btn-primary" onclick="addTesterItem()">添加</button></div>
-      </div>
-      <div class="admin-card">
-        <div class="admin-section-header"><h3>📐 测试比例选项</h3><span class="badge-count">${ratioPresets.length}</span></div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「测试比例」下拉框中显示</p>
-        <ul class="admin-list">${ratioHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-ratio" type="text" placeholder="如 40/30/30 或 20/80"/><button class="btn btn-primary" onclick="addRatioPresetItem()">添加</button></div>
+        <div class="admin-chips-wrap">${testHTML||'<span style="color:var(--text-muted);font-size:13px">暂无</span>'}</div>
+        <div class="add-row"><input class="form-control" id="add-tester" type="text" placeholder="添加测试人…"/><button class="btn btn-primary btn-sm" onclick="addTesterItem()">添加</button></div>
       </div>
       <div class="admin-card">
         <div class="admin-section-header"><h3>🧪 实验类型选项</h3><span class="badge-count">${experimentTypes.length}</span></div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「实验类型」下拉框中显示</p>
-        <ul class="admin-list">${expTypeHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-exptype" type="text" placeholder="如 本地化 TH 或 主图测试"/><button class="btn btn-primary" onclick="addExpTypeItem()">添加</button></div>
+        <div class="admin-chips-wrap">${expTypeHTML||'<span style="color:var(--text-muted);font-size:13px">暂无</span>'}</div>
+        <div class="add-row"><input class="form-control" id="add-exptype" type="text" placeholder="如 本地化 TH 或 主图测试"/><button class="btn btn-primary btn-sm" onclick="addExpTypeItem()">添加</button></div>
       </div>
-      <div class="admin-card" style="grid-column:1/-1">
+      <div class="admin-card">
+        <div class="admin-section-header"><h3>📐 测试比例选项</h3><span class="badge-count">${ratioPresets.length}</span></div>
+        <div class="admin-chips-wrap">${ratioHTML||'<span style="color:var(--text-muted);font-size:13px">暂无</span>'}</div>
+        <div class="add-row"><input class="form-control" id="add-ratio" type="text" placeholder="如 40/30/30 或 20/80"/><button class="btn btn-primary btn-sm" onclick="addRatioPresetItem()">添加</button></div>
+      </div>
+      <div class="admin-card">
         <div class="admin-section-header"><h3>📁 项目管理</h3><span class="badge-count">${projects.length}</span></div>
-        <ul class="admin-list">${projHTML||'<li style="color:var(--text-muted)">暂无项目</li>'}</ul>
-        <div class="add-row" style="align-items:flex-end"><textarea class="form-control" id="add-proj" rows="3" placeholder="每行一个项目名，或用英文逗号隔开，批量添加" style="resize:vertical;min-height:70px"></textarea><button class="btn btn-primary" onclick="addProjectItem()">批量添加</button></div>
+        <div class="admin-chips-wrap">${projHTML||'<span style="color:var(--text-muted);font-size:13px">暂无项目</span>'}</div>
+        <div class="add-row" style="align-items:flex-end"><textarea class="form-control" id="add-proj" rows="2" placeholder="每行一个项目名，或用英文逗号隔开，批量添加" style="resize:vertical;min-height:56px"></textarea><button class="btn btn-primary btn-sm" onclick="addProjectItem()">批量添加</button></div>
       </div>
-      <div class="admin-card" style="grid-column:1/-1">
-        <h3>🗑 回收站 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">删除的记录保留 30 天，可一键还原</span></h3>
+      <div class="admin-card admin-card-full">
+        <div class="admin-section-header"><h3>🗑 回收站</h3><span style="font-size:12px;color:var(--text-muted)">删除的记录保留 30 天，可一键还原</span></div>
         <ul class="admin-list">${trashHTML}</ul>
       </div>
-      <div class="admin-card" style="grid-column:1/-1">
-        <h3>📦 每日整库快照 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">每天首次保存时自动备份，保留最近 30 天。万一全员都改坏了，可以一键还原到任意一天</span></h3>
+      <div class="admin-card admin-card-full">
+        <div class="admin-section-header"><h3>📦 每日整库快照</h3><span style="font-size:12px;color:var(--text-muted)">每天首次保存时自动备份，保留最近 30 天</span></div>
         <ul class="admin-list">${backupsHTML}</ul>
       </div>
     </div>`, 'admin');

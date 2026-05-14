@@ -1,25 +1,25 @@
 // ================================================================
 // app.js  –  图测记录工具
 // ================================================================
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { FIREBASE_CONFIG, SUPER_ADMIN_EMAIL } from './config.js';
 import { calculateEffect, effectBadgeHTML, EFFECT_OPTIONS, EFFECT } from './effects.js';
 import {
   initDB, getSettings, createSettings, updateSettings,
-  getUser, getAllUsers, setUser, updateUser,
   getProjects, addProject, deleteProject,
   addTester, removeTester,
-  createTest, updateTest, deleteTest,
+  getTests, createTest, updateTest, deleteTest,
+  isReady, resumeAccess, pickFolder, getFolderName,
+  getTrash, restoreFromTrash, purgeTrashItem,
+  getRecordHistory, rollbackRecord,
+  getDailyBackups, restoreFromBackup,
+  getPendingCount, retryPending,
   subscribeTests, subscribeProjects
 } from './db.js';
 
-// ── Firebase init ─────────────────────────────────────────────
-const firebaseApp = initializeApp(FIREBASE_CONFIG);
-const auth = getAuth(firebaseApp);
-initDB(firebaseApp);
+initDB();
+
+// ── 个人信息（仅存本浏览器 localStorage）─────────────────────
+function getProfile() { try { return JSON.parse(localStorage.getItem('chart-recorder-profile')||'{}'); } catch { return {}; } }
+function saveProfile(p) { localStorage.setItem('chart-recorder-profile', JSON.stringify(p)); }
 
 // 客户端图片压缩（存 base64，无需 Storage）
 function compressImage(file, maxPx = 480, quality = 0.72) {
@@ -41,12 +41,11 @@ function compressImage(file, maxPx = 480, quality = 0.72) {
 
 // ── State ─────────────────────────────────────────────────────
 const state = {
-  user: null, userData: null, settings: null,
+  settings: null, pendingCount: 0,
   view: 'dashboard', tests: [], projects: [],
   filterProject: 'all', filterEffect: 'all', filterBiType: 'all',
   filterExpType: 'all', filterVarCount: 'all', sortOrder: 'desc', searchQuery: '',
-  editTestId: null, activeVariant: null, activeImgVariant: null, formType: 'test',
-  _unsubTests: null, _unsubProjects: null,
+  editTestId: null, activeVariant: null, activeImgVariant: null, formType: 'test', selectedTestId: null,
 };
 const formState = { images: [null,null,null,null], previews: [null,null,null,null] };
 const charts = {};
@@ -138,51 +137,79 @@ function parsePaste(text) {
   } catch { return null; }
 }
 
-// ── Auth ──────────────────────────────────────────────────────
-async function signInWithGoogle() {
-  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-  catch (err) { toast('登录失败：' + err.message, 'error'); }
-}
-async function signOutUser() {
-  if (state._unsubTests) state._unsubTests();
-  if (state._unsubProjects) state._unsubProjects();
-  await fbSignOut(auth);
-}
-
-onAuthStateChanged(auth, async user => {
-  if (!user) { state.user = null; state.userData = null; renderLogin(); return; }
-  state.user = user;
-  let userData = await getUser(user.uid);
-  const settings = await getSettings();
-  if (!settings) {
-    await createSettings({ accessCode: 'sanyi', testers: [user.displayName || user.email], allowlist: [user.email] });
-    await setUser(user.uid, { email: user.email, name: user.displayName || user.email, photoURL: user.photoURL || null, isAdmin: true, approved: true, joinedAt: new Date().toISOString() });
-    userData = await getUser(user.uid);
+// ── 启动流程：选择数据文件夹 ─────────────────────────────────
+(async () => {
+  if (!window.showDirectoryPicker) {
+    document.getElementById('app').innerHTML = `
+      <div class="login-page"><div class="login-card">
+        <div class="login-logo">⚠️</div>
+        <h1>浏览器不支持</h1>
+        <p style="color:var(--text-muted);margin-top:12px">本工具需要 File System Access API 才能直接读写网络盘上的数据。<br/><br/>请使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 浏览器打开。</p>
+      </div></div>`;
+    return;
   }
-  state.settings = await getSettings();
-  if (!userData || !userData.approved) { renderAccessCode(user); return; }
-  state.userData = userData;
-  await startMainApp();
-});
+  if (await isReady()) { await startMainApp(); return; }
+  // getFolderName() 有值说明曾选过文件夹但权限失效，可恢复；否则首次访问
+  renderFolderPicker(!!getFolderName());
+})();
 
-async function handleAccessCode(code) {
-  const settings = await getSettings();
-  if (!settings || code.trim() !== settings.accessCode) { toast('入场码错误，请联系管理员', 'error'); return; }
-  const isSpecialAdmin = SUPER_ADMIN_EMAIL && state.user.email === SUPER_ADMIN_EMAIL;
-  await setUser(state.user.uid, { email: state.user.email, name: state.user.displayName || state.user.email, photoURL: state.user.photoURL || null, isAdmin: isSpecialAdmin || false, approved: true, joinedAt: new Date().toISOString() });
-  const al = settings.allowlist || [];
-  if (!al.includes(state.user.email)) await updateSettings({ allowlist: [...al, state.user.email] });
-  toast('验证成功，欢迎加入！', 'success');
-  state.userData = await getUser(state.user.uid);
-  state.settings = await getSettings();
-  await startMainApp();
+function renderFolderPicker(canResume = false) {
+  document.getElementById('app').innerHTML = `
+    <div class="login-page">
+      <div class="login-card">
+        <div class="login-logo">📂</div>
+        <h1>图测记录工具</h1>
+        <p style="color:var(--text-muted);margin:14px 0 22px;line-height:1.6">
+          所有数据存储在群晖网络盘上的指定文件夹里，多人共享同一份数据。<br/>
+          首次使用请选择 <code style="background:#F3F4F6;padding:2px 6px;border-radius:3px">data</code> 文件夹（不存在会自动创建文件）。
+        </p>
+        ${canResume ? `<button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="_resumeFolder()">🔄 恢复访问已选文件夹</button>` : ''}
+        <button class="btn ${canResume?'btn-secondary':'btn-primary'}" style="width:100%" onclick="_pickFolder()">📁 选择数据文件夹</button>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:18px">提示：选择网络盘上的 <code>data</code> 文件夹，例如 <code>Z:\\图测记录工具\\data</code>（首次使用会自动创建 data 内的 JSON 文件）</p>
+      </div>
+    </div>`;
+}
+
+async function _pickFolder() {
+  try {
+    await pickFolder();
+    await startMainApp();
+  } catch (err) {
+    if (err.name !== 'AbortError') toast('选择失败：' + err.message, 'error');
+  }
+}
+async function _resumeFolder() {
+  try {
+    const ok = await resumeAccess();
+    if (ok) await startMainApp();
+    else toast('权限被拒绝，请选择文件夹', 'error');
+  } catch (err) { toast('恢复失败：' + err.message, 'error'); }
 }
 
 async function startMainApp() {
-  state._unsubTests = subscribeTests(tests => { state.tests = tests; if (state.view === 'dashboard') renderDashboard(); if (state.view === 'timeline') renderTimeline(); });
-  state._unsubProjects = subscribeProjects(projects => { state.projects = projects; });
   state.settings = await getSettings();
+  state.tests = await getTests();
+  state.projects = await getProjects();
+  // 先尝试同步未保存的数据
+  await syncPending(true);
   navigate('dashboard');
+}
+
+async function refreshData() {
+  state.tests = await getTests();
+  state.projects = await getProjects();
+  state.settings = await getSettings();
+}
+
+async function syncPending(silent = false) {
+  state.pendingCount = await getPendingCount();
+  if (state.pendingCount === 0) return;
+  if (!silent) toast(`正在同步 ${state.pendingCount} 条待保存记录…`, 'info');
+  const { success, fail } = await retryPending();
+  state.pendingCount = await getPendingCount();
+  if (success > 0) await refreshData();
+  if (fail > 0 && !silent) toast(`仍有 ${fail} 条同步失败`, 'error');
+  else if (success > 0) toast(`已同步 ${success} 条`, 'success');
 }
 
 // ── Navigation ────────────────────────────────────────────────
@@ -197,66 +224,78 @@ function render() {
     case 'timeline':  renderTimeline();  break;
     case 'form':      renderFormView();  break;
     case 'admin':     renderAdmin();     break;
+    case 'profile':   renderProfile();   break;
   }
 }
 
 // ── Shell ─────────────────────────────────────────────────────
 function escHtml(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+function sidebarAvatarHTML(prof, cls) {
+  if (prof.avatar) return `<img class="${cls}" src="${prof.avatar}" alt="" />`;
+  const initial = (prof.name && prof.name.trim()[0]) || '👤';
+  return `<span class="${cls} placeholder">${escHtml(initial)}</span>`;
+}
+
+function toggleSidebar() {
+  const next = localStorage.getItem('sb-collapsed') !== '1';
+  localStorage.setItem('sb-collapsed', next ? '1' : '0');
+  const sb = document.querySelector('.sidebar');
+  const main = document.querySelector('.page-with-sidebar');
+  if (!sb) return;
+  sb.classList.toggle('sidebar--collapsed', next);
+  main?.classList.toggle('sidebar--collapsed', next);
+  // trigger chart.js + other responsive components to recompute size
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 290);
+}
+
+const ICON_PANEL_CLOSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>`;
+const ICON_PANEL_OPEN  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg>`;
+const ICON_BRAND = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
+const ICON_PLUS  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`;
+
 function renderShell(content, activeTab) {
-  const u = state.userData;
-  const av = u?.photoURL ? `<img class="user-avatar" src="${u.photoURL}" />` : `<div class="user-avatar-placeholder">${(u?.name||'?')[0].toUpperCase()}</div>`;
-  const adminBtn = `<button class="nav-tab${activeTab==='admin'?' active':''}" onclick="navigate('admin')">⚙️ 管理</button>`;
+  const folderName = getFolderName();
+  const prof = getProfile();
+  const collapsed = localStorage.getItem('sb-collapsed') === '1';
+  const navItem = (tab, view, icon, label) =>
+    `<button class="sidebar-nav-item${activeTab===tab?' active':''}" onclick="navigate('${view}')"><span class="sidebar-nav-icon">${icon}</span><span class="sidebar-nav-label">${label}</span></button>`;
+  const pending = state.pendingCount > 0
+    ? `<button class="pending-pill" onclick="_syncPending()" title="点击重试同步">⚠ ${state.pendingCount} 条未同步</button>`
+    : '';
   document.getElementById('app').innerHTML = `
-    <nav class="navbar">
-      <div class="navbar-brand">📊 图测记录<span>Chart Testing</span></div>
-      <div class="nav-tabs">
-        <button class="nav-tab${activeTab==='dashboard'?' active':''}" onclick="navigate('dashboard')">仪表盘</button>
-        <button class="nav-tab${activeTab==='timeline'?' active':''}" onclick="navigate('timeline')">时间线</button>
-        <button class="nav-tab btn-primary" style="margin-left:8px" onclick="navigate('form')">＋ 新增记录</button>
+    <aside class="sidebar${collapsed?' sidebar--collapsed':''}">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-name"><span class="sidebar-logo">${ICON_BRAND}</span><span>图测记录工具</span></div>
+        <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="收起侧边栏" aria-label="收起侧边栏">${ICON_PANEL_CLOSE}</button>
       </div>
-      <div class="navbar-right">
-        ${adminBtn}
-        <div class="user-pill">${av}<span>${escHtml(u?.name||u?.email||'')}</span></div>
-        <button class="btn-icon" title="退出登录" onclick="signOutUser()">🚪</button>
+      <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span class="sidebar-add-icon">${ICON_PLUS}</span><span>新增记录</span></button>
+      <nav class="sidebar-nav">
+        ${navItem('timeline','timeline','📋','时间线')}
+        ${navItem('dashboard','dashboard','📊','仪表盘')}
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-data">
+        <span class="sidebar-folder" title="${escHtml(folderName||'未选择')}">📂 ${escHtml(folderName||'未选择')}</span>
+        <button class="sidebar-data-btn" onclick="_refreshFromDisk()">🔄 刷新数据</button>
+        ${pending}
       </div>
-    </nav>
-    <main class="page">${content}</main>`;
+      <button class="sidebar-profile" onclick="navigate('profile')">
+        ${sidebarAvatarHTML(prof, 'sidebar-avatar')}
+        <span class="sidebar-profile-name">${escHtml(prof.name || '设置个人信息')}</span>
+      </button>
+    </aside>
+    <button class="sidebar-show-btn" onclick="toggleSidebar()" title="展开侧边栏" aria-label="展开侧边栏">${ICON_PANEL_OPEN}</button>
+    <main class="page-with-sidebar${collapsed?' sidebar--collapsed':''}">${content}</main>`;
 }
 
-// ── Login ─────────────────────────────────────────────────────
-function renderLogin() {
-  document.getElementById('app').innerHTML = `
-    <div class="login-page">
-      <div class="login-card">
-        <div class="login-logo">📊</div>
-        <h1>图测记录工具</h1>
-        <p>Chart A/B Testing Tracker</p>
-        <button class="btn-google" onclick="signInWithGoogle()">
-          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
-          使用 Google 账号登录
-        </button>
-      </div>
-    </div>`;
+async function _refreshFromDisk() {
+  await refreshData();
+  await syncPending(true);
+  render();
+  toast('已重新加载', 'success');
 }
-
-function renderAccessCode(user) {
-  document.getElementById('app').innerHTML = `
-    <div class="login-page">
-      <div class="access-card">
-        <h2>🔐 输入入场码</h2>
-        <p>你的账号尚未获得访问权限，请输入团队入场码</p>
-        <div class="user-email">${user.photoURL?`<img class="user-avatar" src="${user.photoURL}" />`:''}${escHtml(user.email)}</div>
-        <div class="form-group">
-          <input class="form-control" id="access-input" type="password" placeholder="请输入入场码" />
-          <div class="access-error" id="access-error"></div>
-        </div>
-        <button class="btn btn-primary" style="width:100%" onclick="handleAccessCode(document.getElementById('access-input').value)">确认进入</button>
-        <div style="margin-top:16px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="signOutUser()">切换账号</button></div>
-      </div>
-    </div>`;
-  document.getElementById('access-input').addEventListener('keydown', e => { if (e.key==='Enter') handleAccessCode(e.target.value); });
-}
+async function _syncPending() { await syncPending(); render(); }
 
 // ── Dashboard ─────────────────────────────────────────────────
 function renderDashboard() {
@@ -266,14 +305,36 @@ function renderDashboard() {
   let totalV=0, appliedV=0;
   tests.forEach(t => (t.variants||[]).forEach((v,i) => { if(i===0)return; totalV++; if(v.applied)appliedV++; }));
   const rate = totalV>0 ? Math.round(appliedV/totalV*100) : 0;
+  const projCount = state.projects.length;
+  const testerCount = (state.settings?.testers||[]).length;
 
   renderShell(`
     <div class="page-header"><div class="page-title">仪表盘</div></div>
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label">总测试次数</div><div class="stat-value">${tests.length}</div><div class="stat-sub">所有项目累计</div></div>
-      <div class="stat-card accent-blue"><div class="stat-label">本月测试</div><div class="stat-value">${thisMonth.length}</div><div class="stat-sub">${now.getMonth()+1} 月</div></div>
-      <div class="stat-card accent-green"><div class="stat-label">累计应用</div><div class="stat-value">${appliedV}</div><div class="stat-sub">共 ${totalV} 个测试变体</div></div>
-      <div class="stat-card accent-orange"><div class="stat-label">应用率</div><div class="stat-value">${rate}%</div><div class="stat-sub">测试变体应用比例</div></div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#EEF2FF;color:#4F6CF6">📋</div><span class="stat-label">总测试次数</span></div>
+        <div class="stat-value">${tests.length}</div><div class="stat-sub">所有项目累计</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#DBEAFE;color:#1D4ED8">📅</div><span class="stat-label">本月测试</span></div>
+        <div class="stat-value" style="color:var(--primary)">${thisMonth.length}</div><div class="stat-sub">${now.getMonth()+1} 月</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#DCFCE7;color:#15803D">✅</div><span class="stat-label">累计应用</span></div>
+        <div class="stat-value" style="color:var(--success-l)">${appliedV}</div><div class="stat-sub">共 ${totalV} 个测试变体</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#FEF3C7;color:#B45309">🎯</div><span class="stat-label">应用率</span></div>
+        <div class="stat-value" style="color:var(--warning)">${rate}%</div><div class="stat-sub">测试变体应用比例</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#F3E8FF;color:#7C3AED">📁</div><span class="stat-label">项目数</span></div>
+        <div class="stat-value" style="color:#7C3AED">${projCount}</div><div class="stat-sub">活跃项目</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-top"><div class="stat-icon" style="background:#CCFBF1;color:#0F766E">👤</div><span class="stat-label">测试人员</span></div>
+        <div class="stat-value" style="color:#0F766E">${testerCount}</div><div class="stat-sub">团队成员</div>
+      </div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><h3>📅 测试时间趋势（近12周）</h3><canvas id="ch-timeline"></canvas></div>
@@ -366,29 +427,7 @@ function initCharts(tests) {
 // ── Timeline ──────────────────────────────────────────────────
 const BI_TYPE_OPTS = ['icon','五图','置顶','视频'];
 
-function renderTimeline() {
-  const projOpts = state.projects.map(p=>`<option value="${p.id}" ${state.filterProject===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
-  const expTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
-
-  const TL_EFFECT_OPTS = [
-    {val:'all',       label:'全部表现'},
-    {val:'superb',    label:'🏆 很好'},
-    {val:'good',      label:'👍 不错'},
-    {val:'bad',       label:'❌ 很差'},
-    {val:'neutral_p', label:'➖ 持平(+)'},
-    {val:'neutral_n', label:'➖ 持平(-)'},
-    {val:'empirical_p',label:'📈 经验决策(+)'},
-    {val:'empirical_n',label:'📈 经验决策(-)'},
-  ];
-  const effectOpts = TL_EFFECT_OPTS.map(o=>`<option value="${o.val}" ${state.filterEffect===o.val?'selected':''}>${o.label}</option>`).join('');
-  const biTypeOpts = [`<option value="all" ${state.filterBiType==='all'?'selected':''}>全部截图类型</option>`,
-    ...BI_TYPE_OPTS.map(b=>`<option value="${b}" ${state.filterBiType===b?'selected':''}>${b}</option>`)
-  ].join('');
-  const expTypeOpts = [`<option value="all" ${state.filterExpType==='all'?'selected':''}>全部实验类型</option>`,
-    ...expTypes.map(b=>`<option value="${b}" ${state.filterExpType===b?'selected':''}>${escHtml(b)}</option>`)
-  ].join('');
-
-  // Apply filters
+function _tlFilterTests() {
   let tests = [...state.tests];
   if (state.filterProject !== 'all') tests = tests.filter(t=>t.projectId===state.filterProject);
   if (state.filterEffect !== 'all') tests = tests.filter(t=>t.type!=='update'&&(t.variants||[]).some((v,i)=>i>0&&(v.effect===state.filterEffect||(state.filterEffect==='superb'&&v.effect==='great'))));
@@ -418,6 +457,32 @@ function renderTimeline() {
     ? new Date(dateOf(b))-new Date(dateOf(a))
     : new Date(dateOf(a))-new Date(dateOf(b))
   );
+  return tests;
+}
+
+function renderTimeline() {
+  const projOpts = state.projects.map(p=>`<option value="${p.id}" ${state.filterProject===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
+  const expTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
+
+  const TL_EFFECT_OPTS = [
+    {val:'all',       label:'全部表现'},
+    {val:'superb',    label:'🏆 很好'},
+    {val:'good',      label:'👍 不错'},
+    {val:'bad',       label:'❌ 很差'},
+    {val:'neutral_p', label:'➖ 持平(+)'},
+    {val:'neutral_n', label:'➖ 持平(-)'},
+    {val:'empirical_p',label:'📈 经验决策(+)'},
+    {val:'empirical_n',label:'📈 经验决策(-)'},
+  ];
+  const effectOpts = TL_EFFECT_OPTS.map(o=>`<option value="${o.val}" ${state.filterEffect===o.val?'selected':''}>${o.label}</option>`).join('');
+  const biTypeOpts = [`<option value="all" ${state.filterBiType==='all'?'selected':''}>全部截图类型</option>`,
+    ...BI_TYPE_OPTS.map(b=>`<option value="${b}" ${state.filterBiType===b?'selected':''}>${b}</option>`)
+  ].join('');
+  const expTypeOpts = [`<option value="all" ${state.filterExpType==='all'?'selected':''}>全部实验类型</option>`,
+    ...expTypes.map(b=>`<option value="${b}" ${state.filterExpType===b?'selected':''}>${escHtml(b)}</option>`)
+  ].join('');
+
+  const tests = _tlFilterTests();
 
   const activeFilters = [
     state.filterProject!=='all', state.filterEffect!=='all',
@@ -425,14 +490,26 @@ function renderTimeline() {
     !!state.searchQuery
   ].filter(Boolean).length;
 
-  const body = tests.length===0
-    ? `<div class="empty-state"><div class="empty-icon">🔍</div><p>暂无匹配记录</p><button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="resetTimelineFilters()">清除筛选</button></div>`
-    : `<div class="timeline">${tests.map(t=>t.type==='update'?buildUpdateCard(t):buildTestCard(t)).join('')}</div>`;
+  // Auto-select first item if none selected or selected not in filtered list
+  if (tests.length > 0) {
+    const inList = tests.some(t => t.id === state.selectedTestId);
+    if (!inList) state.selectedTestId = tests[0].id;
+  } else {
+    state.selectedTestId = null;
+  }
+
+  const selectedTest = state.selectedTestId ? state.tests.find(t => t.id === state.selectedTestId) : null;
+
+  const listHtml = tests.length === 0
+    ? `<div class="tl-list-empty"><div style="font-size:32px;margin-bottom:8px">🔍</div><p>暂无匹配记录</p><button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="resetTimelineFilters()">清除筛选</button></div>`
+    : tests.map(t => buildTlListItem(t)).join('');
+
+  const detailHtml = selectedTest ? buildTlDetail(selectedTest) : `<div class="tl-detail-empty"><div class="empty-icon">👈</div><p>请选择左侧记录查看详情</p></div>`;
 
   renderShell(`
     <div class="page-header">
       <div class="page-title">历史时间线</div>
-      <span class="tl-count-badge">${tests.length} / ${state.tests.length} 条记录</span>
+      <span class="tl-result-pill">共 ${tests.length} 条记录${tests.length!==state.tests.length?` / 全部 ${state.tests.length}`:''}</span>
     </div>
     <div class="tl-filter-bar">
       <div class="tl-filter-row">
@@ -443,7 +520,7 @@ function renderTimeline() {
         <select class="form-control tl-select" id="tl-project" onchange="applyTimelineFilters()">
           <option value="all" ${state.filterProject==='all'?'selected':''}>全部项目</option>${projOpts}
         </select>
-<select class="form-control tl-select" id="tl-exptype" onchange="applyTimelineFilters()">
+        <select class="form-control tl-select" id="tl-exptype" onchange="applyTimelineFilters()">
           ${expTypeOpts}
         </select>
         <select class="form-control tl-select" id="tl-effect" onchange="applyTimelineFilters()">
@@ -456,8 +533,145 @@ function renderTimeline() {
         ${activeFilters>0?`<button class="btn btn-secondary btn-sm tl-reset" onclick="resetTimelineFilters()">重置 (${activeFilters})</button>`:''}
       </div>
     </div>
-    ${body}
+    <div class="tl-split">
+      <div class="tl-list-pane" id="tl-list-pane">${listHtml}</div>
+      <div class="tl-detail-pane" id="tl-detail-pane">${detailHtml}</div>
+    </div>
   `, 'timeline');
+}
+
+function buildTlListItem(t) {
+  const isUpdate = t.type === 'update';
+  const vars = t.variants || [];
+  const anyApplied = !isUpdate && vars.some((v,i) => i > 0 && v.applied);
+  const normEffect = e => e==='great'?'superb':e==='empirical'?'empirical_p':e||'empirical_n';
+
+  const dateLines = isUpdate
+    ? `<span>${t.updateDate || ''}</span><span class="tl-date-arrow">更新</span>`
+    : `<span>${t.startDate || ''}</span><span class="tl-date-arrow">↓</span><span>${t.endDate || '进行中'}</span>`;
+
+  const thumbsHtml = isUpdate
+    ? [t.imageUrl, t.newImageUrl].filter(Boolean).slice(0,4).map(url =>
+        `<img class="tl-item-thumb" src="${url}" />`).join('')
+    : vars.slice(0,5).map(v => v.imageUrl
+        ? `<img class="tl-item-thumb${v.applied?' tl-thumb-applied':''}" src="${v.imageUrl}" />`
+        : `<div class="tl-item-thumb-ph">🖼</div>`).join('');
+
+  const dotCls = isUpdate ? 'dot-update' : (anyApplied ? 'dot-applied' : '');
+  const isSelected = state.selectedTestId === t.id;
+  return `
+    <div class="tl-list-item${isSelected ? ' selected' : ''}" data-id="${t.id}" onclick="selectTimelineTest('${t.id}')">
+      <div class="tl-item-dates">${dateLines}</div>
+      <div class="tl-item-axis"><div class="tl-item-axis-dot ${dotCls}"></div></div>
+      <div class="tl-item-content">
+        <div class="tl-item-name">${escHtml(t.projectName || '')}${isUpdate ? ' <span style="font-size:11px;color:#F97316">🔄</span>' : ''}</div>
+        <div class="tl-item-thumbs">${thumbsHtml || '<div class="tl-item-thumb-ph">🖼</div>'}</div>
+      </div>
+    </div>`;
+}
+
+function buildTlDetail(t) {
+  if (!t) return `<div class="tl-detail-empty"><div class="empty-icon">👈</div><p>请选择左侧记录查看详情</p></div>`;
+  const isUpdate = t.type === 'update';
+  const vars = t.variants || [];
+  const biTypes = Array.isArray(t.biVizType) ? t.biVizType : (t.biVizType ? [t.biVizType] : []);
+  const normEffect = e => e==='great'?'superb':e==='empirical'?'empirical_p':e||'empirical_n';
+  const appliedIdx = vars.findIndex((v,i) => i > 0 && v.applied);
+  const appliedVar = appliedIdx >= 0 ? vars[appliedIdx] : null;
+
+  // Images with inline stats below each
+  let imagesHtml = '';
+  if (isUpdate) {
+    const pairs = [{url: t.imageUrl, label:'原始'}, {url: t.newImageUrl, label:'更新后'}].filter(p=>p.url);
+    imagesHtml = pairs.map(p=>`
+      <div class="tl-detail-img-wrap">
+        <img class="tl-detail-img" src="${p.url}" onclick="openLightbox('${p.url}')" />
+        <div class="tl-detail-img-label">${p.label}</div>
+      </div>`).join('');
+  } else {
+    imagesHtml = vars.map((v,i)=>{
+      if (!v.imageUrl) return '';
+      const labelText = i===0 ? '🔵 原始' : `🔴 测试${i}`;
+      const ciText = (v.ciLower!=null&&v.ciLower!=='') ? `CI [${v.ciLower}%, ${v.ciUpper}%]` : '';
+      const fiText = v.firstInstalls!=null ? `安装 ${v.firstInstalls}` : '';
+      const effectHtml = i>0 ? effectBadgeHTML(normEffect(v.effect)) : '';
+      const statsHtml = (fiText||ciText||effectHtml) ? `
+        <div class="tl-img-stats">
+          ${fiText ? `<div class="tl-img-stat">${fiText}</div>` : ''}
+          ${ciText ? `<div class="tl-img-stat tl-img-ci">${ciText}</div>` : ''}
+          ${effectHtml ? `<div style="margin-top:3px">${effectHtml}</div>` : ''}
+        </div>` : '';
+      return `
+        <div class="tl-detail-img-wrap${v.applied?' is-applied':''}">
+          <img class="tl-detail-img" src="${v.imageUrl}" onclick="openLightbox('${v.imageUrl}')" />
+          <div class="tl-detail-img-label">${labelText}</div>
+          ${v.applied ? '<div class="tl-applied-bar">✓ 已采用</div>' : ''}
+          ${statsHtml}
+        </div>`;
+    }).join('');
+  }
+
+  // Header meta
+  const metaChips = isUpdate
+    ? `<span class="meta-chip">📅 ${t.updateDate||''}</span><span class="badge badge-orange">🔄 直接更新</span>${biTypes.map(b=>`<span class="bi-type-tag">${escHtml(b)}</span>`).join('')}`
+    : `<span class="meta-chip">📅 ${t.startDate||''} → ${t.endDate||'进行中'}</span>
+       <span class="meta-chip">置信度 ${t.confidence||'-'}%</span>
+       ${t.testRatio?`<span class="meta-chip">比例 ${escHtml(t.testRatio)}</span>`:''}
+       ${t.experimentType?`<span class="bi-type-tag">${escHtml(t.experimentType)}</span>`:''}
+       ${biTypes.map(b=>`<span class="bi-type-tag">${escHtml(b)}</span>`).join('')}
+       ${t.tester?`<span class="badge badge-blue">${escHtml(t.tester)}</span>`:''}
+       ${appliedVar?`<span class="applied-chip">✓ 测试${appliedIdx} 已采用</span>`:'<span class="not-applied-chip">暂未应用</span>'}`;
+
+  // Progress block
+  const progressSection = !isUpdate ? buildProgressBlock(t) : '';
+
+  // Conclusion
+  const conclusionSection = !isUpdate ? `
+    <div class="tl-detail-section">
+      <div class="conc-block conc-manual">
+        <div class="conc-title">📝 实验小结</div>
+        <textarea class="form-control" id="conc-${t.id}" rows="3" placeholder="填写实验结论、分析和建议…" style="resize:vertical;margin-top:6px;font-size:13px">${escHtml(t.conclusion||'')}</textarea>
+        <div style="text-align:right;margin-top:6px"><button class="btn btn-primary btn-sm" onclick="saveConclusion('${t.id}')">💾 保存小结</button></div>
+      </div>
+    </div>` : '';
+
+  // Notes
+  const notesSection = (t.notes?.change||t.notes?.purpose||t.notes?.design) ? `
+    <div class="tl-detail-section">
+      <div class="card-notes">
+        ${t.notes.change?`<div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div>`:''}
+        ${t.notes.purpose?`<div class="note-row"><span class="note-tag">目的</span><span>${escHtml(t.notes.purpose)}</span></div>`:''}
+        ${t.notes.design?`<div class="note-row"><span class="note-tag">思路</span><span>${escHtml(t.notes.design)}</span></div>`:''}
+      </div>
+    </div>` : '';
+
+  return `<div class="tl-detail-inner">
+    <div class="tl-detail-header">
+      <div class="tl-detail-title-col">
+        <div class="tl-detail-title">${escHtml(t.projectName||'')}</div>
+        <div class="tl-detail-meta">${metaChips}</div>
+      </div>
+      <div class="tl-detail-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
+        <button class="btn btn-secondary btn-sm" onclick="showHistory('${t.id}')">🕘 历史</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>
+      </div>
+    </div>
+    ${imagesHtml ? `<div class="tl-detail-images">${imagesHtml}</div>` : ''}
+    ${progressSection}
+    ${conclusionSection}
+    ${notesSection}
+  </div>`;
+}
+
+function selectTimelineTest(id) {
+  state.selectedTestId = id;
+  document.querySelectorAll('.tl-list-item').forEach(el => {
+    el.classList.toggle('selected', el.dataset.id === id);
+  });
+  const t = state.tests.find(tt => tt.id === id);
+  const detailEl = document.getElementById('tl-detail-pane');
+  if (detailEl) detailEl.innerHTML = t ? buildTlDetail(t) : `<div class="tl-detail-empty"><div class="empty-icon">👈</div><p>请选择左侧记录查看详情</p></div>`;
 }
 
 function onSearchInput(val) {
@@ -594,7 +808,8 @@ function buildTestCard(t) {
           </div>`:''}
           <div class="card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
-            ${state.userData?.isAdmin?`<button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>`:''}
+            <button class="btn btn-secondary btn-sm" onclick="showHistory('${t.id}')">🕘 历史</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>
           </div>
         </div>
       </div>
@@ -652,7 +867,8 @@ function buildUpdateCard(t) {
           ${t.notes?.change?`<div class="card-notes"><div class="note-row"><span class="note-tag">改动</span><span>${escHtml(t.notes.change)}</span></div></div>`:''}
           <div class="card-actions">
             <button class="btn btn-secondary btn-sm" onclick="editTest('${t.id}')">✏️ 编辑</button>
-            ${state.userData?.isAdmin?`<button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>`:''}
+            <button class="btn btn-secondary btn-sm" onclick="showHistory('${t.id}')">🕘 历史</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTestRecord('${t.id}')">🗑 删除</button>
           </div>
         </div>
       </div>
@@ -662,24 +878,93 @@ function buildUpdateCard(t) {
 function toggleCard(id) { document.getElementById('card-'+id)?.classList.toggle('expanded'); }
 function editTest(id) { const t=state.tests.find(tt=>tt.id===id); state.formType=t?.type==='update'?'update':'test'; state.editTestId=id; navigate('form'); }
 async function deleteTestRecord(id) {
-  if (!confirm('确认删除？此操作不可撤销。')) return;
-  try { await deleteTest(id); toast('已删除','success'); } catch(e) { toast('删除失败：'+e.message,'error'); }
+  if (!confirm('确认删除？删除后会进入回收站，30 天内可恢复。')) return;
+  try {
+    await deleteTest(id);
+    await refreshData();
+    toast('已删除（可在管理面板的回收站找回）','success');
+    if (state.view === 'form') navigate('timeline');
+    else if (state.view === 'timeline') { state.selectedTestId = null; renderTimeline(); }
+    else if (state.view === 'dashboard') renderDashboard();
+    else render();
+  } catch(e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+    render();
+  }
 }
 async function saveConclusion(id) {
   const val = document.getElementById(`conc-${id}`)?.value ?? '';
-  try { await updateTest(id, { conclusion: val.trim() }); toast('实验小结已保存','success'); }
-  catch(e) { toast('保存失败：'+e.message,'error'); }
+  try {
+    await updateTest(id, { conclusion: val.trim() });
+    await refreshData();
+    toast('实验小结已保存','success');
+  } catch(e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+    render();
+  }
+}
+
+// ── 编辑历史 ──────────────────────────────────────────────────
+async function showHistory(id) {
+  const history = await getRecordHistory(id);
+  const test = state.tests.find(t => t.id === id);
+  const wrap = document.createElement('div');
+  wrap.className = 'history-modal-wrap';
+  wrap.id = 'history-wrap';
+  const summarize = r => {
+    const parts = [];
+    if (r.projectName) parts.push(`项目：${r.projectName}`);
+    if (r.tester) parts.push(`负责人：${r.tester}`);
+    if (r.notes?.change) parts.push(`改动：${r.notes.change}`);
+    if (r.conclusion) parts.push(`小结：${r.conclusion.slice(0,40)}${r.conclusion.length>40?'…':''}`);
+    return parts.join(' · ');
+  };
+  const rows = history.length === 0
+    ? `<p style="color:var(--text-muted);text-align:center;padding:30px">暂无历史版本（此记录还没被编辑过）</p>`
+    : history.map((h,i)=>`
+        <div class="history-row">
+          <div class="history-row-meta">
+            <div class="history-time">${new Date(h.ts).toLocaleString('zh-CN')}</div>
+            <div class="history-summary">${escHtml(summarize(h.snapshot))}</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="rollbackHistory('${id}', ${i})">回滚到这版</button>
+        </div>`).join('');
+  wrap.innerHTML = `
+    <div class="ocr-modal" style="max-width:700px">
+      <h3>🕘 编辑历史 <span style="font-size:13px;font-weight:400;color:var(--text-muted)">最多保留最近 5 次编辑</span></h3>
+      <div style="margin-top:14px">${rows}</div>
+      <div class="ocr-actions"><button class="btn btn-secondary" onclick="closeHistory()">关闭</button></div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+function closeHistory() { document.getElementById('history-wrap')?.remove(); }
+async function rollbackHistory(id, idx) {
+  if (!confirm('确认回滚到这个版本？当前版本会被替换（但仍能从更早的历史中找回）。')) return;
+  try {
+    await rollbackRecord(id, idx);
+    await refreshData();
+    closeHistory();
+    toast('已回滚','success');
+    render();
+  } catch (e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+  }
 }
 
 // ── Form ──────────────────────────────────────────────────────
 const VDEFS = [
-  {key:'control',label:'🔵 原始',cls:'ctrl'},
-  {key:'test1',  label:'🔴 测试1',cls:'t1'},
-  {key:'test2',  label:'🟣 测试2',cls:'t2'},
-  {key:'test3',  label:'🩷 测试3',cls:'t3'},
+  {key:'control', label:'原始',  badge:'CONTROL',   cls:'ctrl'},
+  {key:'test1',   label:'方案A', badge:'VARIANT 1', cls:'t1'},
+  {key:'test2',   label:'方案B', badge:'VARIANT 2', cls:'t2'},
+  {key:'test3',   label:'方案C', badge:'VARIANT 3', cls:'t3'},
 ];
+const VC_BAR_COLORS  = ['#9CA3AF','#10B981','#6366F1','#F43F5E'];
+const VC_BADGE_CLS   = ['fp-vcard-badge-ctrl','fp-vcard-badge-v1','fp-vcard-badge-v2','fp-vcard-badge-v3'];
 const BI_TYPES = ['icon','五图','置顶','视频'];
-const RATIO_PRESETS = ['50/50','33/33/33','25/25/25/25','20/20/20/20/20','25/75','10/90'];
+const RATIO_PRESETS = ['25/25/25/25','50/50','60/40','70/30','75/25','90/10','95/5','34/33/33','40/30/30','50/25/25','60/20/20','80/10/10','70/15/15','55/15/15/15','40/20/20/20','85/5/5/5','90/5/5','70/10/10/10','20/20/20/20/20'];
 const DEFAULT_EXPERIMENT_TYPES = ['自定义商品详情','主要商品详情','本地化 VN','本地化 ID','本地化 US','本地化 JP','本地化 KR','本地化 BR','本地化 IN'];
 function handleRatioChange(val) {
   const inp = document.getElementById('f-ratio');
@@ -696,62 +981,58 @@ const VC_STYLES = [
 
 function buildVariantCol(i, test) {
   const v = test?.variants?.[i] || {};
-  const st = VC_STYLES[i];
-  const label = VDEFS[i].label;
-
-  const hasImg = !!(v.imageUrl || formState.previews[i]);
-  let statusLabel, statusCls;
-  if (i > 0 && v.applied)   { statusLabel='当前应用中'; statusCls='vs-applied'; }
-  else if (!hasImg)          { statusLabel='未上传';    statusCls='vs-empty'; }
-  else if (v.firstInstalls != null && (i===0 || v.ciLower != null))
-                             { statusLabel='数据已填写'; statusCls='vs-complete'; }
-  else                       { statusLabel='已上传';    statusCls='vs-uploaded'; }
-
-  const ciBlock = i === 0 ? '' : `
-    <div class="vc-field-group">
-      <div class="vc-field-label">置信区间下限 / 上限 %</div>
-      <div class="ci-pair">
-        <input class="form-control" id="v${i}_ciL" type="number" step="0.1" placeholder="下限%" value="${v.ciLower??''}" oninput="updateEffectSelect(${i})"/>
-        <input class="form-control" id="v${i}_ciH" type="number" step="0.1" placeholder="上限%" value="${v.ciUpper??''}" oninput="updateEffectSelect(${i})"/>
-      </div>
-    </div>`;
-
-  const appliedBlock = i === 0 ? '' : `
-    <div class="vc-field-group vc-applied-field">
-      <div class="vc-field-label">是否应用</div>
-      <label class="toggle"><input type="checkbox" id="v${i}_applied" ${v.applied?'checked':''}/><span class="toggle-slider"></span></label>
-    </div>`;
-
+  const { label, badge } = VDEFS[i];
+  const barColor  = VC_BAR_COLORS[i];
+  const badgeCls  = VC_BADGE_CLS[i];
   const savedEffect = v.effect && v.effect !== 'control' ? v.effect : '';
-  const effectSelectOpts = EFFECT_OPTIONS.map(o=>`<option value="${o.val}" ${savedEffect===o.val?'selected':''}>${o.label}</option>`).join('');
-  const effectBlock = i === 0 ? '' : `
-    <div class="vc-field-group">
-      <div class="vc-field-label">测试效果</div>
-      <select class="form-control" id="eselect-${i}" style="font-size:12px">${effectSelectOpts}</select>
-    </div>`;
+  const effectOpts  = EFFECT_OPTIONS.map(o=>`<option value="${o.val}" ${savedEffect===o.val?'selected':''}>${o.label}</option>`).join('');
+
+  const statsHtml = i === 0 ? `
+    <div class="fp-vstat-row">
+      <span class="fp-vstat-label">首次安装</span>
+      <input class="fp-vstat-input" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}"/>
+    </div>
+    <div class="fp-vstat-row">
+      <span class="fp-vstat-label">保留安装</span>
+      <input class="fp-vstat-input" id="v${i}_ri" type="number" placeholder="—" value="${v.retainedInstalls??''}"/>
+    </div>
+    <div class="fp-ctrl-status"><span class="fp-ctrl-label">基础对照组</span></div>` : `
+    <div class="fp-vstat-row">
+      <span class="fp-vstat-label">首次安装</span>
+      <input class="fp-vstat-input" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}" oninput="updateEffectSelect(${i})"/>
+    </div>
+    <div class="fp-vstat-row">
+      <span class="fp-vstat-label">保留安装</span>
+      <input class="fp-vstat-input" id="v${i}_ri" type="number" placeholder="—" value="${v.retainedInstalls??''}"/>
+    </div>
+    <div class="fp-vstat-row fp-ci-row">
+      <span class="fp-vstat-label">置信区间</span>
+      <div class="fp-ci-inputs">
+        <input class="fp-ci-input" id="v${i}_ciL" type="number" step="0.1" placeholder="0.0" value="${v.ciLower??''}" oninput="updateEffectSelect(${i})"/>
+        <span class="fp-ci-sep">~</span>
+        <input class="fp-ci-input" id="v${i}_ciH" type="number" step="0.1" placeholder="0.0" value="${v.ciUpper??''}" oninput="updateEffectSelect(${i})"/>
+      </div>
+    </div>
+    <div class="fp-vstat-row">
+      <span class="fp-vstat-label">测试效果</span>
+      <select class="fp-effect-select" id="eselect-${i}">${effectOpts}</select>
+    </div>
+    <input type="checkbox" id="v${i}_applied" ${v.applied?'checked':''} style="display:none"/>
+    <button type="button" class="fp-applied-btn ${v.applied?'fp-applied-yes':'fp-applied-no'}" id="vapplied-btn-${i}" onclick="toggleApplied(${i})">${v.applied?'✓ 已采用':'标记为采用'}</button>`;
 
   return `
-    <div class="variant-col" data-vi="${i}">
-      <div class="vc-header" style="background:${st.bg};border-bottom:2px solid ${st.border};color:${st.color}">
-        <span class="vc-label">${label}</span>
-        <span class="variant-status ${statusCls}">${statusLabel}</span>
+    <div class="fp-vcard" data-vi="${i}">
+      <div class="fp-vcard-bar" style="background:${barColor}"></div>
+      <div class="fp-vcard-header">
+        <span class="fp-vcard-name">${label}</span>
+        <span class="fp-vcard-badge ${badgeCls}">${badge}</span>
       </div>
-      <div class="vc-img-zone" onmouseenter="setActiveImgZone(${i})" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(${i})">
-        ${buildImgCell(i, v)}
-      </div>
-      <div class="vc-data">
-        <div class="vc-field-group">
-          <div class="vc-field-label">首次安装数（调整）</div>
-          <input class="form-control" id="v${i}_fi" type="number" placeholder="—" value="${v.firstInstalls??''}" oninput="updateEffectSelect(${i})"/>
+      <div class="fp-vcard-img-wrap">
+        <div class="fp-vcard-img-area" id="fp-imgzone-${i}" onmouseenter="setActiveImgZone(${i})" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(${i})">
+          ${buildImgCell(i, v)}
         </div>
-        ${ciBlock}
-        <div class="vc-field-group">
-          <div class="vc-field-label">保留安装数（调整）</div>
-          <input class="form-control" id="v${i}_ri" type="number" placeholder="—" value="${v.retainedInstalls??''}"/>
-        </div>
-        ${appliedBlock}
-        ${effectBlock}
       </div>
+      <div class="fp-vcard-data">${statsHtml}</div>
     </div>`;
 }
 
@@ -766,48 +1047,92 @@ function renderFormView() {
     if (test.newImageUrl && !formState.previews[1]) formState.previews[1] = test.newImageUrl;
   }
 
-  const projOpts = state.projects.map(p=>`<option value="${p.id}" data-name="${escHtml(p.name)}" ${test?.projectId===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
-  const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${(test?.tester===n||(!test&&n===state.userData?.name))?'selected':''}>${escHtml(n)}</option>`).join('');
+  let recordId = test?.recordId || '';
+  if (!recordId && !isEdit) {
+    const year = new Date().getFullYear();
+    const maxN = state.tests.reduce((m,t) => {
+      if (!t.recordId || !t.recordId.startsWith(String(year)+'-')) return m;
+      const n = parseInt(t.recordId.split('-')[1]||0,10);
+      return n > m ? n : m;
+    }, 0);
+    recordId = `${year}-${String(maxN+1).padStart(2,'0')}`;
+  }
 
+  const projOpts = state.projects.map(p=>`<option value="${p.id}" data-name="${escHtml(p.name)}" ${test?.projectId===p.id?'selected':''}>${escHtml(p.name)}</option>`).join('');
+  const testerOpts = (state.settings?.testers||[]).map(n=>`<option value="${n}" ${test?.tester===n?'selected':''}>${escHtml(n)}</option>`).join('');
   const currentBiTypes = Array.isArray(test?.biVizType) ? test.biVizType : (test?.biVizType ? [test.biVizType] : []);
-  const biCheckboxes = BI_TYPES.map(b=>`<label class="checkbox-label"><input type="checkbox" id="f-bitype-${b}" value="${b}" ${currentBiTypes.includes(b)?'checked':''}/><span>${b}</span></label>`).join('');
+  const biPills = BI_TYPES.map(b=>`<label class="fp-pill"><input type="checkbox" id="f-bitype-${b}" value="${b}" ${currentBiTypes.includes(b)?'checked':''}/><span>${b}</span></label>`).join('');
 
   const typeToggle = `
-    <div class="form-type-toggle">
-      <button type="button" class="type-btn${ft==='test'?' active':''}" onclick="switchFormType('test')">A/B 测试</button>
-      <button type="button" class="type-btn${ft==='update'?' active':''}" onclick="switchFormType('update')">直接更新</button>
+    <div class="fp-type-toggle">
+      <button type="button" class="fp-type-btn${ft==='test'?' active':''}" onclick="switchFormType('test')">A/B 测试</button>
+      <button type="button" class="fp-type-btn${ft==='update'?' active':''}" onclick="switchFormType('update')">直接更新</button>
     </div>`;
 
   let formBody;
   if (ft === 'update') {
     formBody = `
-      <div class="form-section">
-        <div class="form-section-title">📋 基本信息</div>
-        <div class="form-row-4">
-          <div class="form-group"><label class="form-label">项目</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
-          <div class="form-group"><label class="form-label">负责人</label><select class="form-control" id="f-tester" required>${testerOpts}</select></div>
-          <div class="form-group"><label class="form-label">更新日期</label><input class="form-control" id="f-update-date" type="date" required value="${test?.updateDate||''}"/></div>
-        </div>
-        <div class="form-group"><label class="form-label">截图类型（可多选）</label><div class="checkbox-group">${biCheckboxes}</div></div>
-        <div class="form-group"><label class="form-label">改动内容</label>
-          <input class="form-control" id="f-note-change" type="text" placeholder="做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
-        </div>
-      </div>
-      <div class="form-section">
-        <div class="form-section-title">🖼️ 截图对比</div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap">
-          <div>
-            <div class="form-label" style="margin-bottom:4px">原始</div>
-            <div class="update-img-zone" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
+      <section class="fp-card">
+        <h2 class="fp-card-title">基础实验属性</h2>
+        <div class="fp-grid-2">
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">测试项目</label>
+              <select class="fp-inv-select" id="f-project" required>
+                <option value="">选择项目…</option>${projOpts}
+              </select>
+            </div>
+            <div class="fp-row">
+              <label class="fp-row-label">负责人</label>
+              <select class="fp-inv-select" id="f-tester" required>
+                <option value="">选择…</option>${testerOpts}
+              </select>
+            </div>
           </div>
-          <div>
-            <div class="form-label" style="margin-bottom:4px">更新后</div>
-            <div class="update-img-zone" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">更新日期</label>
+              <input class="fp-inv-input fp-inv-date" id="f-update-date" type="date" required value="${test?.updateDate||''}"/>
+            </div>
           </div>
         </div>
-      </div>`;
+        <div class="fp-notes">
+          <input class="fp-notes-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
+        </div>
+      </section>
+      <section class="fp-card fp-card-compact">
+        <h2 class="fp-card-title">测试属性</h2>
+        <div class="fp-pills-wrap">${biPills}</div>
+      </section>
+      <section>
+        <div class="fp-variants-header">
+          <h2 class="fp-variants-title">截图对比</h2>
+        </div>
+        <div class="fp-update-grid">
+          <div class="fp-vcard">
+            <div class="fp-vcard-bar" style="background:#94A3B8"></div>
+            <div class="fp-vcard-header">
+              <span class="fp-vcard-name">原始</span>
+              <span class="fp-vcard-badge fp-vcard-badge-ctrl">BEFORE</span>
+            </div>
+            <div class="fp-vcard-img-wrap">
+              <div class="fp-vcard-img-area" id="fp-imgzone-0" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
+            </div>
+          </div>
+          <div class="fp-vcard">
+            <div class="fp-vcard-bar" style="background:#10B981"></div>
+            <div class="fp-vcard-header">
+              <span class="fp-vcard-name">更新后</span>
+              <span class="fp-vcard-badge fp-vcard-badge-v1">AFTER</span>
+            </div>
+            <div class="fp-vcard-img-wrap">
+              <div class="fp-vcard-img-area" id="fp-imgzone-1" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+            </div>
+          </div>
+        </div>
+      </section>`;
   } else {
-    const confOpts = [90,95,98,99].map(v=>`<input type="radio" class="radio-option" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><label class="radio-label" for="conf-${v}">${v}%</label>`).join('');
+    const confSegBtns = [90,95,98,99].map(v=>`<label class="fp-seg-btn"><input type="radio" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><div>${v}%</div></label>`).join('');
     const allExpTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
     const defaultExpType = test?.experimentType ?? '主要商品详情';
     const expTypeOpts = allExpTypes.map(b=>`<option value="${b}" ${defaultExpType===b?'selected':''}>${escHtml(b)}</option>`).join('');
@@ -817,68 +1142,100 @@ function renderFormView() {
     const cols = [0,1,2,3].map(i=>buildVariantCol(i, test)).join('');
 
     formBody = `
-      <div class="form-section">
-        <div class="form-section-title">📋 基本信息</div>
-        <div class="form-row-4">
-          <div class="form-group"><label class="form-label">项目</label><select class="form-control" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
-          <div class="form-group"><label class="form-label">测试人</label><select class="form-control" id="f-tester" required>${testerOpts}</select></div>
-          <div class="form-group"><label class="form-label">开始日期</label><input class="form-control" id="f-start" type="date" required value="${test?.startDate||''}"/></div>
-          <div class="form-group"><label class="form-label">结束日期</label><input class="form-control" id="f-end" type="date" value="${test?.endDate||''}"/></div>
-        </div>
-        <div class="form-row-4">
-          <div class="form-group" style="grid-column:span 1"><label class="form-label">置信度</label><div class="radio-group">${confOpts}</div></div>
-          <div class="form-group"><label class="form-label">测试比例</label>
-            <select class="form-control" id="f-ratio-sel" onchange="handleRatioChange(this.value)">
-              ${ratioPresetOpts}
-              <option value="custom" ${isCustomRatio?'selected':''}>自定义…</option>
-            </select>
-            <input class="form-control" id="f-ratio" type="text" placeholder="输入自定义比例" style="margin-top:4px;${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+      <section class="fp-card">
+        <h2 class="fp-card-title">基础实验属性</h2>
+        <div class="fp-grid-2">
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">测试项目</label>
+              <select class="fp-inv-select" id="f-project" required>
+                <option value="">选择项目…</option>${projOpts}
+              </select>
+            </div>
+            <div class="fp-row">
+              <label class="fp-row-label">负责人</label>
+              <select class="fp-inv-select" id="f-tester" required>
+                <option value="">选择…</option>${testerOpts}
+              </select>
+            </div>
+            <div class="fp-row fp-row-ratio">
+              <label class="fp-row-label">流量分配</label>
+              <div class="fp-row-value-col">
+                <select class="fp-inv-select" id="f-ratio-sel" onchange="handleRatioChange(this.value)">${ratioPresetOpts}<option value="custom" ${isCustomRatio?'selected':''}>自定义…</option></select>
+                <input class="fp-inv-input" id="f-ratio" type="text" placeholder="输入自定义比例" style="${isCustomRatio?'':'display:none'};width:140px" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+              </div>
+            </div>
           </div>
-          <div class="form-group"><label class="form-label">截图类型（可多选）</label><div class="checkbox-group">${biCheckboxes}</div></div>
-          <div class="form-group"><label class="form-label">实验类型</label><select class="form-control" id="f-exptype">${expTypeOpts}</select></div>
-        </div>
-        <div class="form-group"><label class="form-label">备注说明</label>
-          <div class="notes-grid">
-            <input class="form-control" id="f-note-change" type="text" placeholder="改动内容（做了什么改动）" value="${escHtml(test?.notes?.change||'')}"/>
-            <input class="form-control" id="f-note-purpose" type="text" placeholder="测试目的（想验证什么）" value="${escHtml(test?.notes?.purpose||'')}"/>
-            <input class="form-control" id="f-note-design" type="text" placeholder="设计思路（为什么这样设计）" value="${escHtml(test?.notes?.design||'')}"/>
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">实验类型</label>
+              <select class="fp-inv-select" id="f-exptype">${expTypeOpts}</select>
+            </div>
+            <div class="fp-row">
+              <label class="fp-row-label">测试周期</label>
+              <div class="fp-date-range">
+                <input class="fp-inv-input fp-inv-date" id="f-start" type="date" required value="${test?.startDate||''}"/>
+                <span class="fp-date-sep-line">-</span>
+                <input class="fp-inv-input fp-inv-date" id="f-end" type="date" value="${test?.endDate||''}"/>
+              </div>
+            </div>
+            <div class="fp-row">
+              <label class="fp-row-label">目标置信度</label>
+              <div class="fp-seg-group">${confSegBtns}</div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="form-section">
-        <div class="form-section-title section-title-flex">
-          <span>🖼️ 变体横向对比</span>
-          <div class="section-tools">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量裁剪图标</button>
-            <button type="button" class="btn btn-primary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
+        <div class="fp-notes">
+          <input class="fp-notes-input" id="f-note-change" type="text" placeholder="改动内容 — (如：突出 3D 消除玩法的爽感)" value="${escHtml(test?.notes?.change||'')}"/>
+          <input class="fp-notes-input" id="f-note-purpose" type="text" placeholder="测试目的 — (想验证什么)" value="${escHtml(test?.notes?.purpose||'')}"/>
+          <input class="fp-notes-input" id="f-note-design" type="text" placeholder="设计思路 — (为什么这样设计)" value="${escHtml(test?.notes?.design||'')}"/>
+        </div>
+      </section>
+      <section class="fp-card fp-card-compact">
+        <h2 class="fp-card-title">测试属性</h2>
+        <div class="fp-pills-wrap">${biPills}</div>
+      </section>
+      <section>
+        <div class="fp-variants-header">
+          <h2 class="fp-variants-title">视觉资产对比录入</h2>
+          <div class="fp-variants-tools">
+            <button type="button" class="fp-variant-tool-btn" onclick="openCropModal()">✂️ 批量解析图标</button>
+            <button type="button" class="fp-variant-tool-btn primary" onclick="openOCRModal()">📊 上传截图提取数据</button>
           </div>
         </div>
-        <div class="variant-columns-wrap">
-          <div class="variant-columns">${cols}</div>
-        </div>
-      </div>
-      `;
+        <div class="fp-vcards-row">${cols}</div>
+      </section>`;
   }
 
   renderShell(`
-    <div class="modal-overlay" onclick="void(0)">
-      <div class="modal form-modal-wide">
-        <div class="modal-header">
-          <h2>${isEdit?'✏️ 编辑记录':'＋ 新增记录'}</h2>
-          <button class="modal-close" onclick="navigate('timeline')">✕</button>
+    <div class="fp-wrap">
+      <form id="test-form" onsubmit="handleFormSubmit(event)">
+        <input type="hidden" id="f-record-id" value="${escHtml(recordId)}"/>
+        <header class="fp-header-bar">
+          <div class="fp-header-left">
+            <h1 class="fp-header-title">${isEdit?'编辑 A/B 测试记录':'配置 A/B 测试记录'}</h1>
+            ${recordId?`<span class="fp-header-id">ID: ${escHtml(recordId)}</span>`:''}
+          </div>
+          <div class="fp-header-right">${typeToggle}</div>
+        </header>
+        <div class="fp-content">${formBody}</div>
+        <div class="fp-action-bar">
+          ${isEdit?`<button type="button" class="fp-btn-danger" onclick="deleteTestRecord('${state.editTestId}')">删除此记录</button>`:''}
+          <div class="fp-action-spacer"></div>
+          <button type="button" class="fp-btn-discard" onclick="navigate('timeline')">放弃修改</button>
+          <button type="submit" class="fp-btn-save" id="f-submit">${isEdit?'保存修改':'保存并同步配置'}</button>
         </div>
-        <div class="modal-body">
-          ${typeToggle}
-          <form id="test-form" onsubmit="handleFormSubmit(event)">
-            ${formBody}
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" onclick="navigate('timeline')">取消</button>
-              <button type="submit" class="btn btn-primary" id="f-submit">${isEdit?'💾 保存修改':'🚀 提交记录'}</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>`, 'timeline');
+      </form>
+    </div>`, 'form');
+}
+
+function toggleApplied(i) {
+  const cb = document.getElementById(`v${i}_applied`);
+  const btn = document.getElementById(`vapplied-btn-${i}`);
+  if (!cb || !btn) return;
+  cb.checked = !cb.checked;
+  btn.className = `fp-applied-btn ${cb.checked?'fp-applied-yes':'fp-applied-no'}`;
+  btn.textContent = cb.checked ? '✓ 已采用' : '标记为采用';
 }
 
 function switchFormType(type) {
@@ -935,7 +1292,7 @@ function showPreview(i, src) {
 function removeImg(i) {
   formState.images[i] = null;
   formState.previews[i] = null;
-  const zone = document.querySelector(`.variant-col[data-vi="${i}"] .vc-img-zone`);
+  const zone = document.getElementById(`fp-imgzone-${i}`);
   if (!zone) return;
   const existing = zone.querySelector('.img-cell-wrap') || zone.querySelector('.img-upload-sm');
   if (existing) {
@@ -957,6 +1314,7 @@ async function handleFormSubmit(e) {
     const tester = document.getElementById('f-tester').value;
     const biVizType = BI_TYPES.filter(b => document.getElementById(`f-bitype-${b}`)?.checked);
     const ft = state.formType || 'test';
+    const recordId = document.getElementById('f-record-id')?.value || '';
 
     if (ft === 'update') {
       const updateDate = document.getElementById('f-update-date').value;
@@ -968,9 +1326,10 @@ async function handleFormSubmit(e) {
       else if (formState.previews[0] && formState.previews[0] !== imageUrl) imageUrl = formState.previews[0];
       if (formState.images[1]) newImageUrl = await compressImage(formState.images[1]);
       else if (formState.previews[1] && formState.previews[1] !== newImageUrl) newImageUrl = formState.previews[1];
-      const data = { type:'update', projectId, projectName, tester, updateDate, biVizType, notes, imageUrl, newImageUrl };
+      const data = { type:'update', projectId, projectName, tester, updateDate, biVizType, notes, imageUrl, newImageUrl, recordId };
       if (state.editTestId) { await updateTest(state.editTestId, data); toast('已保存修改','success'); }
       else { await createTest(data); toast('记录已提交','success'); }
+      await refreshData();
     } else {
       const startDate = document.getElementById('f-start').value;
       const endDate = document.getElementById('f-end').value;
@@ -997,14 +1356,19 @@ async function handleFormSubmit(e) {
         else if (formState.previews[i] && formState.previews[i] !== imageUrl) imageUrl = formState.previews[i];
         variants.push({ firstInstalls:fi!==''&&fi!=null?Number(fi):null, retainedInstalls:ri!==''&&ri!=null?Number(ri):null, ciLower:ciL!==''&&ciL!=null?parseFloat(ciL):null, ciUpper:ciH!==''&&ciH!=null?parseFloat(ciH):null, applied, effect, imageUrl });
       }
-      const data={type:'test',projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,notes,variants};
+      const data={type:'test',projectId,projectName,tester,startDate,endDate,confidence,testRatio,biVizType,experimentType,notes,variants,recordId};
       if (state.editTestId) { await updateTest(state.editTestId,data); toast('已保存修改','success'); }
       else { await createTest(data); toast('记录已提交','success'); }
+      await refreshData();
     }
 
     formState.images=[null,null,null,null]; formState.previews=[null,null,null,null];
     state.editTestId=null; navigate('timeline');
-  } catch(err) { toast('提交失败：'+err.message,'error'); btn.disabled=false; btn.textContent=state.editTestId?'💾 保存修改':'🚀 提交记录'; }
+  } catch(err) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试','error');
+    btn.disabled=false; btn.textContent=state.editTestId?'💾 保存修改':'🚀 提交记录';
+  }
 }
 
 // ── OCR Modal (Tesseract.js, no API needed) ───────────────────
@@ -1074,6 +1438,37 @@ function openOCRModal() {
 
 function ocrFileSelected(e, type) { ocrReceiveFile(e.target.files?.[0], type); }
 
+// 把截图放大 + 灰度化，显著提高 Tesseract 识别率
+function preprocessForOCR(file, scale = 2.4) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, w, h);
+      // 灰度 + 轻度对比增强
+      try {
+        const data = ctx.getImageData(0, 0, w, h);
+        const d = data.data;
+        for (let i = 0; i < d.length; i += 4) {
+          let g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+          g = g < 140 ? g * 0.6 : 255 - (255 - g) * 0.6; // 拉开黑白
+          d[i] = d[i+1] = d[i+2] = g;
+        }
+        ctx.putImageData(data, 0, 0);
+      } catch {}
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => resolve(b || file), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+    img.src = url;
+  });
+}
+
 async function runOCR() {
   if (!ocrFiles.fi && !ocrFiles.ri) { toast('请至少上传一张截图','error'); return; }
   document.getElementById('ocr-status').style.display = 'block';
@@ -1083,39 +1478,55 @@ async function runOCR() {
   ocrData = {};
 
   try {
-    const logger = m => {
-      if (m.status === 'recognizing text') {
-        const p = document.getElementById('ocr-progress');
-        if (p) p.textContent = `进度 ${Math.round(m.progress*100)}%`;
-      }
+    const setProg = (label, prog) => {
+      const p = document.getElementById('ocr-progress');
+      if (p) p.textContent = `${label}${prog!=null?` ${Math.round(prog*100)}%`:''}`;
+    };
+    const logger = m => { if (m.status === 'recognizing text') setProg('识别中', m.progress); };
+    const tessOpts = {
+      logger,
+      tessedit_pageseg_mode: '6',           // 当作整块文本（表格行更稳）
+      tessedit_char_whitelist: '0123456789.,%+-±ABCDabcd ',
+      preserve_interword_spaces: '1',
     };
 
     if (ocrFiles.fi) {
-      const r = await Tesseract.recognize(ocrFiles.fi, 'eng', { logger });
-      const fiParsed = parseFirstInstallOCR(r.data.text);
+      setProg('预处理首次安装截图…');
+      const prepped = await preprocessForOCR(ocrFiles.fi);
+      const r = await Tesseract.recognize(prepped, 'eng', tessOpts);
+      const fiParsed = parseGPlayTable(r.data.text, 'firstInstalls');
       Object.keys(fiParsed).forEach(v => { ocrData[v] = { ...(ocrData[v]||{}), ...fiParsed[v] }; });
     }
     if (ocrFiles.ri) {
-      const r2 = await Tesseract.recognize(ocrFiles.ri, 'eng', { logger });
-      const riParsed = parseRetainedOCR(r2.data.text);
+      setProg('预处理保留安装截图…');
+      const prepped = await preprocessForOCR(ocrFiles.ri);
+      const r2 = await Tesseract.recognize(prepped, 'eng', tessOpts);
+      const riParsed = parseGPlayTable(r2.data.text, 'retainedInstalls');
       Object.keys(riParsed).forEach(v => { ocrData[v] = { ...(ocrData[v]||{}), ...riParsed[v] }; });
     }
 
-    // Show editable preview table
+    // 保证四个变体行都出现（即使没识别到也给空行让用户手填）
+    ['control','A','B','C'].forEach(k => { if (!ocrData[k]) ocrData[k] = {}; });
+
     const tbody = document.getElementById('ocr-tbody');
-    const variantMap = { control:'原始(控制)', A:'测试1', B:'测试2', C:'测试3' };
-    tbody.innerHTML = Object.entries(ocrData).map(([k,d])=>`
+    const variantMap = { control:'原始 (控制组)', A:'测试 1 (A)', B:'测试 2 (B)', C:'测试 3 (C)' };
+    const order = ['control','A','B','C'];
+    tbody.innerHTML = order.filter(k=>ocrData[k]).map(k=>{
+      const d = ocrData[k];
+      return `
       <tr data-ocr-key="${k}">
-        <td>${variantMap[k]||k}</td>
-        <td><input class="form-control ocr-edit" data-field="firstInstalls" type="number" value="${d.firstInstalls??''}" placeholder="—" style="width:90px"/></td>
+        <td><strong>${variantMap[k]||k}</strong></td>
+        <td><input class="form-control ocr-edit" data-field="firstInstalls" type="number" value="${d.firstInstalls??''}" placeholder="—" style="width:100px"/></td>
         <td><input class="form-control ocr-edit" data-field="ciLower" type="number" step="0.1" value="${d.ciLower??''}" placeholder="—" style="width:70px"/></td>
         <td><input class="form-control ocr-edit" data-field="ciUpper" type="number" step="0.1" value="${d.ciUpper??''}" placeholder="—" style="width:70px"/></td>
-        <td><input class="form-control ocr-edit" data-field="retainedInstalls" type="number" value="${d.retainedInstalls??''}" placeholder="—" style="width:90px"/></td>
-      </tr>`).join('');
+        <td><input class="form-control ocr-edit" data-field="retainedInstalls" type="number" value="${d.retainedInstalls??''}" placeholder="—" style="width:100px"/></td>
+      </tr>`;
+    }).join('');
     document.getElementById('ocr-status').style.display = 'none';
     document.getElementById('ocr-preview-wrap').style.display = 'block';
     document.getElementById('ocr-apply-btn').disabled = false;
-    toast('识别完成，可直接修改数据后点击「填入表单」','success');
+    const detectedCount = order.filter(k => ocrData[k] && (ocrData[k].firstInstalls!=null || ocrData[k].retainedInstalls!=null)).length;
+    toast(detectedCount>1 ? `识别到 ${detectedCount} 个变体，请核对数据后点「填入表单」` : '识别结果可能不准，请手动核对/补充后再填入', detectedCount>1?'success':'info');
   } catch(err) {
     document.getElementById('ocr-status').style.display = 'none';
     toast('识别失败：'+err.message,'error');
@@ -1123,53 +1534,105 @@ async function runOCR() {
   }
 }
 
-function parseFirstInstallOCR(text) {
-  const result = {};
-  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
-  for (const line of lines) {
-    // Match lines starting with single letter A/B/C (variant)
-    const vm = line.match(/^([A-C])\s/);
-    if (!vm) continue;
-    const variant = vm[1];
-    // Extract all numbers (strip commas)
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>100);
-    // Adjusted installs = largest number
-    const firstInstalls = nums.length ? Math.max(...nums) : null;
-    // CI: look for signed percentages
-    const pcts = [...line.matchAll(/([+-]?\d+\.?\d*)\s*%/g)].map(m=>parseFloat(m[1]));
-    const ciLower = pcts.find(p=>p<0) ?? null;
-    const ciUpper = pcts.find(p=>p>0) ?? null;
-    result[variant] = { firstInstalls, ciLower, ciUpper };
-  }
-  // Also try to find control row (line with 70% or highest audience %)
-  for (const line of lines) {
-    if (line.match(/^[A-C]\s/)) continue; // skip variant rows
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>1000);
-    if (nums.length >= 2) {
-      result['control'] = { firstInstalls: Math.max(...nums) };
-      break;
-    }
-  }
-  return result;
+// ── Google Play 实验表格解析 ─────────────────────────────────
+// 表格列：变体 | 受众群体% | 安装人数(当前) | 安装人数(已调整) | 效果(95% CI)
+// 我们要的是「已调整」那列（行内较大的安装数），以及 CI 上下限
+function _stripNum(s) { return parseInt(String(s).replace(/[.,\s]/g,''), 10); }
+function _extractInstalls(str, threshold = 1000) {
+  // 匹配带千位分隔（逗号或点）的数，或 4 位以上纯数字
+  const out = [];
+  const re = /\d{1,3}(?:[.,]\d{3})+|\d{4,}/g;
+  let m;
+  while ((m = re.exec(str))) { const n = _stripNum(m[0]); if (!isNaN(n) && n >= threshold) out.push({ val:n, idx:m.index, raw:m[0] }); }
+  return out;
+}
+function _extractPercents(str) {
+  // Handle optional space between sign/number and %, comma as decimal separator
+  const re = /([+-]?\s*\d+(?:[.,]\d+)?)\s*%/g;
+  return [...str.matchAll(re)].map(m => ({
+    val: parseFloat(m[1].replace(/\s/g,'').replace(',','.')),
+    idx: m.index
+  }));
 }
 
-function parseRetainedOCR(text) {
+function parseGPlayTable(text, field) {
   const result = {};
-  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
-  for (const line of lines) {
-    const vm = line.match(/^([A-C])\s/);
-    if (!vm) continue;
-    const variant = vm[1];
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>100);
-    result[variant] = { retainedInstalls: nums.length ? Math.max(...nums) : null };
-  }
-  for (const line of lines) {
-    if (line.match(/^[A-C]\s/)) continue;
-    const nums = [...line.matchAll(/[\d,]+/g)].map(m=>parseInt(m[0].replace(/,/g,''))).filter(n=>n>1000);
-    if (nums.length >= 2) {
-      result['control'] = { retainedInstalls: Math.max(...nums) };
-      break;
+  const lines = text.split('\n').map(l => l.replace(/\s+/g,' ').trim()).filter(Boolean);
+
+  // Step 1: find every line that contains install-sized numbers
+  const installRows = [];
+  for (let i = 0; i < lines.length; i++) {
+    const installs = _extractInstalls(lines[i], 1000);
+    if (!installs.length) continue;
+    const sorted = [...installs].sort((a,b) => a.idx - b.idx);
+
+    // Variant letter: scan ±2-line window (A/B/C may be on thumbnail/label row)
+    let variantLetter = null;
+    for (let j = Math.max(0, i-2); j <= Math.min(lines.length-1, i+2) && !variantLetter; j++) {
+      const m = lines[j].match(/(?:^|[^A-Za-z])([A-Ca-c])(?:[^A-Za-z]|$)/);
+      if (m) variantLetter = m[1].toUpperCase();
     }
+
+    // CI: same line (after first install) OR next 2 lines (bar annotations often on separate line)
+    const firstInstallIdx = sorted[0].idx;
+    let ciPcts = _extractPercents(lines[i]).filter(p => p.idx > firstInstallIdx);
+    if (ciPcts.length < 2) {
+      for (let j = i + 1; j <= Math.min(lines.length-1, i+2); j++) {
+        const p2 = _extractPercents(lines[j]);
+        if (p2.length >= 2) { ciPcts = p2; break; }
+      }
+    }
+
+    // Audience % = percents BEFORE first install number (like "70%")
+    const audiencePcts = _extractPercents(lines[i]).filter(p => p.idx < firstInstallIdx);
+
+    installRows.push({ lineIdx:i, installs:sorted, ciPcts, variantLetter, audiencePct: audiencePcts[0]?.val ?? -1 });
+  }
+
+  if (!installRows.length) return result;
+
+  // Step 2: deduplicate rows with same variant letter (keep first)
+  const seenLetters = new Set();
+  const unique = installRows.filter(r => {
+    if (!r.variantLetter) return true;
+    if (seenLetters.has(r.variantLetter)) return false;
+    seenLetters.add(r.variantLetter); return true;
+  });
+
+  // Step 3: separate control vs variant rows
+  const lettered   = unique.filter(r =>  r.variantLetter);
+  const unlettered = unique.filter(r => !r.variantLetter);
+
+  let controlRow, variantRows;
+  if (lettered.length > 0) {
+    controlRow  = unlettered.sort((a,b) => b.audiencePct - a.audiencePct)[0] || null;
+    variantRows = lettered;
+  } else {
+    // Fallback: no A/B/C found — assign by audience% (highest = control) then doc order
+    const byAudience = [...unique].sort((a,b) => b.audiencePct - a.audiencePct);
+    controlRow = byAudience[0];
+    const rest = unique.filter(r => r !== controlRow).sort((a,b) => a.lineIdx - b.lineIdx);
+    rest.forEach((r, idx) => { if (idx < 3) r.variantLetter = 'ABC'[idx]; });
+    variantRows = rest.filter(r => r.variantLetter);
+  }
+
+  // Step 4: extract adjusted install number + CI pair
+  const extractVal = row => {
+    const firstTwo = row.installs.slice(0, 2);
+    const adjusted = firstTwo.length >= 2 ? Math.max(...firstTwo.map(x=>x.val)) : firstTwo[0].val;
+    const vals = row.ciPcts.length >= 2 ? row.ciPcts.slice(0,2).map(p=>p.val).sort((a,b)=>a-b) : null;
+    return { adjusted, ciLower: vals?.[0] ?? null, ciUpper: vals?.[1] ?? null };
+  };
+
+  if (controlRow) {
+    const { adjusted } = extractVal(controlRow);
+    result['control'] = field === 'retainedInstalls' ? { retainedInstalls: adjusted } : { firstInstalls: adjusted };
+  }
+  for (const row of variantRows) {
+    const { adjusted, ciLower, ciUpper } = extractVal(row);
+    result[row.variantLetter] = field === 'retainedInstalls'
+      ? { retainedInstalls: adjusted }
+      : { firstInstalls: adjusted, ciLower, ciUpper };
   }
   return result;
 }
@@ -1452,143 +1915,239 @@ function applyCrop() {
 function closeCropModal() { document.getElementById('crop-wrap')?.remove(); }
 // ── Admin ─────────────────────────────────────────────────────
 async function renderAdmin() {
-  const isAdmin = !!state.userData?.isAdmin;
-  const [settings, users, projects] = await Promise.all([getSettings(), getAllUsers(), getProjects()]);
-  const code = settings?.accessCode || '—';
+  const [settings, projects, trash, backups] = await Promise.all([
+    getSettings(), getProjects(), getTrash(), getDailyBackups()
+  ]);
   const testers = settings?.testers || [];
   const ratioPresets = settings?.ratioPresets || RATIO_PRESETS;
   const experimentTypes = settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
 
-  const usersHTML = users.map(u=>`
-    <li>
-      <span>${escHtml(u.name||u.email)}<span style="font-size:11px;color:var(--text-muted)"> (${escHtml(u.email)})</span>${u.isAdmin?'<span class="admin-badge">管理员</span>':''}</span>
-      <div style="display:flex;gap:6px">
-        ${!u.isAdmin?`<button class="btn btn-secondary btn-sm" onclick="makeAdmin('${u.id}')">设为管理员</button>`:''}
-        ${u.id!==state.user.uid?`<button class="btn btn-danger btn-sm" onclick="revokeUser('${u.id}','${escHtml(u.email)}')">移除</button>`:''}
-      </div>
-    </li>`).join('');
-  const projHTML = projects.map(p=>`<li><span>${escHtml(p.name)}</span><button class="btn btn-danger btn-sm" onclick="removeProject('${p.id}')">移除</button></li>`).join('');
-  const testHTML = testers.map(n=>`<li><span>${escHtml(n)}</span><button class="btn btn-danger btn-sm" onclick="removeTesterItem('${escHtml(n)}')">移除</button></li>`).join('');
-  const ratioHTML = ratioPresets.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeRatioPresetItem('${escHtml(r)}')">移除</button></li>`).join('');
-  const expTypeHTML = experimentTypes.map(r=>`<li><span class="ratio-preset-tag">${escHtml(r)}</span><button class="btn btn-danger btn-sm" onclick="removeExpTypeItem('${escHtml(r)}')">移除</button></li>`).join('');
+  const projHTML = projects.map(p=>`<span class="admin-chip">${escHtml(p.name)}<button onclick="removeProject('${p.id}')">×</button></span>`).join('');
+  const testHTML = testers.map(n=>`<span class="admin-chip">${escHtml(n)}<button onclick="removeTesterItem('${escHtml(n)}')">×</button></span>`).join('');
+  const ratioHTML = ratioPresets.map(r=>`<span class="admin-chip admin-chip-mono">${escHtml(r)}<button onclick="removeRatioPresetItem('${escHtml(r)}')">×</button></span>`).join('');
+  const expTypeHTML = experimentTypes.map(r=>`<span class="admin-chip admin-chip-accent">${escHtml(r)}<button onclick="removeExpTypeItem('${escHtml(r)}')">×</button></span>`).join('');
+
+  const trashHTML = trash.length === 0
+    ? '<li style="color:var(--text-muted)">回收站为空</li>'
+    : trash.map(t=>{
+        const dateInfo = t.type==='update'?(t.updateDate||''):(t.startDate||'');
+        return `<li>
+          <span>${escHtml(t.projectName||'')} <span style="font-size:11px;color:var(--text-muted)">${escHtml(t.tester||'')} · ${escHtml(dateInfo)} · 删于 ${new Date(t._deleted_at).toLocaleString('zh-CN')}</span></span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="restoreTrashItem('${t.id}')">↩ 还原</button>
+            <button class="btn btn-danger btn-sm" onclick="purgeTrashRecord('${t.id}')">永久删除</button>
+          </div>
+        </li>`;
+      }).join('');
+
+  const backupsHTML = backups.length === 0
+    ? '<li style="color:var(--text-muted)">还没有备份（每天首次保存时自动创建）</li>'
+    : backups.slice(0, 30).map(d => `
+        <li>
+          <span>📦 ${d}</span>
+          <button class="btn btn-secondary btn-sm" onclick="restoreDailyBackup('${d}')">还原到这一天</button>
+        </li>`).join('');
 
   renderShell(`
     <div class="page-header"><div class="page-title">⚙️ 管理面板</div></div>
-    <div class="admin-grid">
-      ${isAdmin ? `
-      <div class="admin-card" style="grid-column:1/-1">
-        <h3>🔐 入场码 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
-        <div class="access-code-display" id="code-display">${escHtml(code)}</div>
-        <div class="add-row"><input class="form-control" id="new-code" type="text" placeholder="输入新入场码…"/><button class="btn btn-primary" onclick="changeCode()">修改入场码</button></div>
+    <div class="admin-grid-2">
+      <div class="admin-card">
+        <div class="admin-section-header"><h3>🧑‍💻 测试人员名单</h3><span class="badge-count">${testers.length}</span></div>
+        <div class="admin-chips-wrap">${testHTML||'<span style="color:var(--text-muted);font-size:13px">暂无</span>'}</div>
+        <div class="add-row"><input class="form-control" id="add-tester" type="text" placeholder="添加测试人…"/><button class="btn btn-primary btn-sm" onclick="addTesterItem()">添加</button></div>
       </div>
       <div class="admin-card">
-        <h3>👥 团队成员 <span style="font-size:11px;font-weight:400;color:var(--text-muted)">仅管理员可见</span></h3>
-        <ul class="admin-list">${usersHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-      </div>` : ''}
-      <div class="admin-card">
-        <h3>🧑‍💻 测试人员名单</h3>
-        <ul class="admin-list">${testHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-tester" type="text" placeholder="添加测试人…"/><button class="btn btn-primary" onclick="addTesterItem()">添加</button></div>
+        <div class="admin-section-header"><h3>🧪 实验类型选项</h3><span class="badge-count">${experimentTypes.length}</span></div>
+        <div class="admin-chips-wrap">${expTypeHTML||'<span style="color:var(--text-muted);font-size:13px">暂无</span>'}</div>
+        <div class="add-row"><input class="form-control" id="add-exptype" type="text" placeholder="如 本地化 TH 或 主图测试"/><button class="btn btn-primary btn-sm" onclick="addExpTypeItem()">添加</button></div>
       </div>
       <div class="admin-card">
-        <h3>📐 测试比例选项</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「测试比例」下拉框中显示</p>
-        <ul class="admin-list">${ratioHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-ratio" type="text" placeholder="如 40/30/30 或 20/80"/><button class="btn btn-primary" onclick="addRatioPresetItem()">添加</button></div>
+        <div class="admin-section-header"><h3>📐 测试比例选项</h3><span class="badge-count">${ratioPresets.length}</span></div>
+        <div class="admin-chips-wrap">${ratioHTML||'<span style="color:var(--text-muted);font-size:13px">暂无</span>'}</div>
+        <div class="add-row"><input class="form-control" id="add-ratio" type="text" placeholder="如 40/30/30 或 20/80"/><button class="btn btn-primary btn-sm" onclick="addRatioPresetItem()">添加</button></div>
       </div>
       <div class="admin-card">
-        <h3>🧪 实验类型选项</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:10px">在新增记录表单的「实验类型」下拉框中显示</p>
-        <ul class="admin-list">${expTypeHTML||'<li style="color:var(--text-muted)">暂无</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-exptype" type="text" placeholder="如 本地化 TH 或 主图测试"/><button class="btn btn-primary" onclick="addExpTypeItem()">添加</button></div>
+        <div class="admin-section-header"><h3>📁 项目管理</h3><span class="badge-count">${projects.length}</span></div>
+        <div class="admin-chips-wrap">${projHTML||'<span style="color:var(--text-muted);font-size:13px">暂无项目</span>'}</div>
+        <div class="add-row" style="align-items:flex-end"><textarea class="form-control" id="add-proj" rows="2" placeholder="每行一个项目名，或用英文逗号隔开，批量添加" style="resize:vertical;min-height:56px"></textarea><button class="btn btn-primary btn-sm" onclick="addProjectItem()">批量添加</button></div>
       </div>
-      <div class="admin-card" style="grid-column:1/-1">
-        <h3>📁 项目管理</h3>
-        <ul class="admin-list">${projHTML||'<li style="color:var(--text-muted)">暂无项目</li>'}</ul>
-        <div class="add-row"><input class="form-control" id="add-proj" type="text" placeholder="新项目名称…"/><button class="btn btn-primary" onclick="addProjectItem()">添加项目</button></div>
+      <div class="admin-card admin-card-full">
+        <div class="admin-section-header"><h3>🗑 回收站</h3><span style="font-size:12px;color:var(--text-muted)">删除的记录保留 30 天，可一键还原</span></div>
+        <ul class="admin-list">${trashHTML}</ul>
+      </div>
+      <div class="admin-card admin-card-full">
+        <div class="admin-section-header"><h3>📦 每日整库快照</h3><span style="font-size:12px;color:var(--text-muted)">每天首次保存时自动备份，保留最近 30 天</span></div>
+        <ul class="admin-list">${backupsHTML}</ul>
       </div>
     </div>`, 'admin');
 }
 
-async function changeCode() {
-  const code = document.getElementById('new-code').value.trim();
-  if (!code) { toast('请输入新入场码','error'); return; }
-  await updateSettings({accessCode:code});
-  document.getElementById('code-display').textContent = code;
-  document.getElementById('new-code').value = '';
-  toast('入场码已更新','success');
+async function safeAdminAction(fn, successMsg) {
+  try {
+    await fn();
+    await refreshData();
+    if (successMsg) toast(successMsg, 'success');
+    renderAdmin();
+  } catch (e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试', 'error');
+    renderAdmin();
+  }
 }
-async function makeAdmin(uid) { await updateUser(uid,{isAdmin:true}); toast('已设为管理员','success'); renderAdmin(); }
-async function revokeUser(uid, email) {
-  if (!confirm(`确认移除 ${email} 的访问权限？`)) return;
-  await updateUser(uid,{approved:false});
-  const s = await getSettings();
-  await updateSettings({allowlist:(s?.allowlist||[]).filter(e=>e!==email)});
-  toast('已移除访问权限','success'); renderAdmin();
-}
+
 async function addProjectItem() {
-  const n = document.getElementById('add-proj').value.trim(); if(!n) return;
-  await addProject(n); document.getElementById('add-proj').value='';
-  toast('项目已添加','success'); renderAdmin();
+  const raw = document.getElementById('add-proj').value;
+  // Split by newline and comma, trim each, filter empty, deduplicate
+  const names = [...new Set(
+    raw.split(/[\n,]/).map(s=>s.trim()).filter(s=>s.length>0)
+  )];
+  if (names.length === 0) return;
+  document.getElementById('add-proj').value = '';
+  try {
+    for (const n of names) { await addProject(n); }
+    await refreshData();
+    toast(`已添加 ${names.length} 个项目`, 'success');
+    renderAdmin();
+  } catch (e) {
+    state.pendingCount = await getPendingCount();
+    toast('保存到群晖失败，已暂存本地稍后重试', 'error');
+    renderAdmin();
+  }
 }
 async function removeProject(id) {
   if (!confirm('确认删除此项目？')) return;
-  await deleteProject(id); toast('已删除项目','success'); renderAdmin();
+  await safeAdminAction(() => deleteProject(id), '已删除项目');
 }
 async function addTesterItem() {
   const n = document.getElementById('add-tester').value.trim(); if(!n) return;
-  await addTester(n); document.getElementById('add-tester').value='';
-  state.settings = await getSettings(); toast('测试人员已添加','success'); renderAdmin();
+  document.getElementById('add-tester').value='';
+  await safeAdminAction(() => addTester(n), '测试人员已添加');
 }
 async function removeTesterItem(name) {
   if (!confirm(`确认移除 ${name}？`)) return;
-  await removeTester(name); state.settings=await getSettings(); toast('已移除','success'); renderAdmin();
+  await safeAdminAction(() => removeTester(name), '已移除');
 }
 async function addRatioPresetItem() {
   const n = document.getElementById('add-ratio').value.trim(); if(!n) return;
   const s = await getSettings();
   const presets = s?.ratioPresets || RATIO_PRESETS;
   if (presets.includes(n)) { toast('该选项已存在','info'); return; }
-  await updateSettings({ ratioPresets: [...presets, n] });
-  state.settings = await getSettings();
   document.getElementById('add-ratio').value = '';
-  toast('比例选项已添加','success'); renderAdmin();
+  await safeAdminAction(() => updateSettings({ ratioPresets: [...presets, n] }), '比例选项已添加');
 }
 async function removeRatioPresetItem(r) {
   if (!confirm(`移除比例选项「${r}」？`)) return;
   const s = await getSettings();
-  await updateSettings({ ratioPresets: (s?.ratioPresets || RATIO_PRESETS).filter(p=>p!==r) });
-  state.settings = await getSettings();
-  toast('已移除','success'); renderAdmin();
+  await safeAdminAction(
+    () => updateSettings({ ratioPresets: (s?.ratioPresets || RATIO_PRESETS).filter(p=>p!==r) }),
+    '已移除'
+  );
 }
 async function addExpTypeItem() {
   const n = document.getElementById('add-exptype').value.trim(); if(!n) return;
   const s = await getSettings();
   const types = s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
   if (types.includes(n)) { toast('该选项已存在','info'); return; }
-  await updateSettings({ experimentTypes: [...types, n] });
-  state.settings = await getSettings();
   document.getElementById('add-exptype').value = '';
-  toast('实验类型已添加','success'); renderAdmin();
+  await safeAdminAction(() => updateSettings({ experimentTypes: [...types, n] }), '实验类型已添加');
 }
 async function removeExpTypeItem(r) {
   if (!confirm(`移除实验类型「${r}」？`)) return;
   const s = await getSettings();
-  await updateSettings({ experimentTypes: (s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES).filter(p=>p!==r) });
-  state.settings = await getSettings();
-  toast('已移除','success'); renderAdmin();
+  await safeAdminAction(
+    () => updateSettings({ experimentTypes: (s?.experimentTypes || DEFAULT_EXPERIMENT_TYPES).filter(p=>p!==r) }),
+    '已移除'
+  );
+}
+
+async function restoreTrashItem(id) {
+  await safeAdminAction(() => restoreFromTrash(id), '已从回收站还原');
+}
+async function purgeTrashRecord(id) {
+  if (!confirm('永久删除这条记录？无法恢复。')) return;
+  await safeAdminAction(() => purgeTrashItem(id), '已永久删除');
+}
+async function restoreDailyBackup(date) {
+  if (!confirm(`将 tests.json 还原到 ${date} 的状态？\n\n当前状态会先自动备份一份，可以再还原回来。`)) return;
+  await safeAdminAction(() => restoreFromBackup(date), `已还原到 ${date}`);
+}
+
+
+// ── Profile page ──────────────────────────────────────────────
+function profileAvatarLgHTML() {
+  const prof = getProfile();
+  if (prof.avatar) return `<img class="profile-avatar-lg" id="profile-avatar-preview" src="${prof.avatar}" alt="" />`;
+  const initial = (prof.name && prof.name.trim()[0]) || '👤';
+  return `<span class="profile-avatar-lg placeholder" id="profile-avatar-preview">${escHtml(initial)}</span>`;
+}
+
+function renderProfile() {
+  const prof = getProfile();
+  renderShell(`
+    <div class="page-header"><div class="page-title">👤 个人信息</div></div>
+    <div class="admin-card" style="max-width:480px">
+      <h3>👤 个人信息</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">仅保存在当前浏览器，不会上传到群晖</p>
+      <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px">
+        ${profileAvatarLgHTML()}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer">更换头像
+            <input type="file" accept="image/*" style="display:none" onchange="profileAvatarSelected(event)"/>
+          </label>
+          ${prof.avatar ? `<button class="btn btn-danger btn-sm" onclick="removeProfileAvatar()">移除头像</button>` : ''}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">姓名</label>
+        <input class="form-control" id="profile-name" type="text" placeholder="你的名字" value="${escHtml(prof.name||'')}"/>
+      </div>
+      <button class="btn btn-primary" onclick="saveProfileName()">💾 保存</button>
+    </div>
+    <div class="admin-card" style="max-width:480px;margin-top:16px">
+      <h3>⚙️ 管理设置</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">项目、负责人、回收站、备份等</p>
+      <button class="btn btn-secondary" onclick="navigate('admin')">打开管理面板</button>
+    </div>
+  `, 'profile');
+}
+
+async function profileAvatarSelected(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    const dataUrl = await compressImage(file, 256, 0.8);
+    const prof = getProfile();
+    saveProfile({ name: prof.name || '', avatar: dataUrl });
+    toast('头像已更新', 'success');
+    renderProfile();
+  } catch (err) { toast('头像处理失败：' + err.message, 'error'); }
+}
+
+function removeProfileAvatar() {
+  const prof = getProfile();
+  saveProfile({ name: prof.name || '', avatar: null });
+  renderProfile();
+}
+
+function saveProfileName() {
+  const name = (document.getElementById('profile-name')?.value || '').trim();
+  saveProfile({ name, avatar: getProfile().avatar || null });
+  toast('已保存', 'success');
+  renderProfile();
 }
 
 // ── Expose globals (needed for inline onclick) ────────────────
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected, setActiveOcrZone,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
-  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, handleRatioChange,
-  signInWithGoogle, signOutUser, handleAccessCode,
-  handleFormSubmit, handleImgSelect, handleDrop, removeImg,
+  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, selectTimelineTest, handleRatioChange, toggleSidebar,
+  handleFormSubmit, handleImgSelect, handleDrop, removeImg, toggleApplied,
   activatePaste, setActiveImgZone, clearActiveImgZone, switchFormType,
   updateEffectSelect, updateEffectBadge, openLightbox,
-  changeCode, makeAdmin, revokeUser,
   addProjectItem, removeProject, addTesterItem, removeTesterItem,
   addRatioPresetItem, removeRatioPresetItem, addExpTypeItem, removeExpTypeItem,
+  showHistory, closeHistory, rollbackHistory,
+  restoreTrashItem, purgeTrashRecord, restoreDailyBackup,
+  _pickFolder, _resumeFolder, _refreshFromDisk, _syncPending,
+  profileAvatarSelected, removeProfileAvatar, saveProfileName,
 });

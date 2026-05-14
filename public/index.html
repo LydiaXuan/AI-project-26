@@ -114,21 +114,21 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               <div class="space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">归属项目</label>
-                  <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">测试人</label>
-                  <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
-                  <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
                 </div>
               </div>
               <div class="space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">实验组件</label>
-                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">测试周期</label>
@@ -884,29 +884,44 @@ function renderDashboard() {
       <div id="summary-table"></div>
     </div>`;
 
-  let curBy = 'proj';
+  let curBy = 'proj', sortKey = 'total', sortDir = 'desc';
+  const sortIcon = (k) => {
+    const active = sortKey === k;
+    const up = active && sortDir === 'asc' ? 'text-indigo-500' : 'text-slate-300';
+    const down = active && sortDir === 'desc' ? 'text-indigo-500' : 'text-slate-300';
+    return `<span class="inline-flex flex-col gap-[1px] ml-1 align-middle">
+      <svg class="w-2 h-2 ${up}" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-8 8h16l-8-8z"/></svg>
+      <svg class="w-2 h-2 ${down}" fill="currentColor" viewBox="0 0 24 24"><path d="M12 20l8-8H4l8 8z"/></svg></span>`;
+  };
   const renderTable = () => {
-    const stats = curBy === 'proj' ? projStats : ownerStats;
+    const base = curBy === 'proj' ? projStats : ownerStats;
+    const stats = [...base].sort((a,b) => sortDir==='desc' ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey]);
     const label = curBy === 'proj' ? '项目' : '成员';
     $('#summary-table').innerHTML = `
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-50 border-b border-slate-200 text-[12px] font-semibold text-slate-500 select-none">
             <tr><th class="px-6 py-4 w-1/4">${label}</th>
-              <th class="px-6 py-4 text-right">总测试次数</th>
-              <th class="px-6 py-4 text-right">采纳应用次数</th>
-              <th class="px-6 py-4 text-right">应用率</th></tr>
+              <th data-sort="total" class="sum-th px-6 py-4 text-right cursor-pointer hover:bg-slate-100"><div class="flex items-center justify-end">总测试次数${sortIcon('total')}</div></th>
+              <th data-sort="adopted" class="sum-th px-6 py-4 text-right cursor-pointer hover:bg-slate-100"><div class="flex items-center justify-end">采纳应用次数${sortIcon('adopted')}</div></th>
+              <th data-sort="rate" class="sum-th px-6 py-4 text-right cursor-pointer hover:bg-slate-100"><div class="flex items-center justify-end">应用率${sortIcon('rate')}</div></th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100 text-[13px]">
             ${stats.map(s => `
               <tr><td class="px-6 py-4 font-bold text-slate-800">${escapeHTML(s.key)}</td>
-                <td class="px-6 py-4 text-right font-bold text-slate-800 bg-slate-50/50">${s.total}</td>
-                <td class="px-6 py-4 text-right font-semibold text-slate-600">${s.adopted}</td>
-                <td class="px-6 py-4 text-right font-semibold ${s.rate>=20?'text-emerald-600':'text-slate-700'}">${s.rate.toFixed(1)}%</td>
+                <td class="px-6 py-4 text-right font-bold text-slate-800 ${sortKey==='total'?'bg-slate-50/50':''}">${s.total}</td>
+                <td class="px-6 py-4 text-right font-semibold text-slate-600 ${sortKey==='adopted'?'bg-slate-50/50':''}">${s.adopted}</td>
+                <td class="px-6 py-4 text-right font-semibold ${s.rate>=20?'text-emerald-600':'text-slate-700'} ${sortKey==='rate'?'bg-slate-50/50':''}">${s.rate.toFixed(1)}%</td>
               </tr>`).join('') || '<tr><td colspan="4" class="text-center py-10 text-slate-400">无数据</td></tr>'}
           </tbody>
         </table>
       </div>`;
+    $$('.sum-th').forEach(th => th.onclick = () => {
+      const k = th.dataset.sort;
+      if (sortKey === k) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+      else { sortKey = k; sortDir = 'desc'; }
+      renderTable();
+    });
   };
   renderTable();
   $('#sum-by-proj').onclick = () => { curBy='proj'; $('#sum-by-proj').className='px-4 py-1 text-[12px] font-semibold rounded-md bg-white text-slate-800 shadow-sm'; $('#sum-by-owner').className='px-4 py-1 text-[12px] font-medium text-slate-500'; renderTable(); };
@@ -944,19 +959,20 @@ function rankCard(title, stats, id, color, withAvatar=false) {
       </div></div>`;
   };
   return `<div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col">
-    <div class="flex justify-between items-center mb-6"><h3 class="text-[14px] font-bold text-slate-800">${title}</h3></div>
+    <div class="flex justify-between items-center mb-6"><h3 class="text-[14px] font-bold text-slate-800">${title}</h3>${stats.length ? `<span class="text-[11px] font-mono text-slate-400">${stats.length} 项</span>` : ''}</div>
     <div class="space-y-6 flex-1">${top3.map((s,i)=>row(s,i)).join('') || '<div class="text-center text-slate-400 text-sm py-6">暂无数据</div>'}
       ${rest.length ? `<div id="hidden-${id}" class="hidden space-y-6 pt-2">${rest.map((s,i)=>row(s,i,true)).join('')}</div>` : ''}
     </div>
-    ${rest.length ? `<button onclick="toggleExpand('hidden-${id}', this)" class="mt-6 w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-500 font-semibold text-[12px] rounded-lg flex items-center justify-center gap-1.5">
-      <span class="btn-text">展开全部</span><svg class="btn-icon w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>` : ''}
+    ${rest.length ? `<button onclick="toggleExpand('hidden-${id}', this)" class="mt-6 w-full py-2.5 bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 font-semibold text-[12px] rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+      <span class="btn-text">展开全部 (+${rest.length})</span><svg class="btn-icon w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>` : ''}
   </div>`;
 }
 window.toggleExpand = (tid, btn) => {
   const t = $('#'+tid); if (!t) return;
   const txt = btn.querySelector('.btn-text'), icon = btn.querySelector('.btn-icon');
-  if (t.classList.contains('hidden')) { t.classList.remove('hidden'); txt.textContent='收起列表'; icon.classList.add('rotate-180'); btn.classList.add('bg-indigo-50','text-indigo-600'); btn.classList.remove('bg-slate-50','text-slate-500'); }
-  else { t.classList.add('hidden'); txt.textContent='展开全部'; icon.classList.remove('rotate-180'); btn.classList.add('bg-slate-50','text-slate-500'); btn.classList.remove('bg-indigo-50','text-indigo-600'); }
+  const restCount = (t.children?.length) || 0;
+  if (t.classList.contains('hidden')) { t.classList.remove('hidden'); txt.textContent='收起列表'; icon.classList.add('rotate-180'); btn.classList.add('bg-indigo-50','text-indigo-600'); btn.classList.remove('bg-slate-50','text-slate-600'); }
+  else { t.classList.add('hidden'); txt.textContent=`展开全部 (+${restCount})`; icon.classList.remove('rotate-180'); btn.classList.add('bg-slate-50','text-slate-600'); btn.classList.remove('bg-indigo-50','text-indigo-600'); }
 };
 function groupBy(list, key) { const m = {}; list.forEach(r => { const v = r[key] || '未分类'; (m[v] = m[v] || []).push(r); }); return m; }
 function computeStats(map) { return Object.entries(map).map(([k, arr]) => { const total = arr.length; const adopted = arr.filter(r => (r.variants||[]).some(v => v.adopted)).length; return { key: k, total, adopted, rate: total ? adopted/total*100 : 0 }; }); }

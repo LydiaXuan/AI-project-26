@@ -720,12 +720,13 @@ function toggleSidebar() {
   localStorage.setItem('sb-collapsed', next ? '1' : '0');
   const sb = document.querySelector('.sidebar');
   const main = document.querySelector('.page-with-sidebar');
-  const btn = document.querySelector('.sidebar-collapse-btn');
   if (!sb) return;
   sb.classList.toggle('sidebar--collapsed', next);
   main?.classList.toggle('sidebar--collapsed', next);
-  if (btn) btn.setAttribute('title', next ? '展开侧边栏' : '收起侧边栏');
 }
+
+const ICON_PANEL_CLOSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>`;
+const ICON_PANEL_OPEN  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg>`;
 
 function renderShell(content, activeTab) {
   const folderName = getFolderName();
@@ -739,12 +740,11 @@ function renderShell(content, activeTab) {
   document.getElementById('app').innerHTML = `
     <aside class="sidebar${collapsed?' sidebar--collapsed':''}">
       <div class="sidebar-brand">
-        <span class="sidebar-logo">📊</span>
-        <span class="sidebar-brand-name">图测记录工具</span>
-        <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="${collapsed?'展开侧边栏':'收起侧边栏'}">${collapsed?'›':'‹'}</button>
+        <div class="sidebar-brand-name"><span class="sidebar-logo">📊</span><span>图测记录工具</span></div>
+        <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="收起侧边栏" aria-label="收起侧边栏">${ICON_PANEL_CLOSE}</button>
       </div>
+      <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span class="sidebar-add-icon">＋</span><span>新增记录</span></button>
       <nav class="sidebar-nav">
-        <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span class="sidebar-add-icon">＋</span><span class="sidebar-nav-label">新增记录</span></button>
         ${navItem('timeline','timeline','📋','时间线')}
         ${navItem('dashboard','dashboard','📊','仪表盘')}
         ${navItem('admin','admin','⚙️','管理')}
@@ -760,6 +760,7 @@ function renderShell(content, activeTab) {
         <span class="sidebar-profile-name">${escHtml(prof.name || '设置个人信息')}</span>
       </button>
     </aside>
+    <button class="sidebar-show-btn" onclick="toggleSidebar()" title="展开侧边栏" aria-label="展开侧边栏">${ICON_PANEL_OPEN}</button>
     <main class="page-with-sidebar${collapsed?' sidebar--collapsed':''}">${content}</main>`;
 }
 

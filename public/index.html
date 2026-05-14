@@ -114,21 +114,21 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               <div class="space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">归属项目</label>
-                  <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">测试人</label>
-                  <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
-                  <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
                 </div>
               </div>
               <div class="space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">实验组件</label>
-                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
+                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">测试周期</label>
@@ -290,7 +290,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
         </div>
       </div>
       <div id="crop-canvas-wrap" class="hidden relative bg-slate-50 rounded-lg overflow-hidden">
-        <canvas id="crop-canvas" class="w-full block"></canvas>
+        <canvas id="crop-canvas" class="block max-w-full"></canvas>
         <div id="crop-dividers"></div>
       </div>
     </div>
@@ -1250,18 +1250,69 @@ function updateCropNButtons() {
     b.className = on ? 'crop-n-btn px-3 py-1 text-xs font-semibold rounded-md bg-white shadow-sm' : 'crop-n-btn px-3 py-1 text-xs font-medium text-slate-500';
   });
 }
+// Cache row brightness for source image (used by auto-split)
+let cropRowBright = null;
+function computeRowBright() {
+  const c = document.createElement('canvas');
+  c.width = cropImg.width; c.height = cropImg.height;
+  const ctx = c.getContext('2d'); ctx.drawImage(cropImg, 0, 0);
+  const d = ctx.getImageData(0, 0, c.width, c.height).data;
+  const w = c.width, h = c.height;
+  const rows = new Float32Array(h);
+  for (let y = 0; y < h; y++) {
+    let s = 0; const base = y * w * 4;
+    for (let x = 0; x < w; x++) { const p = base + x*4; s += (d[p]+d[p+1]+d[p+2])/3; }
+    rows[y] = s / w;
+  }
+  cropRowBright = rows;
+}
 function layoutCropCanvas() {
   const c = $('#crop-canvas');
   c.width = cropImg.width; c.height = cropImg.height;
   c.getContext('2d').drawImage(cropImg, 0, 0);
+  // Constrain display so canvas fits modal without giant scroll
+  const MAX_DISPLAY_H = 420;
+  const wrap = $('#crop-canvas-wrap');
+  const wrapW = wrap.parentElement.clientWidth - 40;
+  let dispW = Math.min(wrapW, cropImg.width);
+  let dispH = dispW * cropImg.height / cropImg.width;
+  if (dispH > MAX_DISPLAY_H) { dispH = MAX_DISPLAY_H; dispW = dispH * cropImg.width / cropImg.height; }
+  c.style.width = dispW + 'px'; c.style.height = dispH + 'px';
+  wrap.style.width = dispW + 'px'; wrap.style.height = dispH + 'px'; wrap.style.margin = '0 auto';
+  cropRowBright = null;
   requestAnimationFrame(layoutCropDividers);
+}
+// Find best (cropN-1) split positions in source image
+function autoFindSplits() {
+  if (!cropRowBright) computeRowBright();
+  const rows = cropRowBright, h = rows.length;
+  // Mark whitespace rows (bright > 240)
+  const isWhite = new Uint8Array(h);
+  for (let y = 0; y < h; y++) isWhite[y] = rows[y] > 240 ? 1 : 0;
+  // Find contiguous whitespace gaps (start, end, mid)
+  const gaps = [];
+  let s = -1;
+  for (let y = 0; y < h; y++) {
+    if (isWhite[y]) { if (s < 0) s = y; }
+    else if (s >= 0) { gaps.push({ start: s, end: y - 1, mid: (s + y - 1) / 2, size: y - s }); s = -1; }
+  }
+  if (s >= 0) gaps.push({ start: s, end: h - 1, mid: (s + h - 1) / 2, size: h - s });
+  // Exclude leading/trailing margins (gap touching y=0 or y=h-1)
+  const interior = gaps.filter(g => g.start > h * 0.05 && g.end < h * 0.95);
+  // Pick top (cropN-1) by size
+  interior.sort((a, b) => b.size - a.size);
+  const chosen = interior.slice(0, cropN - 1).sort((a, b) => a.mid - b.mid);
+  if (chosen.length === cropN - 1) return chosen.map(g => g.mid / h);
+  // Fallback: even split
+  return Array.from({ length: cropN - 1 }, (_, i) => (i + 1) / cropN);
 }
 function layoutCropDividers() {
   const box = $('#crop-dividers'); box.innerHTML = ''; cropDividers = [];
   const wrap = $('#crop-canvas-wrap');
   const h = wrap.clientHeight;
-  for (let i = 1; i < cropN; i++) {
-    const pct = i / cropN;
+  const pcts = autoFindSplits();
+  for (let i = 0; i < cropN - 1; i++) {
+    const pct = pcts[i];
     const d = document.createElement('div');
     d.className = 'crop-divider';
     d.style.top = (pct * h) + 'px';
@@ -1274,7 +1325,7 @@ function layoutCropDividers() {
       const rect = wrap.getBoundingClientRect();
       const y = Math.max(10, Math.min(rect.height - 10, e.clientY - rect.top));
       d.style.top = y + 'px';
-      cropDividers[i-1].pct = y / rect.height;
+      cropDividers[i].pct = y / rect.height;
     });
     document.addEventListener('mouseup', () => { dragging = false; });
   }
@@ -1284,26 +1335,37 @@ window.applyCrop = async () => {
   const splits = [0, ...cropDividers.map(d => d.pct), 1].map(p => Math.round(p * cropImg.height));
   for (let i = 0; i < cropN && i < formData.variants.length; i++) {
     const c = document.createElement('canvas');
-    c.width = cropImg.width; c.height = splits[i+1] - splits[i];
+    c.width = cropImg.width; c.height = Math.max(1, splits[i+1] - splits[i]);
     c.getContext('2d').drawImage(cropImg, 0, splits[i], cropImg.width, c.height, 0, 0, cropImg.width, c.height);
-    const trimmed = await trimWhitespace(c);
+    const trimmed = await trimAllSides(c);
     formData.variants[i].img = await compressImage(trimmed);
   }
   closeCrop(); renderVariants(); toast(`已裁剪 ${cropN} 张图`,'success');
 };
-function trimWhitespace(canvas) {
+// Trim whitespace on all 4 sides
+function trimAllSides(canvas) {
   return new Promise(res => {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
+    if (w < 2 || h < 2) { canvas.toBlob(b => res(b)); return; }
     const data = ctx.getImageData(0, 0, w, h).data;
-    const rowBright = idx => { let sum = 0; for (let x = 0; x < w; x++) { const p = (idx*w + x)*4; sum += (data[p]+data[p+1]+data[p+2])/3; } return sum / w; };
-    let top = 0, bot = h - 1;
-    while (top < h && rowBright(top) > 245) top++;
-    while (bot > top && rowBright(bot) > 245) bot--;
-    if (top === 0 && bot === h - 1) { canvas.toBlob(b => res(b)); return; }
+    const TH = 240;
+    const rowBright = y => { let s = 0; const base = y*w*4; for (let x = 0; x < w; x++) { const p = base + x*4; s += (data[p]+data[p+1]+data[p+2])/3; } return s/w; };
+    const colBright = x => { let s = 0; for (let y = 0; y < h; y++) { const p = (y*w + x)*4; s += (data[p]+data[p+1]+data[p+2])/3; } return s/h; };
+    let top = 0, bot = h - 1, left = 0, right = w - 1;
+    while (top < h && rowBright(top) > TH) top++;
+    while (bot > top && rowBright(bot) > TH) bot--;
+    while (left < w && colBright(left) > TH) left++;
+    while (right > left && colBright(right) > TH) right--;
+    if (top === 0 && bot === h - 1 && left === 0 && right === w - 1) { canvas.toBlob(b => res(b)); return; }
+    // Small safety margin so content isn't shaved
+    const pad = 2;
+    top = Math.max(0, top - pad); bot = Math.min(h - 1, bot + pad);
+    left = Math.max(0, left - pad); right = Math.min(w - 1, right + pad);
+    const cw = right - left + 1, ch = bot - top + 1;
     const c2 = document.createElement('canvas');
-    c2.width = w; c2.height = Math.max(1, bot - top + 1);
-    c2.getContext('2d').drawImage(canvas, 0, top, w, c2.height, 0, 0, w, c2.height);
+    c2.width = Math.max(1, cw); c2.height = Math.max(1, ch);
+    c2.getContext('2d').drawImage(canvas, left, top, cw, ch, 0, 0, cw, ch);
     c2.toBlob(b => res(b));
   });
 }

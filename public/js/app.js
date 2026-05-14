@@ -245,10 +245,14 @@ function toggleSidebar() {
   if (!sb) return;
   sb.classList.toggle('sidebar--collapsed', next);
   main?.classList.toggle('sidebar--collapsed', next);
+  // trigger chart.js + other responsive components to recompute size
+  setTimeout(() => window.dispatchEvent(new Event('resize')), 290);
 }
 
 const ICON_PANEL_CLOSE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg>`;
 const ICON_PANEL_OPEN  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg>`;
+const ICON_BRAND = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
+const ICON_PLUS  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`;
 
 function renderShell(content, activeTab) {
   const folderName = getFolderName();
@@ -262,14 +266,13 @@ function renderShell(content, activeTab) {
   document.getElementById('app').innerHTML = `
     <aside class="sidebar${collapsed?' sidebar--collapsed':''}">
       <div class="sidebar-brand">
-        <div class="sidebar-brand-name"><span class="sidebar-logo">📊</span><span>图测记录工具</span></div>
+        <div class="sidebar-brand-name"><span class="sidebar-logo">${ICON_BRAND}</span><span>图测记录工具</span></div>
         <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="收起侧边栏" aria-label="收起侧边栏">${ICON_PANEL_CLOSE}</button>
       </div>
-      <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span class="sidebar-add-icon">＋</span><span>新增记录</span></button>
+      <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span class="sidebar-add-icon">${ICON_PLUS}</span><span>新增记录</span></button>
       <nav class="sidebar-nav">
         ${navItem('timeline','timeline','📋','时间线')}
         ${navItem('dashboard','dashboard','📊','仪表盘')}
-        ${navItem('admin','admin','⚙️','管理')}
       </nav>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-data">
@@ -961,7 +964,7 @@ const VDEFS = [
 const VC_BAR_COLORS  = ['#9CA3AF','#10B981','#6366F1','#F43F5E'];
 const VC_BADGE_CLS   = ['fp-vcard-badge-ctrl','fp-vcard-badge-v1','fp-vcard-badge-v2','fp-vcard-badge-v3'];
 const BI_TYPES = ['icon','五图','置顶','视频'];
-const RATIO_PRESETS = ['50/50','33/33/33','25/25/25/25','20/20/20/20/20','25/75','10/90'];
+const RATIO_PRESETS = ['25/25/25/25','50/50','60/40','70/30','75/25','90/10','95/5','34/33/33','40/30/30','50/25/25','60/20/20','80/10/10','70/15/15','55/15/15/15','40/20/20/20','85/5/5/5','90/5/5','70/10/10/10','20/20/20/20/20'];
 const DEFAULT_EXPERIMENT_TYPES = ['自定义商品详情','主要商品详情','本地化 VN','本地化 ID','本地化 US','本地化 JP','本地化 KR','本地化 BR','本地化 IN'];
 function handleRatioChange(val) {
   const inp = document.getElementById('f-ratio');
@@ -1005,9 +1008,9 @@ function buildVariantCol(i, test) {
     <div class="fp-vstat-row fp-ci-row">
       <span class="fp-vstat-label">置信区间</span>
       <div class="fp-ci-inputs">
-        <input class="fp-ci-input" id="v${i}_ciL" type="number" step="0.1" placeholder="下限" value="${v.ciLower??''}" oninput="updateEffectSelect(${i})"/>
+        <input class="fp-ci-input" id="v${i}_ciL" type="number" step="0.1" placeholder="0.0" value="${v.ciLower??''}" oninput="updateEffectSelect(${i})"/>
         <span class="fp-ci-sep">~</span>
-        <input class="fp-ci-input" id="v${i}_ciH" type="number" step="0.1" placeholder="上限" value="${v.ciUpper??''}" oninput="updateEffectSelect(${i})"/>
+        <input class="fp-ci-input" id="v${i}_ciH" type="number" step="0.1" placeholder="0.0" value="${v.ciUpper??''}" oninput="updateEffectSelect(${i})"/>
       </div>
     </div>
     <div class="fp-vstat-row">
@@ -2065,6 +2068,11 @@ function renderProfile() {
         <input class="form-control" id="profile-name" type="text" placeholder="你的名字" value="${escHtml(prof.name||'')}"/>
       </div>
       <button class="btn btn-primary" onclick="saveProfileName()">💾 保存</button>
+    </div>
+    <div class="admin-card" style="max-width:480px;margin-top:16px">
+      <h3>⚙️ 管理设置</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">项目、负责人、回收站、备份等</p>
+      <button class="btn btn-secondary" onclick="navigate('admin')">打开管理面板</button>
     </div>
   `, 'profile');
 }

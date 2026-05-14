@@ -715,19 +715,36 @@ function sidebarAvatarHTML(prof, cls) {
   return `<span class="${cls} placeholder">${escHtml(initial)}</span>`;
 }
 
+function toggleSidebar() {
+  const next = localStorage.getItem('sb-collapsed') !== '1';
+  localStorage.setItem('sb-collapsed', next ? '1' : '0');
+  const sb = document.querySelector('.sidebar');
+  const main = document.querySelector('.page-with-sidebar');
+  const btn = document.querySelector('.sidebar-collapse-btn');
+  if (!sb) return;
+  sb.classList.toggle('sidebar--collapsed', next);
+  main?.classList.toggle('sidebar--collapsed', next);
+  if (btn) btn.setAttribute('title', next ? '展开侧边栏' : '收起侧边栏');
+}
+
 function renderShell(content, activeTab) {
   const folderName = getFolderName();
   const prof = getProfile();
+  const collapsed = localStorage.getItem('sb-collapsed') === '1';
   const navItem = (tab, view, icon, label) =>
-    `<button class="sidebar-nav-item${activeTab===tab?' active':''}" onclick="navigate('${view}')"><span class="sidebar-nav-icon">${icon}</span><span>${label}</span></button>`;
+    `<button class="sidebar-nav-item${activeTab===tab?' active':''}" onclick="navigate('${view}')"><span class="sidebar-nav-icon">${icon}</span><span class="sidebar-nav-label">${label}</span></button>`;
   const pending = state.pendingCount > 0
     ? `<button class="pending-pill" onclick="_syncPending()" title="点击重试同步">⚠ ${state.pendingCount} 条未同步</button>`
     : '';
   document.getElementById('app').innerHTML = `
-    <aside class="sidebar">
-      <div class="sidebar-brand"><span class="sidebar-logo">📊</span><span>图测记录工具</span></div>
+    <aside class="sidebar${collapsed?' sidebar--collapsed':''}">
+      <div class="sidebar-brand">
+        <span class="sidebar-logo">📊</span>
+        <span class="sidebar-brand-name">图测记录工具</span>
+        <button class="sidebar-collapse-btn" onclick="toggleSidebar()" title="${collapsed?'展开侧边栏':'收起侧边栏'}">${collapsed?'›':'‹'}</button>
+      </div>
       <nav class="sidebar-nav">
-        <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span>＋</span><span>新增记录</span></button>
+        <button class="sidebar-add-item${activeTab==='form'?' active':''}" onclick="navigate('form')"><span class="sidebar-add-icon">＋</span><span class="sidebar-nav-label">新增记录</span></button>
         ${navItem('timeline','timeline','📋','时间线')}
         ${navItem('dashboard','dashboard','📊','仪表盘')}
         ${navItem('admin','admin','⚙️','管理')}
@@ -743,7 +760,7 @@ function renderShell(content, activeTab) {
         <span class="sidebar-profile-name">${escHtml(prof.name || '设置个人信息')}</span>
       </button>
     </aside>
-    <main class="page-with-sidebar">${content}</main>`;
+    <main class="page-with-sidebar${collapsed?' sidebar--collapsed':''}">${content}</main>`;
 }
 
 async function _refreshFromDisk() {
@@ -1527,25 +1544,25 @@ function renderFormView() {
   let formBody;
   if (ft === 'update') {
     formBody = `
-      <div class="fp-section">
-        <div class="fp-prop-row"><span class="fp-prop-label">归属项目</span><select class="fp-prop-select" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
-        <div class="fp-prop-row"><span class="fp-prop-label">负责人</span><select class="fp-prop-select" id="f-tester" required>${testerOpts}</select></div>
-        <div class="fp-prop-row"><span class="fp-prop-label">更新日期</span><input class="fp-prop-input" id="f-update-date" type="date" required value="${test?.updateDate||''}"/></div>
-        <div class="fp-prop-row"><span class="fp-prop-label">截图类型</span><div class="fp-pills-wrap">${biPills}</div></div>
-      </div>
-      <div class="fp-section fp-notes-section">
-        <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
-      </div>
-      <div class="fp-section fp-section-variants">
-        <div class="fp-section-label">截图对比</div>
-        <div class="fp-update-imgs">
-          <div class="fp-update-img-col">
-            <div class="fp-update-img-lbl">原始</div>
-            <div class="fp-vcard-img" id="fp-imgzone-0" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
-          </div>
-          <div class="fp-update-img-col">
-            <div class="fp-update-img-lbl">更新后</div>
-            <div class="fp-vcard-img" id="fp-imgzone-1" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+      <div class="fp-form-cols">
+        <div class="fp-section">
+          <div class="fp-prop-row"><span class="fp-prop-label">测试项目</span><select class="fp-prop-select" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
+          <div class="fp-prop-row"><span class="fp-prop-label">负责人</span><select class="fp-prop-select" id="f-tester" required>${testerOpts}</select></div>
+          <div class="fp-prop-row"><span class="fp-prop-label">更新日期</span><input class="fp-prop-input fp-date-input" id="f-update-date" type="date" required value="${test?.updateDate||''}"/></div>
+          <div class="fp-prop-row"><span class="fp-prop-label">测试属性</span><div class="fp-pills-wrap">${biPills}</div></div>
+        </div>
+        <div class="fp-section fp-notes-section fp-notes-stretch">
+          <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
+          <div class="fp-section-label" style="padding:8px 16px 4px">截图对比</div>
+          <div class="fp-update-imgs">
+            <div class="fp-update-img-col">
+              <div class="fp-update-img-lbl">原始</div>
+              <div class="fp-vcard-img" id="fp-imgzone-0" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
+            </div>
+            <div class="fp-update-img-col">
+              <div class="fp-update-img-lbl">更新后</div>
+              <div class="fp-vcard-img" id="fp-imgzone-1" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+            </div>
           </div>
         </div>
       </div>`;
@@ -1560,28 +1577,30 @@ function renderFormView() {
     const cols = [0,1,2,3].map(i=>buildVariantCol(i, test)).join('');
 
     formBody = `
-      <div class="fp-section">
-        <div class="fp-prop-row"><span class="fp-prop-label">归属项目</span><select class="fp-prop-select" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
-        <div class="fp-prop-row"><span class="fp-prop-label">负责人</span><select class="fp-prop-select" id="f-tester" required>${testerOpts}</select></div>
-        <div class="fp-prop-row fp-prop-row-dates"><span class="fp-prop-label">测试周期</span>
-          <input class="fp-prop-input fp-date-input" id="f-start" type="date" required value="${test?.startDate||''}"/>
-          <span class="fp-date-sep">→</span>
-          <input class="fp-prop-input fp-date-input" id="f-end" type="date" value="${test?.endDate||''}"/>
-        </div>
-        <div class="fp-prop-row"><span class="fp-prop-label">流量分配</span>
-          <div class="fp-prop-select-wrap">
-            <select class="fp-prop-select" id="f-ratio-sel" onchange="handleRatioChange(this.value)">${ratioPresetOpts}<option value="custom" ${isCustomRatio?'selected':''}>自定义…</option></select>
-            <input class="fp-prop-input" id="f-ratio" type="text" placeholder="自定义比例" style="${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+      <div class="fp-form-cols">
+        <div class="fp-section">
+          <div class="fp-prop-row"><span class="fp-prop-label">测试项目</span><select class="fp-prop-select" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
+          <div class="fp-prop-row"><span class="fp-prop-label">负责人</span><select class="fp-prop-select" id="f-tester" required>${testerOpts}</select></div>
+          <div class="fp-prop-row fp-prop-row-dates"><span class="fp-prop-label">测试周期</span>
+            <input class="fp-prop-input fp-date-input" id="f-start" type="date" required value="${test?.startDate||''}"/>
+            <span class="fp-date-sep">→</span>
+            <input class="fp-prop-input fp-date-input" id="f-end" type="date" value="${test?.endDate||''}"/>
           </div>
+          <div class="fp-prop-row"><span class="fp-prop-label">流量分配</span>
+            <div class="fp-prop-select-wrap">
+              <select class="fp-prop-select" id="f-ratio-sel" onchange="handleRatioChange(this.value)">${ratioPresetOpts}<option value="custom" ${isCustomRatio?'selected':''}>自定义…</option></select>
+              <input class="fp-prop-input" id="f-ratio" type="text" placeholder="自定义比例" style="${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+            </div>
+          </div>
+          <div class="fp-prop-row"><span class="fp-prop-label">实验类型</span><select class="fp-prop-select" id="f-exptype">${expTypeOpts}</select></div>
+          <div class="fp-prop-row"><span class="fp-prop-label">置信度</span><div class="fp-pills-wrap">${confPills}</div></div>
+          <div class="fp-prop-row"><span class="fp-prop-label">测试属性</span><div class="fp-pills-wrap">${biPills}</div></div>
         </div>
-        <div class="fp-prop-row"><span class="fp-prop-label">实验类型</span><select class="fp-prop-select" id="f-exptype">${expTypeOpts}</select></div>
-        <div class="fp-prop-row"><span class="fp-prop-label">置信度</span><div class="fp-pills-wrap">${confPills}</div></div>
-        <div class="fp-prop-row"><span class="fp-prop-label">截图类型</span><div class="fp-pills-wrap">${biPills}</div></div>
-      </div>
-      <div class="fp-section fp-notes-section">
-        <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
-        <input class="fp-ghost-input" id="f-note-purpose" type="text" placeholder="测试目的 — 想验证什么" value="${escHtml(test?.notes?.purpose||'')}"/>
-        <input class="fp-ghost-input" id="f-note-design" type="text" placeholder="设计思路 — 为什么这样设计" value="${escHtml(test?.notes?.design||'')}"/>
+        <div class="fp-section fp-notes-section fp-notes-stretch">
+          <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
+          <input class="fp-ghost-input" id="f-note-purpose" type="text" placeholder="测试目的 — 想验证什么" value="${escHtml(test?.notes?.purpose||'')}"/>
+          <input class="fp-ghost-input" id="f-note-design" type="text" placeholder="设计思路 — 为什么这样设计" value="${escHtml(test?.notes?.design||'')}"/>
+        </div>
       </div>
       <div class="fp-section fp-section-variants">
         <div class="fp-section-label fp-section-label-tools">
@@ -2526,7 +2545,7 @@ function saveProfileName() {
 Object.assign(window, {
   openOCRModal, closeOCRModal, runOCR, applyOCRData, ocrFileSelected, setActiveOcrZone,
   openCropModal, closeCropModal, cropImgSelected, cropAutoSplit, applyCrop, switchCropDirection,
-  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, selectTimelineTest, handleRatioChange,
+  navigate, filterTimeline, applyTimelineFilters, resetTimelineFilters, onSearchInput, toggleCard, editTest, deleteTestRecord, saveConclusion, selectTimelineTest, handleRatioChange, toggleSidebar,
   handleFormSubmit, handleImgSelect, handleDrop, removeImg, toggleApplied,
   activatePaste, setActiveImgZone, clearActiveImgZone, switchFormType,
   updateEffectSelect, updateEffectBadge, openLightbox,

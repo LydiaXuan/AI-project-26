@@ -1,16 +1,16 @@
-# 图测记录工具 — 设计与开发备忘录
+# 图测记录工具 — 设计与功能备忘录
 
-> 自动维护文件，每次大改后同步更新。最后更新：2026-05-14
+> 自动维护，每次大改后更新。最后更新：2026-05-14
 
 ---
 
 ## 一、项目概述
 
-**用途**：Google Play Console A/B 测试记录管理工具（多人共享，存储于群晖网络盘）
+**用途**：Google Play Console A/B 测试 / 直接更新 记录管理，多人共享，数据存储在群晖网络盘。
 
-**访问方式**：Chrome / Edge 打开 `index.html`，首次需选择群晖网络盘上的 `data` 文件夹（如 `Z:\图测记录工具\data`）。File System Access API 要求映射盘符，不支持 UNC 路径。
+**访问方式**：Chrome / Edge 打开 `public/index.html`，首次需选择群晖上的 `data` 文件夹（如 `Z:\图测记录工具\data`）。需要映射盘符，不支持 UNC 路径。
 
-**部署**：所有代码打包进 `public/index.html` 单文件（~189KB），无服务器。
+**部署**：所有代码打包进 `public/index.html` 单文件，无服务器，无后端。
 
 ---
 
@@ -18,247 +18,317 @@
 
 ```
 public/
-  index.html      ← 构建产物，CSS + JS 全部 inline
-  css/styles.css  ← 源样式
+  index.html      ← 构建产物（CSS + JS 全部 inline，~189KB）
+  css/styles.css  ← 样式源文件（~1085 行）
   js/
-    app.js        ← 主逻辑（~2100 行）
-    effects.js    ← 效果计算 / badge HTML
-    db.js         ← IndexedDB + 文件夹读写
+    app.js        ← 主逻辑（~2154 行）
+    effects.js    ← 效果计算 / effectBadgeHTML
+    db.js         ← IndexedDB + 文件夹读写 + 多人协作同步
 CHAT-LOG.md       ← 会话历史（.gitignore，不入库）
 viso test1.md     ← 本文件
 ```
 
-### 构建命令（在 /tmp/ 下有脚本）
+### 构建流程
 
 ```bash
-# strip_imports.py: 去掉 import/export 行
-# rebuild_html.py:  把 CSS + bundle.js inline 进 index.html
-python3 /tmp/strip_imports.py  # 生成 /tmp/bundle.js
-python3 /tmp/rebuild_html.py   # 更新 public/index.html
+python3 /tmp/strip_imports.py   # 去掉 import/export → /tmp/bundle.js
+python3 /tmp/rebuild_html.py    # inline CSS+JS → public/index.html
 ```
 
 ---
 
-## 三、设计系统
+## 三、五大功能模块
+
+### 1. 新增 / 编辑记录（表单页）
+
+**入口**：侧边栏「新增记录」按钮，或时间线卡片「编辑」按钮。
+
+**两种记录类型**（右上角切换）：
+
+| 类型 | 说明 |
+|---|---|
+| A/B 测试 | 多变体实验，含置信区间、效果判断 |
+| 直接更新 | 无实验数据，仅记录前/后截图对比 |
+
+**A/B 测试表单字段**：
+
+- 测试项目（下拉）、负责人（下拉）、流量分配（19个预设 + 自定义）
+- 实验类型（下拉，可在管理面板新增）
+- 测试周期（开始日期 ~ 结束日期）
+- 目标置信度（分段按钮：90 / 95 / 98 / 99%）
+- 备注三行：改动内容、测试目的、设计思路
+- 测试属性 pills：icon / 五图 / 置顶 / 视频（多选）
+- 变体方案（原始 + 方案A/B/C）：
+  - 9:16 图片上传区（点击 / 拖拽 / Ctrl+V 粘贴）
+  - 首次安装数、保留安装数（输入后自动计算效果）
+  - 置信区间下限 ~ 上限
+  - 测试效果下拉（自动推断，可手动覆盖）
+  - 「标记为采用」按钮（点击变绿，✓ 已采用）
+
+**直接更新表单字段**：
+- 测试项目、负责人、更新日期
+- 改动内容备注
+- 测试属性 pills
+- 截图对比（原始 / 更新后两张）
+
+**Record ID**：新建时自动生成 `YYYY-NN`（如 `2026-01`），按年顺序递增，左上角 badge 显示。
+
+**提交**：粘性底部操作栏，「放弃修改」+ 「保存并同步配置」。编辑模式额外显示「删除此记录」（红色）。
+
+---
+
+### 2. OCR 自动提取数据
+
+**入口**：表单页「📊 上传截图提取数据」按钮。
+
+**流程**：
+1. 上传首次安装数截图（可选）+ 保留安装数截图（可选）
+2. 点击「开始识别」→ Tesseract.js 本地运行（约10~20秒，无需 API）
+3. 识别前预处理：放大 2.4x + 灰度化 + 对比增强
+4. 解析规则：
+   - 匹配 ≥1000 的整数 = 安装数
+   - 匹配 `±X.X%` 格式 = 置信区间（扫描安装数行 ±2 行内）
+   - 变体字母 A/B/C 匹配（同样 ±2 行范围）
+   - 无变体字母时按受众占比最高 = 控制组
+5. 显示可编辑预览表格，手动核对后「填入表单」
+
+---
+
+### 3. 批量裁剪图标
+
+**入口**：表单页「✂️ 批量解析图标」按钮。
+
+**流程**：
+1. 上传包含所有变体图标的大图（或 Ctrl+V 粘贴）
+2. 选择裁剪方向：↔ 左右 / ↕ 上下（默认上下）
+3. 上下裁剪时自动检测内容边界（亮度标准差算法）
+4. 拖动分割线调整各区域（支持 1~4 个变体）
+5. 点击「裁剪并填入」→ 分别填入各变体图片区
+
+---
+
+### 4. 时间线（历史记录列表）
+
+**布局**：左右分栏
+- 左栏：可滚动列表（带时间轴竖线、彩色小圆点）
+- 右栏：选中记录的详情
+
+**筛选栏**（多维度）：
+- 排序：最新优先 / 最早优先
+- 项目筛选（下拉）
+- 实验类型筛选（下拉）
+- 效果筛选：很好 / 不错 / 很差 / 持平 / 经验决策（下拉）
+- 截图类型筛选：icon / 五图 / 置顶 / 视频（下拉）
+- 文字搜索（搜索项目名、负责人、备注内容）
+- 重置筛选按钮（显示当前激活筛选数量）
+
+**列表项**：项目名 + 时间段 + 缩略图横排（有 applied 绿色边框）
+- 时间轴圆点颜色：蓝（普通）/ 绿（有采用）/ 橙（直接更新）
+
+**详情面板内容**（A/B 测试）：
+- 项目名 + 元数据 chips（日期、置信度、比例、实验类型、截图类型）
+- 当前采用版本高亮区（绿色背景，图片 + 关键数据）
+- 实验进度条（7天内=早期/14天内=进行中/14天以上=成熟）
+- 大图横排展示（点击放大灯箱）
+- 数据对比表格（变体 | 首次安装 | CI | 保留安装 | 效果 | 是否应用）
+  - 最佳数值用 🥇 / ⭐ 标记
+- 实验小结 textarea（可直接编辑保存，不需重开表单）
+- 备注展示（改动/目的/思路）
+- 操作按钮：编辑 / 历史 / 删除
+
+**详情面板内容**（直接更新）：
+- 项目名 + 更新日期 + 截图类型
+- 前/后大图对比
+- 改动备注
+- 操作按钮
+
+---
+
+### 5. 仪表盘
+
+**统计卡片**（6个）：
+- 总测试次数、本月测试次数
+- 累计应用变体数、总变体应用率
+- 项目数、团队成员数
+
+**图表**（6个 Chart.js，侧边栏收起/展开时自动触发 resize）：
+- 测试时间趋势（近12周折线图）
+- 测试效果分布（甜甜圈图）
+- 各测试人累计次数（横向柱状图）
+- 各项目测试次数（横向柱状图）
+- 应用率（按项目，堆叠柱状图，已应用/未应用）
+- 各测试人应用次数（横向柱状图）
+
+---
+
+## 四、辅助功能
+
+### 编辑历史
+
+- 每次保存自动记录快照（最多保留最近 5 次）
+- 时间线详情页「历史」按钮打开模态框
+- 可一键回滚到任意历史版本
+
+### 回收站
+
+- 删除记录进入回收站，保留 30 天
+- 管理面板可查看/还原/永久删除
+
+### 每日备份
+
+- 每天首次保存时自动创建整库快照
+- 保留最近 30 天，可一键还原整库
+
+### 待同步队列
+
+- 群晖网络盘断连时写入 pending 队列
+- 左侧边栏底部显示「⚠ N 条未同步」红色 pill，点击重试
+- 下次联网自动重试同步
+
+### 个人信息
+
+- 姓名 + 头像（存浏览器 localStorage，不上传群晖）
+- 头像压缩到 256px 后存 base64
+- 个人信息页底部入口→管理面板
+
+### 管理面板
+
+- 入口：个人信息页「打开管理面板」（侧边栏已移除该入口）
+- 功能：增删测试人员、实验类型、流量比例预设、项目
+- 项目支持批量添加（换行或逗号分隔）
+
+---
+
+## 五、图片处理
+
+| 操作 | 说明 |
+|---|---|
+| 上传方式 | 点击文件选择 / 拖拽 / Ctrl+V 粘贴 |
+| 压缩参数 | max 480px，quality 0.72，JPEG，存 base64 |
+| 头像压缩 | max 256px，quality 0.8 |
+| OCR 预处理 | 放大 2.4x，灰度化，拉开黑白对比 |
+| 灯箱 | 点击任意图片打开全屏查看，再点关闭 |
+| 移除 | 图片右上角 ✕ 按钮 |
+
+---
+
+## 六、效果自动计算规则（effects.js）
+
+输入首次安装数（控制组 + 测试组）+ 置信区间后，自动推断效果类型：
+
+| 效果 | 触发条件 |
+|---|---|
+| 🏆 很好（superb） | CI 下限 > 0（统计显著正向） |
+| 👍 不错（good） | CI 跨 0 但安装数明显高于控制组 |
+| ➖ 持平(+)（neutral_p） | CI 跨 0，安装数略高 |
+| ➖ 持平(-)（neutral_n） | CI 跨 0，安装数持平或略低 |
+| 📈 经验决策(+) | 无 CI 数据，安装数高于控制组 |
+| 📈 经验决策(-) | 无 CI 数据，安装数低于控制组 |
+| ❌ 很差（bad） | CI 上限 < 0（统计显著负向） |
+
+---
+
+## 七、数据结构（JSON 字段）
+
+**A/B 测试记录**：
+```js
+{
+  id, type:'test', recordId:'2026-01',
+  projectId, projectName, tester,
+  startDate, endDate,          // YYYY-MM-DD
+  confidence: 95,              // 90/95/98/99
+  testRatio: '50/25/25',
+  experimentType: '主要商品详情',
+  biVizType: ['icon','五图'],  // 多选数组
+  notes: { change, purpose, design },
+  conclusion,                  // 实验小结
+  variants: [
+    // index 0 = 控制组，1/2/3 = 方案A/B/C
+    { firstInstalls, retainedInstalls, ciLower, ciUpper,
+      effect, applied, imageUrl }
+  ]
+}
+```
+
+**直接更新记录**：
+```js
+{
+  id, type:'update', recordId:'2026-02',
+  projectId, projectName, tester,
+  updateDate,
+  biVizType: ['icon'],
+  notes: { change },
+  imageUrl, newImageUrl
+}
+```
+
+---
+
+## 八、设计系统
 
 ### 颜色
 
 | 用途 | 值 |
 |---|---|
-| 主色（Indigo） | `#4F46E5` / `#6366F1` |
+| 主色 Indigo | `#4F46E5` / `#6366F1` |
 | 主色悬停 | `#4338CA` |
 | 主色浅背景 | `#EEF2FF` |
 | 文字主色 | `#1E293B` |
 | 文字次要 | `#64748B` |
 | 边框 | `#E2E8F0` |
 | 分割线 | `#F1F5F9` |
-| 卡片背景 | `#fff` |
 | 页面背景 | `#F0F2F7` |
 | 变体色彩条 | 灰 `#9CA3AF` / 绿 `#10B981` / 紫 `#6366F1` / 玫 `#F43F5E` |
 
 ### 字体
-
 ```css
-font-family: 'SF Pro Display','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+'SF Pro Display','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif
 ```
 
-### 核心圆角
+### 核心布局
 
-- 卡片：`border-radius: 12px`
-- 按钮/输入：`8px`
-- 徽章：`6px`
+**侧边栏**：248px 固定，`translateX(-248px)` 收起，`.26s cubic-bezier(.4,0,.2,1)`，收起后浮动展开按钮出现。
 
----
+**表单页**：`max-width:1200px`，头部 bar + 白色 card 叠加，底部 sticky action bar（backdrop-filter blur）。
 
-## 四、布局系统
+**时间线**：左右分栏，左栏 420px，右栏 flex:1，≤1000px 改为上下分栏。
 
-### 侧边栏（可收起）
+**仪表盘**：stats-grid（6列自适应）+ charts-grid（2列）。
 
-```
-宽度：248px，固定定位，白色背景
-收起：translateX(-248px)，过渡 .26s cubic-bezier(.4,0,.2,1)
-展开按钮：position:fixed; top:14px; left:14px，收起时淡入
-```
-
-- 收起状态类：`.sidebar--collapsed`（同时加在 `<aside>` 和 `<main>`）
-- 主内容区收起时：`margin-left:0; padding-left:68px; width:100vw`
-- 图表自适应：`setTimeout(() => window.dispatchEvent(new Event('resize')), 290)`
-
-### 侧边栏导航项
-
-- 时间线（📋）、仪表盘（📊）——无管理界面入口
-- 管理界面仍可通过个人信息页的「打开管理面板」访问
-
----
-
-## 五、表单页（新增/编辑记录）
-
-### 结构层次
-
-```
-.fp-wrap
-  .fp-header-bar        ← 标题 + RecordID badge + 类型切换
-  .fp-card              ← 基础实验属性（2列网格）
-  .fp-card.fp-card-compact ← 测试属性（pills）
-  section               ← 变体方案（4卡片横排）
-  .fp-action-bar        ← 粘性底部操作栏
-```
-
-### fp-header-bar
-
-```html
-<header class="fp-header-bar">
-  左：标题 + <span class="fp-header-id">ID: 2026-01</span>
-  右：<div class="fp-type-toggle"> A/B测试 | 直接更新 </div>
-</header>
-```
-
-### 基础实验属性 card
-
-- 2列网格 `.fp-grid-2`，每列多个 `.fp-row`
-- 每行：`justify-between` → 左侧标签 `.fp-row-label` + 右侧控件
-- 控件类型：
-  - 下拉：`.fp-inv-select`（invisible select，右对齐，hover 变 indigo）
-  - 输入：`.fp-inv-input`（invisible input）
-  - 日期：`.fp-inv-input.fp-inv-date`
-  - 置信度：`.fp-seg-group` 里的 `.fp-seg-btn`（hidden radio + adjacent div）
-
-### 分段按钮（置信度 90 / 95 / 98 / 99%）
-
-```html
-<label class="fp-seg-btn">
-  <input type="radio" name="conf" value="95" checked/>
-  <div>95%</div>
-</label>
-```
-
-选中时：`background:#EEF2FF; color:#4F46E5; border-color:#C7D2FE`
-
-### 备注区（3行 textarea）
-
-```css
-.fp-notes-input {
-  background: #F8FAFC; border:none; border-radius:8px; padding:10px 16px;
-}
-/* 聚焦 */ background:#fff; box-shadow:0 0 0 1px rgba(99,102,241,.5);
-```
-
-字段：改动内容、测试目的、设计思路
-
-### 测试属性 pills
-
-```css
-.fp-pill input:checked + span { background:#EEF2FF; color:#4338CA; border-color:#C7D2FE; }
-```
-
-选项：`BI_TYPES = ['icon','五图','置顶','视频']`
-
-### 变体方案卡片
-
-- 4 个 `.fp-vcard` 横排（`grid-template-columns: repeat(4,1fr)`）
-- 顶部 4px 色彩条区分（灰/绿/紫/玫）
-- 图片区：`aspect-ratio: 9/16`，虚线边框
-- 数据区（slate-50 半透明背景）：首次安装、置信区间（[下限] ~ [上限]）、保留安装、效果判断
-- 底部：「标记为采用」按钮，点击后变绿（`.fp-applied-yes`）
-
-**变体定义**：
-```js
-const VDEFS = [
-  {key:'control', label:'原始',  badge:'CONTROL',   cls:'ctrl'},
-  {key:'test1',   label:'方案A', badge:'VARIANT 1', cls:'t1'},
-  {key:'test2',   label:'方案B', badge:'VARIANT 2', cls:'t2'},
-  {key:'test3',   label:'方案C', badge:'VARIANT 3', cls:'t3'},
-];
-```
-
-### 粘性操作栏
-
-```css
-position:sticky; bottom:0; margin:0 -32px; padding:12px 32px;
-background:rgba(255,255,255,.88);
-backdrop-filter:saturate(1.4) blur(12px);
-border-top:1px solid #E2E8F0;
-```
-
-按钮：「放弃修改」（次要）+ 「保存并同步配置」（主要 indigo）
-
----
-
-## 六、Record ID
-
-格式：`YYYY-NN`（年份 + 零补齐序号，如 `2026-01`）
-
-生成：创建时自动计算当年已有记录数 + 1
-
----
-
-## 七、流量分配预设（19 个，写死在代码里）
-
-```js
-const RATIO_PRESETS = [
-  '25/25/25/25','50/50','60/40','70/30','75/25','90/10','95/5',
-  '34/33/33','40/30/30','50/25/25','60/20/20','80/10/10','70/15/15',
-  '55/15/15/15','40/20/20/20','85/5/5/5','90/5/5','70/10/10/10','20/20/20/20/20'
-];
-```
-
----
-
-## 八、数据存储
-
-- **格式**：IndexedDB 缓存 + 群晖网络盘 JSON 文件
-- **多人协作**：Re-read-merge 写入策略（先读最新，再合并，再写）
-- **图片**：base64 压缩存储（max 480px, quality 0.72）
-- **回收站**：删除记录保留 30 天
-- **每日备份**：每天首次保存自动创建快照，保留 30 天
-- **待同步队列**：离线时写入 pending，下次联网自动重试
-
----
-
-## 九、OCR 功能
-
-- 上传 Google Play Console 截图 → Tesseract.js 识别
-- 解析规则：扫描文本行，匹配首次安装数、保留安装数、置信区间（±数值%）
-- 解析后展示预览表格，可手动调整，确认后填入表单
-
----
-
-## 十、效果类型
-
-```js
-// effects.js
-const EFFECT_OPTIONS = [
-  {val:'superb',      label:'🏆 很好'},
-  {val:'good',        label:'👍 不错'},
-  {val:'neutral_p',   label:'➖ 持平(+)'},
-  {val:'neutral_n',   label:'➖ 持平(-)'},
-  {val:'empirical_p', label:'📈 经验决策(+)'},
-  {val:'empirical_n', label:'📈 经验决策(-)'},
-  {val:'bad',         label:'❌ 很差'},
-];
-```
-
----
-
-## 十一、响应式断点
+### 响应式断点
 
 | 断点 | 变化 |
 |---|---|
-| ≤960px | 基础属性改 1 列，变体卡片 2 列 |
+| ≤960px | 表单属性改1列，变体卡片2列 |
 | ≤768px | 时间线上下分栏 |
-| ≤600px | 变体卡片 1 列 |
-| ≤480px | padding-left:60px（留浮动按钮位置） |
+| ≤600px | 变体卡片1列 |
+| ≤480px | padding-left:60px（浮动按钮位置） |
 
 ---
 
-## 十二、已知架构约束
+## 九、架构约束
 
-- 不能用 ES 模块（`file://` 协议阻止，需 build 打包）
-- 不能用 CDN 外的第三方库（只允许 Chart.js + Tesseract.js）
-- 所有全局函数需手动 `window.xxx = xxx` 暴露给 HTML inline 事件
+- 不能用 ES 模块（`file://` 协议限制，需 build 打包）
+- 外部库只允许 Chart.js + Tesseract.js（CDN）
+- 所有全局函数需在 `app.js` 末尾通过 `Object.assign(window, {...})` 暴露
+- 多人写入：Re-read-merge 策略（先读最新 JSON，合并，再写）
 
 ---
 
-## 十三、全局暴露函数（HTML onclick 使用）
+## 十、流量预设（19个，写死代码）
 
-`toggleSidebar`, `navigate`, `toggleApplied`, `removeImg`, `openLightbox`, `editTest`, `deleteTestRecord`, `saveConclusion`, `toggleCard`, `showHistory`, `rollbackHistory`, `closeHistory`, `applyTimelineFilters`, `resetTimelineFilters`, `selectTimelineTest`, `handleFormSubmit`, `openOCRModal`, `closeOCRModal`, `applyOCRData`, `openCropModal`, `closeCropModal`, `applyCrop`, `cropAutoSplit`, `switchCropDirection`, `_pickFolder`, `_resumeFolder`, `_refreshFromDisk`, `_syncPending`
+```
+25/25/25/25, 50/50, 60/40, 70/30, 75/25, 90/10, 95/5,
+34/33/33, 40/30/30, 50/25/25, 60/20/20, 80/10/10, 70/15/15,
+55/15/15/15, 40/20/20/20, 85/5/5/5, 90/5/5, 70/10/10/10, 20/20/20/20/20
+```
+
+---
+
+## 十一、实验类型（默认9个，可在管理面板增删）
+
+```
+自定义商品详情, 主要商品详情,
+本地化 VN, 本地化 ID, 本地化 US, 本地化 JP,
+本地化 KR, 本地化 BR, 本地化 IN
+```

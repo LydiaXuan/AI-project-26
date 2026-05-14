@@ -1027,8 +1027,10 @@ function buildVariantCol(i, test) {
         <span class="fp-vcard-name">${label}</span>
         <span class="fp-vcard-badge ${badgeCls}">${badge}</span>
       </div>
-      <div class="fp-vcard-img" id="fp-imgzone-${i}" onmouseenter="setActiveImgZone(${i})" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(${i})">
-        ${buildImgCell(i, v)}
+      <div class="fp-vcard-img-wrap">
+        <div class="fp-vcard-img-area" id="fp-imgzone-${i}" onmouseenter="setActiveImgZone(${i})" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(${i})">
+          ${buildImgCell(i, v)}
+        </div>
       </div>
       <div class="fp-vcard-data">${statsHtml}</div>
     </div>`;
@@ -1070,46 +1072,67 @@ function renderFormView() {
   let formBody;
   if (ft === 'update') {
     formBody = `
-      <div class="fp-form-cols">
-        <div class="fp-section fp-form-left">
-          <div class="fp-chips-group">
-            <select class="fp-chip-select" id="f-project" required>
-              <option value="">选择项目…</option>${projOpts}
-            </select>
-            <select class="fp-chip-select" id="f-tester" required>
-              <option value="">负责人</option>${testerOpts}
-            </select>
-          </div>
-          <div class="fp-chip-section-lbl">测试属性</div>
-          <div class="fp-pills-wrap fp-pills-padded">${biPills}</div>
-        </div>
-        <div class="fp-form-right">
-          <div class="fp-section">
-            <div class="fp-prop-row">
-              <span class="fp-prop-label">更新日期</span>
-              <input class="fp-prop-input fp-date-input" id="f-update-date" type="date" required value="${test?.updateDate||''}"/>
+      <section class="fp-card">
+        <h2 class="fp-card-title">基础实验属性</h2>
+        <div class="fp-grid-2">
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">测试项目</label>
+              <select class="fp-inv-select" id="f-project" required>
+                <option value="">选择项目…</option>${projOpts}
+              </select>
+            </div>
+            <div class="fp-row">
+              <label class="fp-row-label">负责人</label>
+              <select class="fp-inv-select" id="f-tester" required>
+                <option value="">选择…</option>${testerOpts}
+              </select>
             </div>
           </div>
-          <div class="fp-section fp-notes-section fp-notes-stretch">
-            <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
-          </div>
-          <div class="fp-section fp-form-left" style="padding-bottom:8px">
-            <div class="fp-section-label">截图对比</div>
-            <div class="fp-update-imgs">
-              <div class="fp-update-img-col">
-                <div class="fp-update-img-lbl">原始</div>
-                <div class="fp-vcard-img" id="fp-imgzone-0" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
-              </div>
-              <div class="fp-update-img-col">
-                <div class="fp-update-img-lbl">更新后</div>
-                <div class="fp-vcard-img" id="fp-imgzone-1" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
-              </div>
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">更新日期</label>
+              <input class="fp-inv-input fp-inv-date" id="f-update-date" type="date" required value="${test?.updateDate||''}"/>
             </div>
           </div>
         </div>
-      </div>`;
+        <div class="fp-notes">
+          <input class="fp-notes-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
+        </div>
+      </section>
+      <section class="fp-card fp-card-compact">
+        <h2 class="fp-card-title">测试属性</h2>
+        <div class="fp-pills-wrap">${biPills}</div>
+      </section>
+      <section>
+        <div class="fp-variants-header">
+          <h2 class="fp-variants-title">截图对比</h2>
+        </div>
+        <div class="fp-update-grid">
+          <div class="fp-vcard">
+            <div class="fp-vcard-bar" style="background:#94A3B8"></div>
+            <div class="fp-vcard-header">
+              <span class="fp-vcard-name">原始</span>
+              <span class="fp-vcard-badge fp-vcard-badge-ctrl">BEFORE</span>
+            </div>
+            <div class="fp-vcard-img-wrap">
+              <div class="fp-vcard-img-area" id="fp-imgzone-0" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
+            </div>
+          </div>
+          <div class="fp-vcard">
+            <div class="fp-vcard-bar" style="background:#10B981"></div>
+            <div class="fp-vcard-header">
+              <span class="fp-vcard-name">更新后</span>
+              <span class="fp-vcard-badge fp-vcard-badge-v1">AFTER</span>
+            </div>
+            <div class="fp-vcard-img-wrap">
+              <div class="fp-vcard-img-area" id="fp-imgzone-1" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+            </div>
+          </div>
+        </div>
+      </section>`;
   } else {
-    const confPills = [90,95,98,99].map(v=>`<label class="fp-pill"><input type="radio" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><span>${v}%</span></label>`).join('');
+    const confSegBtns = [90,95,98,99].map(v=>`<label class="fp-seg-btn"><input type="radio" name="conf" id="conf-${v}" value="${v}" ${(test?.confidence??95)==v?'checked':''}/><div>${v}%</div></label>`).join('');
     const allExpTypes = state.settings?.experimentTypes || DEFAULT_EXPERIMENT_TYPES;
     const defaultExpType = test?.experimentType ?? '主要商品详情';
     const expTypeOpts = allExpTypes.map(b=>`<option value="${b}" ${defaultExpType===b?'selected':''}>${escHtml(b)}</option>`).join('');
@@ -1119,77 +1142,88 @@ function renderFormView() {
     const cols = [0,1,2,3].map(i=>buildVariantCol(i, test)).join('');
 
     formBody = `
-      <div class="fp-form-cols">
-        <div class="fp-section fp-form-left">
-          <div class="fp-chips-group">
-            <select class="fp-chip-select" id="f-project" required>
-              <option value="">选择项目…</option>${projOpts}
-            </select>
-            <select class="fp-chip-select" id="f-tester" required>
-              <option value="">负责人</option>${testerOpts}
-            </select>
-            <select class="fp-chip-select fp-chip-accent" id="f-exptype">${expTypeOpts}</select>
-          </div>
-          <div class="fp-chip-section-lbl">置信度</div>
-          <div class="fp-pills-wrap fp-pills-padded">${confPills}</div>
-          <div class="fp-chip-section-lbl">测试属性</div>
-          <div class="fp-pills-wrap fp-pills-padded">${biPills}</div>
-        </div>
-        <div class="fp-form-right">
-          <div class="fp-section">
-            <div class="fp-prop-row fp-prop-row-dates">
-              <span class="fp-prop-label">测试周期</span>
-              <input class="fp-prop-input fp-date-input" id="f-start" type="date" required value="${test?.startDate||''}"/>
-              <span class="fp-date-sep">→</span>
-              <input class="fp-prop-input fp-date-input" id="f-end" type="date" value="${test?.endDate||''}"/>
+      <section class="fp-card">
+        <h2 class="fp-card-title">基础实验属性</h2>
+        <div class="fp-grid-2">
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">测试项目</label>
+              <select class="fp-inv-select" id="f-project" required>
+                <option value="">选择项目…</option>${projOpts}
+              </select>
             </div>
-            <div class="fp-prop-row">
-              <span class="fp-prop-label">流量分配</span>
-              <div class="fp-prop-select-wrap">
-                <select class="fp-chip-select fp-chip-inline" id="f-ratio-sel" onchange="handleRatioChange(this.value)">${ratioPresetOpts}<option value="custom" ${isCustomRatio?'selected':''}>自定义…</option></select>
-                <input class="fp-prop-input" id="f-ratio" type="text" placeholder="自定义比例" style="${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+            <div class="fp-row">
+              <label class="fp-row-label">负责人</label>
+              <select class="fp-inv-select" id="f-tester" required>
+                <option value="">选择…</option>${testerOpts}
+              </select>
+            </div>
+            <div class="fp-row fp-row-ratio">
+              <label class="fp-row-label">流量分配</label>
+              <div class="fp-row-value-col">
+                <select class="fp-inv-select" id="f-ratio-sel" onchange="handleRatioChange(this.value)">${ratioPresetOpts}<option value="custom" ${isCustomRatio?'selected':''}>自定义…</option></select>
+                <input class="fp-inv-input" id="f-ratio" type="text" placeholder="输入自定义比例" style="${isCustomRatio?'':'display:none'};width:140px" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
               </div>
             </div>
           </div>
-          <div class="fp-section fp-notes-section fp-notes-stretch">
-            <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
-            <input class="fp-ghost-input" id="f-note-purpose" type="text" placeholder="测试目的 — 想验证什么" value="${escHtml(test?.notes?.purpose||'')}"/>
-            <input class="fp-ghost-input" id="f-note-design" type="text" placeholder="设计思路 — 为什么这样设计" value="${escHtml(test?.notes?.design||'')}"/>
+          <div class="fp-rows-col">
+            <div class="fp-row">
+              <label class="fp-row-label">实验类型</label>
+              <select class="fp-inv-select" id="f-exptype">${expTypeOpts}</select>
+            </div>
+            <div class="fp-row">
+              <label class="fp-row-label">测试周期</label>
+              <div class="fp-date-range">
+                <input class="fp-inv-input fp-inv-date" id="f-start" type="date" required value="${test?.startDate||''}"/>
+                <span class="fp-date-sep-line">-</span>
+                <input class="fp-inv-input fp-inv-date" id="f-end" type="date" value="${test?.endDate||''}"/>
+              </div>
+            </div>
+            <div class="fp-row">
+              <label class="fp-row-label">目标置信度</label>
+              <div class="fp-seg-group">${confSegBtns}</div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="fp-section fp-section-variants">
-        <div class="fp-section-label fp-section-label-tools">
-          <span>变体方案</span>
-          <div class="fp-variant-tools">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="openCropModal()">✂️ 批量裁剪图标</button>
-            <button type="button" class="btn btn-primary btn-sm" onclick="openOCRModal()">📊 上传截图提取数据</button>
+        <div class="fp-notes">
+          <input class="fp-notes-input" id="f-note-change" type="text" placeholder="改动内容 — (如：突出 3D 消除玩法的爽感)" value="${escHtml(test?.notes?.change||'')}"/>
+          <input class="fp-notes-input" id="f-note-purpose" type="text" placeholder="测试目的 — (想验证什么)" value="${escHtml(test?.notes?.purpose||'')}"/>
+          <input class="fp-notes-input" id="f-note-design" type="text" placeholder="设计思路 — (为什么这样设计)" value="${escHtml(test?.notes?.design||'')}"/>
+        </div>
+      </section>
+      <section class="fp-card fp-card-compact">
+        <h2 class="fp-card-title">测试属性</h2>
+        <div class="fp-pills-wrap">${biPills}</div>
+      </section>
+      <section>
+        <div class="fp-variants-header">
+          <h2 class="fp-variants-title">视觉资产对比录入</h2>
+          <div class="fp-variants-tools">
+            <button type="button" class="fp-variant-tool-btn" onclick="openCropModal()">✂️ 批量解析图标</button>
+            <button type="button" class="fp-variant-tool-btn primary" onclick="openOCRModal()">📊 上传截图提取数据</button>
           </div>
         </div>
         <div class="fp-vcards-row">${cols}</div>
-      </div>`;
+      </section>`;
   }
 
   renderShell(`
     <div class="fp-wrap">
       <form id="test-form" onsubmit="handleFormSubmit(event)">
         <input type="hidden" id="f-record-id" value="${escHtml(recordId)}"/>
-        <div class="fp-header">
+        <header class="fp-header-bar">
           <div class="fp-header-left">
-            <h2 class="fp-title">${isEdit?'编辑记录':'配置测试记录'}</h2>
-            ${recordId?`<span class="fp-record-id">${escHtml(recordId)}</span>`:''}
+            <h1 class="fp-header-title">${isEdit?'编辑 A/B 测试记录':'配置 A/B 测试记录'}</h1>
+            ${recordId?`<span class="fp-header-id">ID: ${escHtml(recordId)}</span>`:''}
           </div>
           <div class="fp-header-right">${typeToggle}</div>
-        </div>
-        ${formBody}
-        <div class="fp-footer">
-          <div class="fp-footer-left">
-            ${isEdit?`<button type="button" class="btn btn-danger" onclick="deleteTestRecord('${state.editTestId}')">🗑 删除此记录</button>`:'<span></span>'}
-          </div>
-          <div class="fp-footer-right">
-            <button type="button" class="btn btn-secondary" onclick="navigate('timeline')">放弃修改</button>
-            <button type="submit" class="btn btn-primary" id="f-submit">${isEdit?'💾 保存修改':'保存并同步'}</button>
-          </div>
+        </header>
+        <div class="fp-content">${formBody}</div>
+        <div class="fp-action-bar">
+          ${isEdit?`<button type="button" class="fp-btn-danger" onclick="deleteTestRecord('${state.editTestId}')">删除此记录</button>`:''}
+          <div class="fp-action-spacer"></div>
+          <button type="button" class="fp-btn-discard" onclick="navigate('timeline')">放弃修改</button>
+          <button type="submit" class="fp-btn-save" id="f-submit">${isEdit?'保存修改':'保存并同步配置'}</button>
         </div>
       </form>
     </div>`, 'form');

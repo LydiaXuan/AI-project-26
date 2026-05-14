@@ -1546,23 +1546,39 @@ function renderFormView() {
   if (ft === 'update') {
     formBody = `
       <div class="fp-form-cols">
-        <div class="fp-section">
-          <div class="fp-prop-row"><span class="fp-prop-label">测试项目</span><select class="fp-prop-select" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
-          <div class="fp-prop-row"><span class="fp-prop-label">负责人</span><select class="fp-prop-select" id="f-tester" required>${testerOpts}</select></div>
-          <div class="fp-prop-row"><span class="fp-prop-label">更新日期</span><input class="fp-prop-input fp-date-input" id="f-update-date" type="date" required value="${test?.updateDate||''}"/></div>
-          <div class="fp-prop-row"><span class="fp-prop-label">测试属性</span><div class="fp-pills-wrap">${biPills}</div></div>
+        <div class="fp-section fp-form-left">
+          <div class="fp-chips-group">
+            <select class="fp-chip-select" id="f-project" required>
+              <option value="">选择项目…</option>${projOpts}
+            </select>
+            <select class="fp-chip-select" id="f-tester" required>
+              <option value="">负责人</option>${testerOpts}
+            </select>
+          </div>
+          <div class="fp-chip-section-lbl">测试属性</div>
+          <div class="fp-pills-wrap fp-pills-padded">${biPills}</div>
         </div>
-        <div class="fp-section fp-notes-section fp-notes-stretch">
-          <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
-          <div class="fp-section-label" style="padding:8px 16px 4px">截图对比</div>
-          <div class="fp-update-imgs">
-            <div class="fp-update-img-col">
-              <div class="fp-update-img-lbl">原始</div>
-              <div class="fp-vcard-img" id="fp-imgzone-0" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
+        <div class="fp-form-right">
+          <div class="fp-section">
+            <div class="fp-prop-row">
+              <span class="fp-prop-label">更新日期</span>
+              <input class="fp-prop-input fp-date-input" id="f-update-date" type="date" required value="${test?.updateDate||''}"/>
             </div>
-            <div class="fp-update-img-col">
-              <div class="fp-update-img-lbl">更新后</div>
-              <div class="fp-vcard-img" id="fp-imgzone-1" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+          </div>
+          <div class="fp-section fp-notes-section fp-notes-stretch">
+            <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
+          </div>
+          <div class="fp-section fp-form-left" style="padding-bottom:8px">
+            <div class="fp-section-label">截图对比</div>
+            <div class="fp-update-imgs">
+              <div class="fp-update-img-col">
+                <div class="fp-update-img-lbl">原始</div>
+                <div class="fp-vcard-img" id="fp-imgzone-0" onmouseenter="setActiveImgZone(0)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(0)">${buildImgCell(0, {})}</div>
+              </div>
+              <div class="fp-update-img-col">
+                <div class="fp-update-img-lbl">更新后</div>
+                <div class="fp-vcard-img" id="fp-imgzone-1" onmouseenter="setActiveImgZone(1)" onmouseleave="clearActiveImgZone()" onclick="setActiveImgZone(1)">${buildImgCell(1, {})}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1579,28 +1595,42 @@ function renderFormView() {
 
     formBody = `
       <div class="fp-form-cols">
-        <div class="fp-section">
-          <div class="fp-prop-row"><span class="fp-prop-label">测试项目</span><select class="fp-prop-select" id="f-project" required><option value="">选择项目…</option>${projOpts}</select></div>
-          <div class="fp-prop-row"><span class="fp-prop-label">负责人</span><select class="fp-prop-select" id="f-tester" required>${testerOpts}</select></div>
-          <div class="fp-prop-row fp-prop-row-dates"><span class="fp-prop-label">测试周期</span>
-            <input class="fp-prop-input fp-date-input" id="f-start" type="date" required value="${test?.startDate||''}"/>
-            <span class="fp-date-sep">→</span>
-            <input class="fp-prop-input fp-date-input" id="f-end" type="date" value="${test?.endDate||''}"/>
+        <div class="fp-section fp-form-left">
+          <div class="fp-chips-group">
+            <select class="fp-chip-select" id="f-project" required>
+              <option value="">选择项目…</option>${projOpts}
+            </select>
+            <select class="fp-chip-select" id="f-tester" required>
+              <option value="">负责人</option>${testerOpts}
+            </select>
+            <select class="fp-chip-select fp-chip-accent" id="f-exptype">${expTypeOpts}</select>
           </div>
-          <div class="fp-prop-row"><span class="fp-prop-label">流量分配</span>
-            <div class="fp-prop-select-wrap">
-              <select class="fp-prop-select" id="f-ratio-sel" onchange="handleRatioChange(this.value)">${ratioPresetOpts}<option value="custom" ${isCustomRatio?'selected':''}>自定义…</option></select>
-              <input class="fp-prop-input" id="f-ratio" type="text" placeholder="自定义比例" style="${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+          <div class="fp-chip-section-lbl">置信度</div>
+          <div class="fp-pills-wrap fp-pills-padded">${confPills}</div>
+          <div class="fp-chip-section-lbl">测试属性</div>
+          <div class="fp-pills-wrap fp-pills-padded">${biPills}</div>
+        </div>
+        <div class="fp-form-right">
+          <div class="fp-section">
+            <div class="fp-prop-row fp-prop-row-dates">
+              <span class="fp-prop-label">测试周期</span>
+              <input class="fp-prop-input fp-date-input" id="f-start" type="date" required value="${test?.startDate||''}"/>
+              <span class="fp-date-sep">→</span>
+              <input class="fp-prop-input fp-date-input" id="f-end" type="date" value="${test?.endDate||''}"/>
+            </div>
+            <div class="fp-prop-row">
+              <span class="fp-prop-label">流量分配</span>
+              <div class="fp-prop-select-wrap">
+                <select class="fp-chip-select fp-chip-inline" id="f-ratio-sel" onchange="handleRatioChange(this.value)">${ratioPresetOpts}<option value="custom" ${isCustomRatio?'selected':''}>自定义…</option></select>
+                <input class="fp-prop-input" id="f-ratio" type="text" placeholder="自定义比例" style="${isCustomRatio?'':'display:none'}" value="${isCustomRatio?escHtml(test.testRatio):''}"/>
+              </div>
             </div>
           </div>
-          <div class="fp-prop-row"><span class="fp-prop-label">实验类型</span><select class="fp-prop-select" id="f-exptype">${expTypeOpts}</select></div>
-          <div class="fp-prop-row"><span class="fp-prop-label">置信度</span><div class="fp-pills-wrap">${confPills}</div></div>
-          <div class="fp-prop-row"><span class="fp-prop-label">测试属性</span><div class="fp-pills-wrap">${biPills}</div></div>
-        </div>
-        <div class="fp-section fp-notes-section fp-notes-stretch">
-          <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
-          <input class="fp-ghost-input" id="f-note-purpose" type="text" placeholder="测试目的 — 想验证什么" value="${escHtml(test?.notes?.purpose||'')}"/>
-          <input class="fp-ghost-input" id="f-note-design" type="text" placeholder="设计思路 — 为什么这样设计" value="${escHtml(test?.notes?.design||'')}"/>
+          <div class="fp-section fp-notes-section fp-notes-stretch">
+            <input class="fp-ghost-input" id="f-note-change" type="text" placeholder="改动内容 — 做了什么改动" value="${escHtml(test?.notes?.change||'')}"/>
+            <input class="fp-ghost-input" id="f-note-purpose" type="text" placeholder="测试目的 — 想验证什么" value="${escHtml(test?.notes?.purpose||'')}"/>
+            <input class="fp-ghost-input" id="f-note-design" type="text" placeholder="设计思路 — 为什么这样设计" value="${escHtml(test?.notes?.design||'')}"/>
+          </div>
         </div>
       </div>
       <div class="fp-section fp-section-variants">

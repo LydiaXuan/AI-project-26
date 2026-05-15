@@ -704,7 +704,7 @@ function timelineCard(r) {
         </div>
         <button onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded">编辑</button>
       </div>
-      <div class="variant-grid grid grid-cols-1 xl:grid-cols-${Math.min(Math.max(variants.length,1), 3)} gap-4">
+      <div class="variant-grid grid grid-cols-1 xl:grid-cols-${Math.min(Math.max(variants.length,1), 4)} gap-4">
         ${variants.map((v, i) => variantRowHTML(v, i, ctrl)).join('')}
       </div>
     </div>`;

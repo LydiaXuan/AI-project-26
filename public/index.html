@@ -566,6 +566,7 @@ function renderVariants() {
   const tagColors = ['bg-slate-100 text-slate-500','bg-emerald-50 text-emerald-600','bg-indigo-50 text-indigo-600','bg-rose-50 text-rose-600'];
   const bars = ['bg-slate-400','bg-emerald-400','bg-indigo-400','bg-rose-400'];
   const borders = ['hover:border-slate-300','hover:border-emerald-300','hover:border-indigo-300','hover:border-rose-300'];
+
   const grid = $('#variants-grid');
   grid.className = `grid grid-cols-1 md:grid-cols-2 ${n>=3?'xl:grid-cols-'+n:'xl:grid-cols-2'} gap-5`;
   grid.innerHTML = '';
@@ -1164,7 +1165,10 @@ window.runOCR = async () => {
     $('#ocr-apply-btn').className = 'px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700';
   } catch (e) { toast('OCR 失败：'+(e.message||e),'error'); }
 };
+let ocrRawText = '';
 function parseOCR(installsText, retainedText) {
+  ocrRawText = (installsText ? '【首次安装识别原文】\n' + installsText : '') +
+               (retainedText ? '\n\n【保留安装识别原文】\n' + retainedText : '');
   const installs = extractNumsAndCIs(installsText);
   const retained = extractNumsAndCIs(retainedText).numbers;
   const n = Math.max(installs.numbers.length, 1);
@@ -1180,30 +1184,63 @@ function parseOCR(installsText, retainedText) {
   }
   return variants;
 }
+// Normalize a line: fix common OCR confusions, collapse digit gaps
+function normalizeLine(line) {
+  return line
+    .replace(/[Oo](?=\d)|(?<=\d)[Oo]/g, '0')   // O→0 next to digits
+    .replace(/[Il|](?=\d)|(?<=\d)[Il|]/g, '1') // I/l/|→1 next to digits
+    .replace(/[，]/g, ',');                     // full-width comma
+}
 function extractNumsAndCIs(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const norm = lines.map(normalizeLine);
   const numbers = [], cis = [], letters = [];
-  lines.forEach((line, idx) => {
-    const intM = line.match(/[\d,]{3,}/);
-    if (intM && !line.match(/%/)) {
-      const n = parseInt(intM[0].replace(/,/g,''), 10);
-      if (!isNaN(n) && n > 10) {
-        numbers.push(n);
-        const letterM = line.match(/\b([A-C])\b/);
-        letters.push(letterM ? letterM[1] : null);
-        let found = null;
-        for (let d = -2; d <= 2; d++) {
-          const l2 = lines[idx + d]; if (!l2) continue;
-          const ciM = l2.match(/[±]\s*(\d+\.?\d*)\s*%/);
-          if (ciM) { const p = parseFloat(ciM[1]); found = { low: -p, high: p }; break; }
-          const rangeM = l2.match(/([+-]?\d+\.?\d*)\s*%\s*[~～\-]\s*([+-]?\d+\.?\d*)\s*%/);
-          if (rangeM) { found = { low: parseFloat(rangeM[1]), high: parseFloat(rangeM[2]) }; break; }
-        }
-        cis.push(found);
-      }
+  // Thousands-separated OR 4+ consecutive digits.
+  const numRe = /(\d{1,3}(?:,\d{3})+|\d{4,})/g;
+  norm.forEach((line, idx) => {
+    if (/^\s*$/.test(line)) return;
+    // Strip percentages so they don't get matched as integers
+    const stripped = line.replace(/[+\-±]?\d+\.?\d*\s*%/g, ' ');
+    const matches = [...stripped.matchAll(numRe)];
+    if (matches.length === 0) return;
+    // Pick the LARGEST valid number on this line (Play Console: "已调整"
+    // is rightmost and typically the largest value — that's what user wants)
+    let best = null;
+    for (const m of matches) {
+      const n = parseInt(m[1].replace(/,/g, ''), 10);
+      if (isNaN(n) || n < 100 || n > 99999999) continue;
+      if (!best || n > best) best = n;
     }
+    if (best == null) return;
+    numbers.push(best);
+    letters.push(line.match(/\b([A-C])\b/)?.[1] || null);
+    cis.push(scanCI(norm, idx));
   });
   return { numbers, cis, letters };
+}
+function scanCI(lines, centerIdx) {
+  // Look at SAME line only: Play Console puts the CI cell on the same row as
+  // the install number, so cross-line scanning leaks one row's CI into the
+  // adjacent row (especially the control row, which has no CI of its own).
+  const l = lines[centerIdx];
+  if (!l) return null;
+  // 1) Two signed %s — most explicit, run FIRST so "-14.8% -7.7%" isn't
+  // misread by the range pattern (which would swallow the second "-").
+  const two = [...l.matchAll(/([+-]\d+\.?\d*)\s*%/g)];
+  if (two.length >= 2) {
+    const a = parseFloat(two[0][1]), b = parseFloat(two[1][1]);
+    return { low: Math.min(a, b), high: Math.max(a, b) };
+  }
+  // 2) ±X% (with common OCR misreads of the ± glyph)
+  let m = l.match(/(?:±|\+\s*\/\s*-|\+-|&|≈)\s*(\d+\.?\d*)\s*%/i);
+  if (m) { const p = parseFloat(m[1]); return { low: -p, high: p }; }
+  // 3) Range with explicit separator (excludes bare "-" to avoid the bug above)
+  m = l.match(/([+-]?\d+\.?\d*)\s*%\s*(?:to|至|~|～|—|–)\s*([+-]?\d+\.?\d*)\s*%/i);
+  if (m) {
+    const a = parseFloat(m[1]), b = parseFloat(m[2]);
+    return { low: Math.min(a, b), high: Math.max(a, b) };
+  }
+  return null;
 }
 function renderOCRPreview() {
   $('#ocr-rows').innerHTML = ocrResult.map((v, i) => `
@@ -1213,6 +1250,16 @@ function renderOCRPreview() {
       <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciLow" value="${v.ciLow}"></td>
       <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciHigh" value="${v.ciHigh}"></td></tr>`).join('');
   $$('.ocr-cell').forEach(c => c.oninput = e => { ocrResult[+e.target.dataset.i][e.target.dataset.f] = e.target.value; });
+  // Show raw OCR text below the preview table (collapsible) for manual cross-check
+  let rawBox = $('#ocr-raw-box');
+  if (!rawBox) {
+    rawBox = document.createElement('details');
+    rawBox.id = 'ocr-raw-box';
+    rawBox.className = 'mt-3 text-xs';
+    $('#ocr-preview').appendChild(rawBox);
+  }
+  rawBox.innerHTML = `<summary class="cursor-pointer text-slate-500 hover:text-slate-700 font-semibold mb-2">📄 查看 OCR 识别原文（用于核对/手动修正）</summary>
+    <pre class="bg-slate-50 border border-slate-200 rounded p-3 text-[11px] text-slate-600 whitespace-pre-wrap max-h-48 overflow-auto font-mono">${escapeHTML(ocrRawText)}</pre>`;
 }
 window.applyOCR = () => {
   if (!formData || !ocrResult) return;
@@ -1337,13 +1384,13 @@ window.applyCrop = async () => {
     const c = document.createElement('canvas');
     c.width = cropImg.width; c.height = Math.max(1, splits[i+1] - splits[i]);
     c.getContext('2d').drawImage(cropImg, 0, splits[i], cropImg.width, c.height, 0, 0, cropImg.width, c.height);
-    const trimmed = await trimAllSides(c);
+    const trimmed = await trimTopBottom(c);
     formData.variants[i].img = await compressImage(trimmed);
   }
   closeCrop(); renderVariants(); toast(`已裁剪 ${cropN} 张图`,'success');
 };
-// Trim whitespace on all 4 sides
-function trimAllSides(canvas) {
+// Trim whitespace only on top/bottom (preserve full width)
+function trimTopBottom(canvas) {
   return new Promise(res => {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
@@ -1351,21 +1398,16 @@ function trimAllSides(canvas) {
     const data = ctx.getImageData(0, 0, w, h).data;
     const TH = 240;
     const rowBright = y => { let s = 0; const base = y*w*4; for (let x = 0; x < w; x++) { const p = base + x*4; s += (data[p]+data[p+1]+data[p+2])/3; } return s/w; };
-    const colBright = x => { let s = 0; for (let y = 0; y < h; y++) { const p = (y*w + x)*4; s += (data[p]+data[p+1]+data[p+2])/3; } return s/h; };
-    let top = 0, bot = h - 1, left = 0, right = w - 1;
+    let top = 0, bot = h - 1;
     while (top < h && rowBright(top) > TH) top++;
     while (bot > top && rowBright(bot) > TH) bot--;
-    while (left < w && colBright(left) > TH) left++;
-    while (right > left && colBright(right) > TH) right--;
-    if (top === 0 && bot === h - 1 && left === 0 && right === w - 1) { canvas.toBlob(b => res(b)); return; }
-    // Small safety margin so content isn't shaved
+    if (top === 0 && bot === h - 1) { canvas.toBlob(b => res(b)); return; }
     const pad = 2;
     top = Math.max(0, top - pad); bot = Math.min(h - 1, bot + pad);
-    left = Math.max(0, left - pad); right = Math.min(w - 1, right + pad);
-    const cw = right - left + 1, ch = bot - top + 1;
+    const ch = bot - top + 1;
     const c2 = document.createElement('canvas');
-    c2.width = Math.max(1, cw); c2.height = Math.max(1, ch);
-    c2.getContext('2d').drawImage(canvas, left, top, cw, ch, 0, 0, cw, ch);
+    c2.width = w; c2.height = Math.max(1, ch);
+    c2.getContext('2d').drawImage(canvas, 0, top, w, ch, 0, 0, w, ch);
     c2.toBlob(b => res(b));
   });
 }

@@ -293,6 +293,10 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
         <canvas id="crop-canvas" class="block max-w-full"></canvas>
         <div id="crop-dividers"></div>
       </div>
+      <div id="crop-preview-wrap" class="hidden">
+        <div class="text-[11px] text-slate-500 mb-2 mt-1">裁剪预览（最终填入各变体的图）</div>
+        <div id="crop-preview-row" class="flex gap-3 flex-wrap"></div>
+      </div>
     </div>
     <div class="p-4 border-t border-slate-100 flex justify-end gap-2">
       <button onclick="closeCrop()" class="px-4 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">取消</button>
@@ -1277,6 +1281,8 @@ window.openCropModal = () => {
   cropImg = null; cropN = 2; cropDividers = [];
   $('#crop-modal').classList.remove('hidden'); $('#crop-modal').classList.add('flex');
   $('#crop-canvas-wrap').classList.add('hidden');
+  $('#crop-preview-wrap').classList.add('hidden');
+  $('#crop-preview-row').innerHTML = '';
   $('#crop-apply-btn').disabled = true;
   $('#crop-apply-btn').className = 'px-4 py-1.5 text-sm bg-slate-200 text-slate-500 rounded-lg';
   $('#crop-drop').innerHTML = '<span class="text-xs">点击 / 拖拽 / Ctrl+V 上传包含全部变体的大图</span>';
@@ -1371,8 +1377,89 @@ function layoutCropDividers() {
       const y = Math.max(10, Math.min(rect.height - 10, e.clientY - rect.top));
       d.style.top = y + 'px';
       cropDividers[i].pct = y / rect.height;
+      updateCropPreview();
     });
     document.addEventListener('mouseup', () => { dragging = false; });
+  }
+  updateCropPreview();
+}
+// 切片裁剪：找出最高的「内容连通块」当作图标主体，按它的 bounding box 裁紧
+// 旁边的「10%」流量标签、副本字幕等小块会被自动忽略，从而每片裁出来尺寸一致
+function trimToMainBlockSync(canvas) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  if (w < 4 || h < 4) return canvas;
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const TH = 245; // 纯白阈值
+  // 每行平均亮度
+  const rb = new Float32Array(h);
+  for (let y = 0; y < h; y++) {
+    let s = 0; const base = y * w * 4;
+    for (let x = 0; x < w; x++) { const p = base + x * 4; s += (data[p]+data[p+1]+data[p+2]) / 3; }
+    rb[y] = s / w;
+  }
+  // 找所有内容行块（行亮度 < TH 视为内容），允许 1 行小空隙桥接
+  const content = new Uint8Array(h);
+  for (let y = 0; y < h; y++) content[y] = rb[y] < TH ? 1 : 0;
+  for (let y = 1; y < h - 1; y++) if (!content[y] && content[y-1] && content[y+1]) content[y] = 1;
+  const blocks = [];
+  let s = -1;
+  for (let y = 0; y < h; y++) {
+    if (content[y]) { if (s < 0) s = y; }
+    else if (s >= 0) { blocks.push({ start: s, end: y - 1, h: y - s }); s = -1; }
+  }
+  if (s >= 0) blocks.push({ start: s, end: h - 1, h: h - s });
+  if (blocks.length === 0) return canvas;
+  // 选最高的块作为图标主体
+  blocks.sort((a, b) => b.h - a.h);
+  let top = blocks[0].start, bot = blocks[0].end;
+  // 在该行范围内做左右裁剪
+  const cb = new Float32Array(w);
+  for (let x = 0; x < w; x++) {
+    let cs = 0;
+    for (let y = top; y <= bot; y++) { const p = (y * w + x) * 4; cs += (data[p]+data[p+1]+data[p+2]) / 3; }
+    cb[x] = cs / (bot - top + 1);
+  }
+  let left = 0, right = w - 1;
+  while (left < w && cb[left] > TH) left++;
+  while (right > left && cb[right] > TH) right--;
+  // 给 6px 安全边距防止削图标边缘
+  const pad = 6;
+  top = Math.max(0, top - pad); bot = Math.min(h - 1, bot + pad);
+  left = Math.max(0, left - pad); right = Math.min(w - 1, right + pad);
+  const cw = right - left + 1, ch = bot - top + 1;
+  if (cw < 4 || ch < 4) return canvas;
+  const c2 = document.createElement('canvas');
+  c2.width = cw; c2.height = ch;
+  c2.getContext('2d').drawImage(canvas, left, top, cw, ch, 0, 0, cw, ch);
+  return c2;
+}
+function updateCropPreview() {
+  if (!cropImg) return;
+  const row = $('#crop-preview-row');
+  const wrap = $('#crop-preview-wrap');
+  if (!row || !wrap) return;
+  wrap.classList.remove('hidden');
+  row.innerHTML = '';
+  const splits = [0, ...cropDividers.map(d => d.pct), 1].map(p => Math.round(p * cropImg.height));
+  const labels = ['对照','A','B','C'];
+  const MAX = 96;
+  for (let i = 0; i < cropN; i++) {
+    const sliceH = Math.max(1, splits[i+1] - splits[i]);
+    const slice = document.createElement('canvas');
+    slice.width = cropImg.width; slice.height = sliceH;
+    slice.getContext('2d').drawImage(cropImg, 0, splits[i], cropImg.width, sliceH, 0, 0, cropImg.width, sliceH);
+    const trimmed = trimToMainBlockSync(slice);
+    const sc = Math.min(MAX / trimmed.width, MAX / trimmed.height, 1);
+    const thumb = document.createElement('canvas');
+    thumb.width = Math.max(1, trimmed.width * sc);
+    thumb.height = Math.max(1, trimmed.height * sc);
+    thumb.getContext('2d').drawImage(trimmed, 0, 0, thumb.width, thumb.height);
+    const cell = document.createElement('div');
+    cell.className = 'flex flex-col items-center gap-1';
+    cell.innerHTML = `<div class="border border-slate-200 rounded bg-white p-1" style="width:${MAX+8}px;height:${MAX+8}px;display:flex;align-items:center;justify-content:center;"></div><span class="text-[10px] font-mono text-slate-500">${labels[i]||'#'+i}</span>`;
+    cell.firstChild.appendChild(thumb);
+    row.appendChild(cell);
   }
 }
 window.applyCrop = async () => {
@@ -1387,26 +1474,11 @@ window.applyCrop = async () => {
   }
   closeCrop(); renderVariants(); toast(`已裁剪 ${cropN} 张图`,'success');
 };
-// Trim whitespace only on top/bottom (preserve full width)
+// 异步版（applyCrop 用）
 function trimTopBottom(canvas) {
   return new Promise(res => {
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width, h = canvas.height;
-    if (w < 2 || h < 2) { canvas.toBlob(b => res(b)); return; }
-    const data = ctx.getImageData(0, 0, w, h).data;
-    const TH = 240;
-    const rowBright = y => { let s = 0; const base = y*w*4; for (let x = 0; x < w; x++) { const p = base + x*4; s += (data[p]+data[p+1]+data[p+2])/3; } return s/w; };
-    let top = 0, bot = h - 1;
-    while (top < h && rowBright(top) > TH) top++;
-    while (bot > top && rowBright(bot) > TH) bot--;
-    if (top === 0 && bot === h - 1) { canvas.toBlob(b => res(b)); return; }
-    const pad = 2;
-    top = Math.max(0, top - pad); bot = Math.min(h - 1, bot + pad);
-    const ch = bot - top + 1;
-    const c2 = document.createElement('canvas');
-    c2.width = w; c2.height = Math.max(1, ch);
-    c2.getContext('2d').drawImage(canvas, 0, top, w, ch, 0, 0, w, ch);
-    c2.toBlob(b => res(b));
+    const c = trimToMainBlockSync(canvas);
+    c.toBlob(b => res(b));
   });
 }
 

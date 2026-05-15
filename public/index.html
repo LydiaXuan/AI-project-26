@@ -15,7 +15,13 @@ select { -webkit-appearance:none; -moz-appearance:none; appearance:none;
 .segmented-btn input:checked + div { background:#EEF2FF; color:#4F46E5; box-shadow:0 1px 2px rgba(0,0,0,.05); border-color:#C7D2FE; }
 .hide-scrollbar::-webkit-scrollbar { display:none; } .hide-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
 .smooth-transition { transition: all .4s cubic-bezier(.25,1,.5,1); }
-.is-compact .variant-grid { grid-template-columns: repeat(1, minmax(0,1fr)) !important; gap:.75rem !important; }
+.is-compact .variant-grid { grid-template-columns: repeat(1, minmax(0,1fr)) !important; gap:.5rem !important; }
+.is-compact .variant-card { display:grid !important; grid-template-columns: 64px 1fr; grid-template-rows: auto auto; column-gap:.75rem; row-gap:.25rem; align-items:center; padding:.5rem .75rem !important; }
+.is-compact .vc-image { grid-column:1; grid-row:1 / span 2; width:64px !important; height:64px !important; max-width:64px !important; margin:0 !important; }
+.is-compact .vc-header { grid-column:2; grid-row:1; margin-bottom:0 !important; }
+.is-compact .vc-metrics { grid-column:2; grid-row:2; display:flex !important; gap:.75rem; flex-wrap:wrap; }
+.is-compact .vc-metrics > div { border:none !important; padding:0 !important; margin:0 !important; gap:.25rem; justify-content:flex-start !important; }
+.is-compact .vc-metrics > div > span:first-child { font-size:10px; }
 .active-card { background:#F8FAFF; border-color:#818CF8 !important; box-shadow:0 4px 20px -2px rgba(99,102,241,.1); }
 textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(99,102,241,.1); }
 .drop-active { border-color:#818CF8 !important; background:#EEF2FF !important; }
@@ -760,14 +766,14 @@ function variantRowHTML(v, i, ctrl) {
      </div>` : `<span class="font-bold text-slate-400">-</span>`;
   const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
   return `
-    <div class="flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative">
+    <div class="variant-card flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative">
       ${winBar}
-      <div class="flex justify-between items-start gap-1 mb-2">
+      <div class="vc-header flex justify-between items-start gap-1 mb-2">
         <span class="text-[13px] font-bold ${isWin?'text-slate-800':'text-slate-700'} truncate">${escapeHTML(v.name)}${trophy}</span>
         ${isControl ? '<span class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-1.5 rounded shrink-0">基准线</span>' : (delta!==null ? `<span class="text-[12px] font-bold ${deltaCls} shrink-0">${delta>0?'+':''}${delta}%</span>` : '')}
       </div>
-      <div class="w-full max-w-[140px] h-28 mx-auto rounded border border-slate-200 mb-2 bg-slate-50/40 ${isWin?'shadow-sm':''} ${isBad?'grayscale':''}" style="${imgStyle}"></div>
-      <div class="space-y-1.5">
+      <div class="vc-image w-full max-w-[140px] h-28 mx-auto rounded border border-slate-200 mb-2 bg-slate-50/40 ${isWin?'shadow-sm':''} ${isBad?'grayscale':''}" style="${imgStyle}"></div>
+      <div class="vc-metrics space-y-1.5">
         <div class="flex justify-between text-[11px]"><span class="text-slate-500">首次安装</span><span class="font-bold text-slate-700">${formatNum(v.installs)}</span></div>
         <div class="flex justify-between text-[11px]"><span class="text-slate-500">保留安装</span><span class="font-bold text-slate-700">${formatNum(v.retained)}</span></div>
         <div class="flex justify-between items-center text-[11px] border-t border-slate-200/60 pt-1 mt-1">
@@ -803,16 +809,19 @@ function detailHTML(r) {
   const rows = variants.map(v => {
     const isControl = v.role === 'control';
     const eff = !isControl ? computeEffect(v, ctrl) : null;
-    const verdict = isControl ? '<span class="font-medium text-slate-400">-</span>' :
+    const verdict = isControl ? '<span class="font-medium text-slate-400">基准线</span>' :
       (eff === 'superb' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">显著胜出</span>' :
        eff === 'bad' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700">显著负向</span>' :
        eff === 'good' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-600">不错</span>' :
        '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-500">' + (EFFECT_META[eff]?.label || '观察') + '</span>');
-    const ci = isControl ? '基准线 (-)' : ((v.ciLow!=='' && v.ciHigh!=='') ? `${formatPct(v.ciLow)} ~ ${formatPct(v.ciHigh)}` : '-');
+    const ci = isControl ? '<span class="text-slate-400">-</span>' : ((v.ciLow!=='' && v.ciHigh!=='') ? `${formatPct(v.ciLow)} ~ ${formatPct(v.ciHigh)}` : '<span class="text-slate-400">-</span>');
+    const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
     return `<tr class="${eff==='superb'?'bg-emerald-50/30':''}">
-      <td class="px-5 py-4 font-bold ${eff==='superb'?'text-emerald-700':'text-slate-700'}">${escapeHTML(v.name)}</td>
-      <td class="px-5 py-4 text-right font-bold ${eff==='superb'?'text-emerald-600':(eff==='bad'?'text-rose-500':'text-slate-400')}">${ci}</td>
-      <td class="px-5 py-4 text-right">${verdict}</td>
+      <td class="pl-5 pr-2 py-3"><div class="w-14 h-14 rounded border border-slate-200 ${eff==='bad'?'grayscale':''}" style="${imgStyle}"></div></td>
+      <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.installs)}</td>
+      <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.retained)}</td>
+      <td class="px-3 py-3 text-right font-bold ${eff==='superb'?'text-emerald-600':(eff==='bad'?'text-rose-500':'text-slate-500')} whitespace-nowrap">${ci}</td>
+      <td class="px-5 py-3 text-right">${verdict}</td>
     </tr>`;
   }).join('');
   return `
@@ -827,7 +836,7 @@ function detailHTML(r) {
       <div class="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
         <table class="w-full text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
-            <tr><th class="px-5 py-3 w-1/4">变体方案</th><th class="px-5 py-3 text-right">置信区间</th><th class="px-5 py-3 text-right">最终判定</th></tr>
+            <tr><th class="pl-5 pr-2 py-3 w-[88px]">变体</th><th class="px-3 py-3 text-right">首次安装</th><th class="px-3 py-3 text-right">保留安装</th><th class="px-3 py-3 text-right">置信区间</th><th class="px-5 py-3 text-right">测试效果</th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100 text-[13px]">${rows}</tbody>
         </table>

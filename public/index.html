@@ -1258,22 +1258,45 @@ function extractNumsAndCIs(text) {
   return { numbers, cis, letters };
 }
 function scanCI(lines, centerIdx) {
-  const tryMatch = (text) => {
-    // 1) Two signed %s — most explicit, run FIRST so "-14.8% -7.7%" isn't
-    // misread by the range pattern (which would swallow the second "-")
-    const two = [...text.matchAll(/([+-]\d+\.?\d*)\s*%/g)];
+  // 把各种 Unicode 减号 / 全角符号统一成 ASCII，再做 pattern 匹配
+  const normSign = s => s.replace(/[−–—]/g, '-');
+  const tryMatch = (raw) => {
+    const text = normSign(raw);
+    // 1) Two signed %s — 最严格，必须放第一位（"-14.8% -7.7%" 不会被 pattern 3 吃掉第二个负号）
+    const two = [...text.matchAll(/([+-]\s*\d+\.?\d*)\s*%/g)];
     if (two.length >= 2) {
-      const a = parseFloat(two[0][1]), b = parseFloat(two[1][1]);
+      const a = parseFloat(two[0][1].replace(/\s+/g,''));
+      const b = parseFloat(two[1][1].replace(/\s+/g,''));
       return { low: Math.min(a, b), high: Math.max(a, b) };
     }
     // 2) ±X%
     let m = text.match(/(?:±|\+\s*\/\s*-|\+-|&|≈)\s*(\d+\.?\d*)\s*%/i);
     if (m) { const p = parseFloat(m[1]); return { low: -p, high: p }; }
-    // 3) Range with explicit separator
-    m = text.match(/([+-]?\d+\.?\d*)\s*%\s*(?:to|至|~|～|—|–)\s*([+-]?\d+\.?\d*)\s*%/i);
+    // 3) Range with explicit separator (故意不含 "-" 以免和负号冲突)
+    m = text.match(/([+-]?\d+\.?\d*)\s*%\s*(?:to|至|~|～)\s*([+-]?\d+\.?\d*)\s*%/i);
     if (m) {
       const a = parseFloat(m[1]), b = parseFloat(m[2]);
       return { low: Math.min(a, b), high: Math.max(a, b) };
+    }
+    // 4) 兜底：只要同一段文本里出现 ≥ 2 个百分数（无论有没有符号），
+    //    都 < 30 且不是 70/30/50 这种典型流量比例 → 当作 CI 处理
+    //    Play Console 布局：左边是下限（负值），右边是上限（正值）
+    //    Tesseract 把横线 / 边框误读成奇怪字符导致符号丢失时，这里救场
+    const anyP = [...text.matchAll(/([+-]?\s*\d+\.?\d*)\s*%/g)];
+    if (anyP.length >= 2) {
+      const p1raw = anyP[anyP.length-2][1].replace(/\s+/g,'');
+      const p2raw = anyP[anyP.length-1][1].replace(/\s+/g,'');
+      let a = parseFloat(p1raw), b = parseFloat(p2raw);
+      const aAbs = Math.abs(a), bAbs = Math.abs(b);
+      const looksLikeCI = aAbs <= 30 && bAbs <= 30;
+      const isRatioHeader = (aAbs % 5 === 0 && bAbs % 5 === 0 && aAbs + bAbs === 100); // 70/30, 60/40 等
+      // CI 通常带小数（-1%, +5.6%）或左右不等；像「25% 25%」「10% 10%」这种整数等值更可能是均分比例
+      const equalIntegers = aAbs === bAbs && !p1raw.includes('.') && !p2raw.includes('.') && !/[+-]/.test(p1raw) && !/[+-]/.test(p2raw);
+      if (looksLikeCI && !isRatioHeader && !equalIntegers) {
+        // 第一个没显式符号 → 按 Play Console 习惯当作负的下限
+        if (!/[+-]/.test(p1raw) && a > 0) a = -a;
+        return { low: Math.min(a, b), high: Math.max(a, b) };
+      }
     }
     return null;
   };

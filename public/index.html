@@ -356,6 +356,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
 <script>
 // ============ effects ============
 function computeEffect(v, control) {
+  if (v.effectOverride) return v.effectOverride;
   const hasCI = v.ciLow !== '' && v.ciLow != null && v.ciHigh !== '' && v.ciHigh != null;
   const lo = parseFloat(v.ciLow), hi = parseFloat(v.ciHigh);
   const inst = parseFloat(v.installs), cInst = parseFloat(control?.installs);
@@ -386,6 +387,32 @@ function effectBadgeHTML(eff) {
   const m = EFFECT_META[eff]; if (!m) return '<span class="text-slate-400 text-xs">--</span>';
   return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold border ${m.cls}">${m.icon} ${m.label}</span>`;
 }
+window.openEffectPicker = (i, btn) => {
+  document.querySelectorAll('.effect-popover').forEach(p => p.remove());
+  const v = formData.variants[i];
+  const cur = v.effectOverride || null;
+  const opts = [['auto','自动判定','']].concat(['superb','good','neutral_p','neutral_n','exp_p','exp_n','bad'].map(k => [k, EFFECT_META[k].label, EFFECT_META[k].icon]));
+  const pop = document.createElement('div');
+  pop.className = 'effect-popover absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-xl p-1 min-w-[140px]';
+  pop.innerHTML = opts.map(([k, label, icon]) => {
+    const active = (k === 'auto' && !cur) || k === cur;
+    return `<button type="button" class="ep-opt w-full text-left px-2 py-1.5 text-[12px] rounded ${active?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}" data-k="${k}">${icon} ${label}</button>`;
+  }).join('');
+  btn.parentElement.appendChild(pop);
+  pop.onclick = e => {
+    const b = e.target.closest('.ep-opt'); if (!b) return;
+    e.stopPropagation();
+    const k = b.dataset.k;
+    formData.variants[i].effectOverride = (k === 'auto') ? null : k;
+    pop.remove();
+    renderVariants();
+  };
+  setTimeout(() => {
+    document.addEventListener('click', function close(evt){
+      if (!pop.contains(evt.target) && !btn.contains(evt.target)) { pop.remove(); document.removeEventListener('click', close); }
+    });
+  }, 0);
+};
 
 // ============ db ============
 const IDB_NAME='viso-aso-db', IDB_VER=1;
@@ -664,7 +691,15 @@ function renderVariants() {
               <span class="text-slate-400 font-normal text-[12px]">%</span>
             </div>
           </div>
-          <div class="flex justify-between items-center border-b border-slate-200 pb-1"><label class="text-[12px] font-semibold text-slate-500">测试效果</label><div>${effectBadgeHTML(eff)}</div></div>
+          <div class="flex justify-between items-center border-b border-slate-200 pb-1">
+            <label class="text-[12px] font-semibold text-slate-500">测试效果${v.effectOverride ? ' <span class="text-[9px] text-indigo-500 font-bold align-middle">手动</span>' : ''}</label>
+            <div class="relative">
+              <button type="button" onclick="openEffectPicker(${i}, this)" class="cursor-pointer hover:opacity-80 inline-flex items-center gap-1">
+                ${effectBadgeHTML(eff)}
+                <svg class="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+              </button>
+            </div>
+          </div>
           <div class="mt-auto pt-3"><button onclick="toggleAdopt(${i})" class="w-full text-[12px] font-bold ${v.adopted?'text-emerald-700 bg-emerald-50 border-emerald-200':'text-slate-600 bg-white border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'} border rounded-lg py-2 shadow-sm transition-all">${v.adopted?'✓ 已采用':'标记为采用'}</button></div>
         `}
       </div>`;

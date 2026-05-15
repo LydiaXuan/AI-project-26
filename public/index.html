@@ -1258,26 +1258,47 @@ function extractNumsAndCIs(text) {
   return { numbers, cis, letters };
 }
 function scanCI(lines, centerIdx) {
-  // Look at SAME line only: Play Console puts the CI cell on the same row as
-  // the install number, so cross-line scanning leaks one row's CI into the
-  // adjacent row (especially the control row, which has no CI of its own).
-  const l = lines[centerIdx];
-  if (!l) return null;
-  // 1) Two signed %s — most explicit, run FIRST so "-14.8% -7.7%" isn't
-  // misread by the range pattern (which would swallow the second "-").
-  const two = [...l.matchAll(/([+-]\d+\.?\d*)\s*%/g)];
-  if (two.length >= 2) {
-    const a = parseFloat(two[0][1]), b = parseFloat(two[1][1]);
-    return { low: Math.min(a, b), high: Math.max(a, b) };
-  }
-  // 2) ±X% (with common OCR misreads of the ± glyph)
-  let m = l.match(/(?:±|\+\s*\/\s*-|\+-|&|≈)\s*(\d+\.?\d*)\s*%/i);
-  if (m) { const p = parseFloat(m[1]); return { low: -p, high: p }; }
-  // 3) Range with explicit separator (excludes bare "-" to avoid the bug above)
-  m = l.match(/([+-]?\d+\.?\d*)\s*%\s*(?:to|至|~|～|—|–)\s*([+-]?\d+\.?\d*)\s*%/i);
-  if (m) {
-    const a = parseFloat(m[1]), b = parseFloat(m[2]);
-    return { low: Math.min(a, b), high: Math.max(a, b) };
+  const tryMatch = (text) => {
+    // 1) Two signed %s — most explicit, run FIRST so "-14.8% -7.7%" isn't
+    // misread by the range pattern (which would swallow the second "-")
+    const two = [...text.matchAll(/([+-]\d+\.?\d*)\s*%/g)];
+    if (two.length >= 2) {
+      const a = parseFloat(two[0][1]), b = parseFloat(two[1][1]);
+      return { low: Math.min(a, b), high: Math.max(a, b) };
+    }
+    // 2) ±X%
+    let m = text.match(/(?:±|\+\s*\/\s*-|\+-|&|≈)\s*(\d+\.?\d*)\s*%/i);
+    if (m) { const p = parseFloat(m[1]); return { low: -p, high: p }; }
+    // 3) Range with explicit separator
+    m = text.match(/([+-]?\d+\.?\d*)\s*%\s*(?:to|至|~|～|—|–)\s*([+-]?\d+\.?\d*)\s*%/i);
+    if (m) {
+      const a = parseFloat(m[1]), b = parseFloat(m[2]);
+      return { low: Math.min(a, b), high: Math.max(a, b) };
+    }
+    return null;
+  };
+  const center = lines[centerIdx] || '';
+  // a) Same line first
+  let r = tryMatch(center);
+  if (r) return r;
+  // b) Combine adjacent lines that DON'T carry their own install number
+  //    (those belong to the same row, just split by OCR). Stop when we hit
+  //    another row's large number — keeps control-row from leaking
+  //    variant-A's CI.
+  const bigNumRe = /(\d{1,3}(?:,\d{3})+|\d{4,})/;
+  let combined = center;
+  for (let d = 1; d <= 3; d++) {
+    let added = false;
+    for (const sign of [-1, 1]) {
+      const l = lines[centerIdx + sign * d];
+      if (!l) continue;
+      if (bigNumRe.test(l)) continue; // other row — skip
+      combined += ' ' + l;
+      added = true;
+    }
+    if (!added) break;
+    r = tryMatch(combined);
+    if (r) return r;
   }
   return null;
 }

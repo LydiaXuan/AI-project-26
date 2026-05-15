@@ -114,7 +114,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               <span class="w-1 h-3 bg-indigo-500 rounded-full"></span> 基础实验属性
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 items-stretch">
-              <div class="flex flex-col justify-around py-1">
+              <div class="flex flex-col justify-around py-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">归属项目</label>
                   <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
@@ -132,7 +132,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                   <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
                 </div>
               </div>
-              <div class="flex flex-col justify-around py-1">
+              <div class="flex flex-col justify-around py-4">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">测试周期</label>
                   <div class="flex items-center gap-2">
@@ -162,7 +162,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               </div>
             </div>
             <div class="mt-6 pt-5 border-t border-slate-100 space-y-3">
-              <textarea id="f-note-change" rows="2" placeholder="改动内容 + 测试目的 — 写到一起（如：突出 3D 消除玩法的爽感 + 验证是否提升下载转化）" class="w-full text-[13px] font-medium text-slate-800 bg-slate-50 border-none rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400 resize-none"></textarea>
+              <textarea id="f-note-change" rows="1" placeholder="改动内容 + 测试目的 — 写到一起（如：突出 3D 消除玩法的爽感 + 验证是否提升下载转化）" class="w-full text-[13px] font-medium text-slate-800 bg-slate-50 border-none rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400 resize-none overflow-y-auto leading-5" style="max-height:44px"></textarea>
               <input id="f-note-design" type="text" placeholder="设计思路 — (为什么这样设计)" class="w-full text-[13px] font-medium text-slate-800 bg-slate-50 border-none rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400">
             </div>
           </section>
@@ -884,8 +884,8 @@ function detailHTML(r) {
         <h3 class="text-[13px] font-bold mb-3 flex items-center gap-2"><span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span>备注</h3>
         <div class="space-y-2 text-[13px] text-slate-600">
           ${r.attrs?.length ? `<div class="flex items-center gap-1.5 flex-wrap"><span class="font-semibold text-slate-500">测试属性：</span>${r.attrs.map(a => `<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-semibold rounded">${escapeHTML(a)}</span>`).join('')}</div>` : ''}
-          <div><span class="font-semibold text-slate-500">改动内容 / 测试目的：</span>${escapeHTML([r.noteChange, r.notePurpose].filter(Boolean).join(' · ')||'-')}</div>
-          <div><span class="font-semibold text-slate-500">设计思路：</span>${escapeHTML(r.noteDesign||'-')}</div>
+          <div class="whitespace-pre-wrap break-words"><span class="font-semibold text-slate-500">改动内容 / 测试目的：</span>${escapeHTML([r.noteChange, r.notePurpose].filter(Boolean).join(' · ')||'-')}</div>
+          <div class="whitespace-pre-wrap break-words"><span class="font-semibold text-slate-500">设计思路：</span>${escapeHTML(r.noteDesign||'-')}</div>
         </div>
       </div>
     </div>`;

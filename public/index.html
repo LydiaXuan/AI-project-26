@@ -110,8 +110,8 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-5 flex items-center gap-2">
               <span class="w-1 h-3 bg-indigo-500 rounded-full"></span> 基础实验属性
             </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-              <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 items-stretch">
+              <div class="flex flex-col justify-around py-1">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">归属项目</label>
                   <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
@@ -125,7 +125,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                   <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
                 </div>
               </div>
-              <div class="space-y-4">
+              <div class="flex flex-col justify-around py-1 space-y-3">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">实验组件</label>
                   <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
@@ -147,11 +147,19 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                     <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="99" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">99%</div></label>
                   </div>
                 </div>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <label class="text-[13px] font-medium text-slate-500">测试属性 <span class="text-[10px] text-slate-400">(可多选)</span></label>
+                  <div class="flex gap-2" id="f-attrs">
+                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="icon" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">icon</div></label>
+                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="五图" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">五图</div></label>
+                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="置顶" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">置顶</div></label>
+                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="视频" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">视频</div></label>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="mt-6 pt-5 border-t border-slate-100 space-y-3">
-              <input id="f-note-change" type="text" placeholder="改动内容 — (如: 突出 3D 消除玩法的爽感)" class="w-full text-[13px] font-medium text-slate-800 bg-slate-50 border-none rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400">
-              <input id="f-note-purpose" type="text" placeholder="测试目的 — (想验证什么)" class="w-full text-[13px] font-medium text-slate-800 bg-slate-50 border-none rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400">
+              <textarea id="f-note-change" rows="2" placeholder="改动内容 + 测试目的 — 写到一起（如：突出 3D 消除玩法的爽感 + 验证是否提升下载转化）" class="w-full text-[13px] font-medium text-slate-800 bg-slate-50 border-none rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400 resize-none"></textarea>
               <input id="f-note-design" type="text" placeholder="设计思路 — (为什么这样设计)" class="w-full text-[13px] font-medium text-slate-800 bg-slate-50 border-none rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400">
             </div>
           </section>
@@ -500,6 +508,7 @@ function blankForm() {
     ratio: state.meta.ratios[0] || '',
     component: state.meta.components[0] || '',
     startDate: '', endDate: '', confidence: 95,
+    attrs: [],
     noteChange: '', notePurpose: '', noteDesign: '', summary: '',
     variants: [
       { name:'原始版本',  tag:'CONTROL',   role:'control', installs:'', retained:'', ciLow:'', ciHigh:'', img:'', adopted:false },
@@ -551,11 +560,25 @@ function renderForm() {
     r.checked = +r.value === +formData.confidence;
     r.onchange = e => { formData.confidence = +e.target.value; };
   });
+  // 测试属性（多选）— 兼容老数据迁移：把 notePurpose 拼到 noteChange 里
+  if (!Array.isArray(formData.attrs)) formData.attrs = [];
+  $$('#f-attrs input').forEach(c => {
+    c.checked = formData.attrs.includes(c.value);
+    c.onchange = e => {
+      const v = e.target.value;
+      if (e.target.checked) { if (!formData.attrs.includes(v)) formData.attrs.push(v); }
+      else { formData.attrs = formData.attrs.filter(x => x !== v); }
+    };
+  });
+  // 老记录里如果有 notePurpose，加载时合并到 noteChange 一次（首次进表单生效）
+  if (formData.notePurpose && !formData._merged) {
+    formData.noteChange = (formData.noteChange ? formData.noteChange + ' · ' : '') + formData.notePurpose;
+    formData.notePurpose = '';
+    formData._merged = true;
+  }
   $('#f-note-change').value = formData.noteChange || '';
-  $('#f-note-purpose').value = formData.notePurpose || '';
   $('#f-note-design').value = formData.noteDesign || '';
   $('#f-note-change').oninput = e => formData.noteChange = e.target.value;
-  $('#f-note-purpose').oninput = e => formData.notePurpose = e.target.value;
   $('#f-note-design').oninput = e => formData.noteDesign = e.target.value;
   renderVariants();
 }
@@ -727,9 +750,11 @@ function variantRowHTML(v, i, ctrl) {
   const trophy = isWin ? ' 🏆' : '';
   const ciDisplay = (v.ciLow!=='' && v.ciHigh!=='' && v.ciLow!=null && v.ciHigh!=null) ?
     `<div class="flex items-center gap-0.5 font-bold ${isWin?'text-emerald-600':(isBad?'text-rose-500':'text-slate-600')}">
+       <span class="text-slate-400 font-normal">【</span>
        <span class="${isWin?'bg-emerald-100/50':(isBad?'bg-rose-50':'bg-slate-100')} px-1 rounded">${formatPct(v.ciLow)}</span>
        <span class="text-slate-400 font-normal">~</span>
        <span class="${isWin?'bg-emerald-100/50':(isBad?'bg-rose-50':'bg-slate-100')} px-1 rounded">${formatPct(v.ciHigh)}</span>
+       <span class="text-slate-400 font-normal">】</span>
      </div>` : `<span class="font-bold text-slate-400">-</span>`;
   const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
   return `
@@ -816,8 +841,8 @@ function detailHTML(r) {
       <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
         <h3 class="text-[13px] font-bold mb-3 flex items-center gap-2"><span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span>备注</h3>
         <div class="space-y-2 text-[13px] text-slate-600">
-          <div><span class="font-semibold text-slate-500">改动内容：</span>${escapeHTML(r.noteChange||'-')}</div>
-          <div><span class="font-semibold text-slate-500">测试目的：</span>${escapeHTML(r.notePurpose||'-')}</div>
+          ${r.attrs?.length ? `<div class="flex items-center gap-1.5 flex-wrap"><span class="font-semibold text-slate-500">测试属性：</span>${r.attrs.map(a => `<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-semibold rounded">${escapeHTML(a)}</span>`).join('')}</div>` : ''}
+          <div><span class="font-semibold text-slate-500">改动内容 / 测试目的：</span>${escapeHTML([r.noteChange, r.notePurpose].filter(Boolean).join(' · ')||'-')}</div>
           <div><span class="font-semibold text-slate-500">设计思路：</span>${escapeHTML(r.noteDesign||'-')}</div>
         </div>
       </div>

@@ -219,9 +219,40 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
           <select id="db-project" class="text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none hover:border-indigo-300 shadow-sm cursor-pointer"></select>
           <select id="db-owner" class="text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none hover:border-indigo-300 shadow-sm cursor-pointer"></select>
           <div class="w-px h-6 bg-slate-200 my-auto mx-1"></div>
-          <select id="db-period" class="text-[13px] font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none hover:border-indigo-300 cursor-pointer">
-            <option value="ytd">本年累计</option><option value="30">过去 30 天</option><option value="90">过去 90 天</option><option value="all">全部</option>
-          </select>
+          <div class="relative">
+            <button id="db-period-btn" class="text-[13px] font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none hover:border-indigo-300 cursor-pointer flex items-center gap-1.5 shadow-sm">
+              <span id="db-period-label">所有时间</span>
+              <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="db-period-pop" class="hidden absolute top-full right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl flex" style="width:520px">
+              <div id="db-presets" class="w-28 border-r border-slate-100 p-2 space-y-0.5 text-[13px]"></div>
+              <div class="flex-1 p-4">
+                <div class="flex gap-3 mb-3 items-end">
+                  <div class="flex-1">
+                    <label class="text-[11px] text-slate-500 block mb-1">开始日期</label>
+                    <input id="dp-from" type="text" class="w-full text-[13px] font-semibold border-b-2 border-indigo-500 focus:outline-none pb-1 bg-transparent text-slate-800" readonly>
+                  </div>
+                  <span class="pb-1.5 text-slate-400">—</span>
+                  <div class="flex-1">
+                    <label class="text-[11px] text-slate-500 block mb-1">结束日期</label>
+                    <input id="dp-to" type="text" class="w-full text-[13px] font-semibold border-b-2 border-slate-200 focus:outline-none pb-1 bg-transparent text-slate-800" readonly>
+                  </div>
+                </div>
+                <div class="flex justify-between items-center mb-2 mt-3">
+                  <span id="dp-month-label" class="text-[13px] font-semibold text-slate-700"></span>
+                  <div class="flex gap-1">
+                    <button id="dp-prev" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500">‹</button>
+                    <button id="dp-next" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500">›</button>
+                  </div>
+                </div>
+                <div id="dp-calendar"></div>
+                <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button id="dp-cancel" class="px-4 py-1 text-[13px] text-slate-500 hover:bg-slate-50 rounded">取消</button>
+                  <button id="dp-apply" class="px-4 py-1 text-[13px] font-semibold text-indigo-600 hover:bg-indigo-50 rounded">应用</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
       <div class="flex-1 overflow-y-auto p-8 hide-scrollbar">
@@ -866,20 +897,110 @@ window.saveSummary = async (id) => {
 };
 
 // ---------- Dashboard ----------
+// ---------- Dashboard date picker ----------
+const DB_PRESETS = [['custom','自定义'],['this-week','本周'],['last-week','上周'],['this-month','本月'],['last-month','上个月'],['28','过去 28 天'],['90','过去 90 天'],['180','过去 180 天'],['365','过去 365 天'],['all','所有时间']];
+let dbDateState = { preset: 'all', from: null, to: null };
+let dbDatePending = null;
+function _sod(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function _eod(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
+function _addD(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function _fmtD(d){ return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; }
+function presetToRange(p) {
+  const t = _sod(new Date());
+  if (p==='this-week'){ const dw=t.getDay()||7; const f=_addD(t,-(dw-1)); return {from:f,to:_addD(f,6)}; }
+  if (p==='last-week'){ const dw=t.getDay()||7; const ft=_addD(t,-(dw-1)); return {from:_addD(ft,-7),to:_addD(ft,-1)}; }
+  if (p==='this-month') return { from:new Date(t.getFullYear(),t.getMonth(),1), to:new Date(t.getFullYear(),t.getMonth()+1,0) };
+  if (p==='last-month') return { from:new Date(t.getFullYear(),t.getMonth()-1,1), to:new Date(t.getFullYear(),t.getMonth(),0) };
+  if (['28','90','180','365'].includes(p)) return { from:_addD(t,-(+p-1)), to:t };
+  if (p==='all') return { from:null, to:null };
+  return null;
+}
+function dbPeriodLabel(s) {
+  const name = DB_PRESETS.find(([k])=>k===s.preset)?.[1];
+  if (s.preset!=='custom' && name) return name;
+  if (s.from && s.to) return `${_fmtD(s.from)} ~ ${_fmtD(s.to)}`;
+  return '自定义';
+}
+function renderDpPresets() {
+  $('#db-presets').innerHTML = DB_PRESETS.map(([k,n]) =>
+    `<button class="dp-preset w-full text-left px-3 py-1.5 rounded text-[13px] ${dbDatePending.preset===k?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}" data-k="${k}">${n}</button>`
+  ).join('');
+  $$('.dp-preset').forEach(b => b.onclick = () => {
+    const k = b.dataset.k;
+    dbDatePending.preset = k;
+    if (k!=='custom') { const r = presetToRange(k); if (r){ dbDatePending.from=r.from; dbDatePending.to=r.to; } }
+    dbDatePending.picking = 'from';
+    if (dbDatePending.from) dbDatePending.viewMonth = new Date(dbDatePending.from);
+    renderDpPresets(); renderDpCalendar();
+  });
+}
+function renderDpCalendar() {
+  const s = dbDatePending, v = s.viewMonth;
+  const year=v.getFullYear(), month=v.getMonth();
+  const firstWk = (new Date(year,month,1).getDay()||7);
+  const dim = new Date(year,month+1,0).getDate();
+  const pdim = new Date(year,month,0).getDate();
+  const cells = [];
+  for (let i=firstWk-1;i>0;i--) cells.push({d:new Date(year,month-1,pdim-i+1),other:true});
+  for (let d=1;d<=dim;d++) cells.push({d:new Date(year,month,d),other:false});
+  while (cells.length%7!==0){ const last=cells[cells.length-1].d; cells.push({d:_addD(last,1),other:true}); }
+  $('#dp-month-label').textContent = `${year}年${month+1}月`;
+  $('#dp-from').value = s.from?_fmtD(s.from):'';
+  $('#dp-to').value = s.to?_fmtD(s.to):'';
+  $('#dp-from').classList.toggle('border-indigo-500', s.picking==='from');
+  $('#dp-from').classList.toggle('border-slate-200', s.picking!=='from');
+  $('#dp-to').classList.toggle('border-indigo-500', s.picking==='to');
+  $('#dp-to').classList.toggle('border-slate-200', s.picking!=='to');
+  const f = s.from?_sod(s.from).getTime():null, to = s.to?_sod(s.to).getTime():null;
+  const html = cells.map(c => {
+    const dt = _sod(c.d).getTime();
+    const isStart = f && dt===f, isEnd = to && dt===to, inR = f && to && dt>=f && dt<=to;
+    let cls = 'rounded';
+    if (isStart || isEnd) cls = 'bg-indigo-600 text-white font-bold rounded-full';
+    else if (inR) cls = 'bg-indigo-50 text-indigo-700';
+    else if (c.other) cls = 'text-slate-300';
+    else cls = 'text-slate-700 hover:bg-slate-100 rounded';
+    return `<button class="dp-day h-8 ${cls}" data-d="${dt}">${c.d.getDate()}</button>`;
+  }).join('');
+  $('#dp-calendar').innerHTML = `
+    <div class="grid grid-cols-7 text-[11px] text-slate-500 mb-1">${['一','二','三','四','五','六','日'].map(w=>`<div class="text-center py-1">${w}</div>`).join('')}</div>
+    <div class="grid grid-cols-7 gap-y-1 text-[12px]">${html}</div>`;
+  $$('.dp-day').forEach(b => b.onclick = () => {
+    const dt = _sod(new Date(+b.dataset.d));
+    if (s.picking==='from' || !s.from || (s.from && s.to)) { s.from=dt; s.to=null; s.picking='to'; }
+    else { if (dt<s.from){ s.to=s.from; s.from=dt; } else s.to=dt; s.picking='from'; }
+    s.preset = 'custom';
+    renderDpPresets(); renderDpCalendar();
+  });
+}
+function openDbDatePicker() {
+  dbDatePending = { preset:dbDateState.preset, from:dbDateState.from?new Date(dbDateState.from):null, to:dbDateState.to?new Date(dbDateState.to):null, picking:'from', viewMonth:dbDateState.from?new Date(dbDateState.from):new Date() };
+  $('#db-period-pop').classList.remove('hidden');
+  renderDpPresets(); renderDpCalendar();
+}
+function closeDbDatePicker(){ $('#db-period-pop').classList.add('hidden'); }
+window.addEventListener('click', e => {
+  const pop = $('#db-period-pop');
+  if (!pop || pop.classList.contains('hidden')) return;
+  if (!pop.contains(e.target) && !e.target.closest('#db-period-btn')) closeDbDatePicker();
+});
 function renderDashboard() {
   fillSelect('#db-project', ['全部项目', ...state.meta.projects], $('#db-project').value || '全部项目');
   fillSelect('#db-owner', ['全部成员', ...state.meta.owners], $('#db-owner').value || '全部成员');
   $('#db-project').onchange = renderDashboard;
   $('#db-owner').onchange = renderDashboard;
-  $('#db-period').onchange = renderDashboard;
-  const proj = $('#db-project').value, owner = $('#db-owner').value, period = $('#db-period').value;
+  $('#db-period-label').textContent = dbPeriodLabel(dbDateState);
+  $('#db-period-btn').onclick = (e) => { e.stopPropagation(); $('#db-period-pop').classList.contains('hidden') ? openDbDatePicker() : closeDbDatePicker(); };
+  $('#dp-prev').onclick = () => { dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()-1, 1); renderDpCalendar(); };
+  $('#dp-next').onclick = () => { dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()+1, 1); renderDpCalendar(); };
+  $('#dp-cancel').onclick = closeDbDatePicker;
+  $('#dp-apply').onclick = () => { dbDateState = { preset:dbDatePending.preset, from:dbDatePending.from, to:dbDatePending.to }; closeDbDatePicker(); renderDashboard(); };
+  const proj = $('#db-project').value, owner = $('#db-owner').value;
   let list = [...state.records];
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
   if (owner && owner !== '全部成员') list = list.filter(r => r.owner === owner);
-  const now = Date.now();
-  if (period === '30') list = list.filter(r => (r.updatedAt||0) > now - 30*24*3600*1000);
-  else if (period === '90') list = list.filter(r => (r.updatedAt||0) > now - 90*24*3600*1000);
-  else if (period === 'ytd') list = list.filter(r => new Date(r.updatedAt||0).getFullYear() === new Date().getFullYear());
+  if (dbDateState.from) { const fT = _sod(dbDateState.from).getTime(); list = list.filter(r => (r.updatedAt||0) >= fT); }
+  if (dbDateState.to)   { const tT = _eod(dbDateState.to).getTime();   list = list.filter(r => (r.updatedAt||0) <= tT); }
 
   const total = list.length;
   const adopted = list.filter(r => (r.variants||[]).some(v => v.adopted)).length;

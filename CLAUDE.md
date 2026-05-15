@@ -22,6 +22,7 @@
 - 用户当前关注 / 待办 / 下次该做什么
 
 不需要长篇大论，每节 3~6 行就够了。Stop 钩子会检查文件是否在最近 30 分钟内被改过，没更新会提醒。
+超过 14 天的段落每次 Stop 时会被 `.claude/hooks/chatlog-archive.py` 自动搬到 `CHAT-LOG.archive/YYYY-MM.md`，保持主文件简短省 token。
 
 ## 4. Git 规范
 

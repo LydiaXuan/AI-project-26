@@ -258,7 +258,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
       <div id="ocr-preview" class="hidden">
         <h4 class="text-sm font-semibold mb-2">识别结果（可编辑）</h4>
         <table class="w-full text-sm border border-slate-200 rounded">
-          <thead class="bg-slate-50"><tr><th class="p-2 text-left">变体</th><th class="p-2 text-right">首次安装</th><th class="p-2 text-right">保留</th><th class="p-2 text-right">CI 下限</th><th class="p-2 text-right">CI 上限</th></tr></thead>
+          <thead class="bg-slate-50"><tr><th class="px-3 py-2 text-left">变体</th><th class="px-3 py-2 text-right">首次安装</th><th class="px-3 py-2 text-right">保留</th><th class="px-3 py-2 text-right">CI 下限</th><th class="px-3 py-2 text-right">CI 上限</th></tr></thead>
           <tbody id="ocr-rows"></tbody>
         </table>
       </div>
@@ -1304,11 +1304,11 @@ function scanCI(lines, centerIdx) {
 }
 function renderOCRPreview() {
   $('#ocr-rows').innerHTML = ocrResult.map((v, i) => `
-    <tr><td class="p-2 font-mono">${v.label}</td>
-      <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="installs" value="${v.installs}"></td>
-      <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="retained" value="${v.retained}"></td>
-      <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciLow" value="${v.ciLow}"></td>
-      <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciHigh" value="${v.ciHigh}"></td></tr>`).join('');
+    <tr><td class="px-3 py-2 font-mono">${v.label}</td>
+      <td class="px-3 py-2"><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="installs" value="${v.installs}"></td>
+      <td class="px-3 py-2"><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="retained" value="${v.retained}"></td>
+      <td class="px-3 py-2"><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciLow" value="${v.ciLow}"></td>
+      <td class="px-3 py-2"><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciHigh" value="${v.ciHigh}"></td></tr>`).join('');
   $$('.ocr-cell').forEach(c => c.oninput = e => { ocrResult[+e.target.dataset.i][e.target.dataset.f] = e.target.value; });
   // Show raw OCR text below the preview table (default open) for manual cross-check
   let rawBox = $('#ocr-raw-box');

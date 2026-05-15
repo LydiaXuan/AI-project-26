@@ -113,6 +113,10 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                   <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <label class="text-[13px] font-medium text-slate-500">实验组件</label>
+                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
+                </div>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">测试人</label>
                   <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
                 </div>
@@ -121,11 +125,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                   <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
                 </div>
               </div>
-              <div class="flex flex-col justify-around py-1 space-y-3">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-                  <label class="text-[13px] font-medium text-slate-500">实验组件</label>
-                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
-                </div>
+              <div class="flex flex-col justify-around py-1">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                   <label class="text-[13px] font-medium text-slate-500">测试周期</label>
                   <div class="flex items-center gap-2">

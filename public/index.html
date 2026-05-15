@@ -735,7 +735,7 @@ function variantRowHTML(v, i, ctrl) {
         <span class="text-[13px] font-bold ${isWin?'text-slate-800':'text-slate-700'} truncate">${escapeHTML(v.name)}${trophy}</span>
         ${isControl ? '<span class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-1.5 rounded shrink-0">基准线</span>' : (delta!==null ? `<span class="text-[12px] font-bold ${deltaCls} shrink-0">${delta>0?'+':''}${delta}%</span>` : '')}
       </div>
-      <div class="w-full max-w-[140px] aspect-square mx-auto rounded border border-slate-200 mb-2 bg-slate-50/40 ${isWin?'shadow-sm':''} ${isBad?'grayscale':''}" style="${imgStyle}"></div>
+      <div class="w-full max-w-[140px] h-28 mx-auto rounded border border-slate-200 mb-2 bg-slate-50/40 ${isWin?'shadow-sm':''} ${isBad?'grayscale':''}" style="${imgStyle}"></div>
       <div class="space-y-1.5">
         <div class="flex justify-between text-[11px]"><span class="text-slate-500">首次安装</span><span class="font-bold text-slate-700">${formatNum(v.installs)}</span></div>
         <div class="flex justify-between text-[11px]"><span class="text-slate-500">保留安装</span><span class="font-bold text-slate-700">${formatNum(v.retained)}</span></div>

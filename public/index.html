@@ -220,7 +220,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
           <select id="db-owner" class="text-[13px] font-medium text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none hover:border-indigo-300 shadow-sm cursor-pointer"></select>
           <div class="w-px h-6 bg-slate-200 my-auto mx-1"></div>
           <div class="relative">
-            <button id="db-period-btn" class="text-[13px] font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none hover:border-indigo-300 cursor-pointer flex items-center gap-1.5 shadow-sm">
+            <button id="db-period-btn" type="button" class="text-[13px] font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 outline-none hover:border-indigo-300 cursor-pointer flex items-center gap-1.5 shadow-sm">
               <span id="db-period-label">所有时间</span>
               <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
@@ -230,25 +230,25 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                 <div class="flex gap-3 mb-3 items-end">
                   <div class="flex-1">
                     <label class="text-[11px] text-slate-500 block mb-1">开始日期</label>
-                    <input id="dp-from" type="text" class="w-full text-[13px] font-semibold border-b-2 border-indigo-500 focus:outline-none pb-1 bg-transparent text-slate-800" readonly>
+                    <input id="dp-from" type="text" class="w-full text-[13px] font-semibold border-b-2 border-indigo-500 focus:outline-none pb-1 bg-transparent text-slate-800 cursor-pointer" readonly>
                   </div>
                   <span class="pb-1.5 text-slate-400">—</span>
                   <div class="flex-1">
                     <label class="text-[11px] text-slate-500 block mb-1">结束日期</label>
-                    <input id="dp-to" type="text" class="w-full text-[13px] font-semibold border-b-2 border-slate-200 focus:outline-none pb-1 bg-transparent text-slate-800" readonly>
+                    <input id="dp-to" type="text" class="w-full text-[13px] font-semibold border-b-2 border-slate-200 focus:outline-none pb-1 bg-transparent text-slate-800 cursor-pointer" readonly>
                   </div>
                 </div>
                 <div class="flex justify-between items-center mb-2 mt-3">
                   <span id="dp-month-label" class="text-[13px] font-semibold text-slate-700"></span>
                   <div class="flex gap-1">
-                    <button id="dp-prev" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500">‹</button>
-                    <button id="dp-next" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500">›</button>
+                    <button type="button" id="dp-prev" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500 cursor-pointer">‹</button>
+                    <button type="button" id="dp-next" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500 cursor-pointer">›</button>
                   </div>
                 </div>
                 <div id="dp-calendar"></div>
                 <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100">
-                  <button id="dp-cancel" class="px-4 py-1 text-[13px] text-slate-500 hover:bg-slate-50 rounded">取消</button>
-                  <button id="dp-apply" class="px-4 py-1 text-[13px] font-semibold text-indigo-600 hover:bg-indigo-50 rounded">应用</button>
+                  <button type="button" id="dp-cancel" class="px-4 py-1 text-[13px] text-slate-500 hover:bg-slate-50 rounded cursor-pointer">取消</button>
+                  <button type="button" id="dp-apply" class="px-4 py-1 text-[13px] font-semibold text-indigo-600 hover:bg-indigo-50 rounded cursor-pointer">应用</button>
                 </div>
               </div>
             </div>
@@ -923,16 +923,23 @@ function dbPeriodLabel(s) {
 }
 function renderDpPresets() {
   $('#db-presets').innerHTML = DB_PRESETS.map(([k,n]) =>
-    `<button class="dp-preset w-full text-left px-3 py-1.5 rounded text-[13px] ${dbDatePending.preset===k?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}" data-k="${k}">${n}</button>`
+    `<button type="button" class="dp-preset w-full text-left px-3 py-1.5 rounded text-[13px] cursor-pointer ${dbDatePending.preset===k?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}" data-k="${k}">${n}</button>`
   ).join('');
-  $$('.dp-preset').forEach(b => b.onclick = () => {
-    const k = b.dataset.k;
-    dbDatePending.preset = k;
-    if (k!=='custom') { const r = presetToRange(k); if (r){ dbDatePending.from=r.from; dbDatePending.to=r.to; } }
-    dbDatePending.picking = 'from';
-    if (dbDatePending.from) dbDatePending.viewMonth = new Date(dbDatePending.from);
-    renderDpPresets(); renderDpCalendar();
-  });
+}
+function _onPresetPick(k) {
+  dbDatePending.preset = k;
+  if (k!=='custom') { const r = presetToRange(k); if (r){ dbDatePending.from=r.from; dbDatePending.to=r.to; } }
+  dbDatePending.picking = 'from';
+  if (dbDatePending.from) dbDatePending.viewMonth = new Date(dbDatePending.from);
+  renderDpPresets(); renderDpCalendar();
+}
+function _onDayPick(timeMs) {
+  const s = dbDatePending;
+  const dt = _sod(new Date(timeMs));
+  if (s.picking==='from' || !s.from || (s.from && s.to)) { s.from=dt; s.to=null; s.picking='to'; }
+  else { if (dt<s.from){ s.to=s.from; s.from=dt; } else s.to=dt; s.picking='from'; }
+  s.preset = 'custom';
+  renderDpPresets(); renderDpCalendar();
 }
 function renderDpCalendar() {
   const s = dbDatePending, v = s.viewMonth;
@@ -960,18 +967,11 @@ function renderDpCalendar() {
     else if (inR) cls = 'bg-indigo-50 text-indigo-700';
     else if (c.other) cls = 'text-slate-300';
     else cls = 'text-slate-700 hover:bg-slate-100 rounded';
-    return `<button class="dp-day h-8 ${cls}" data-d="${dt}">${c.d.getDate()}</button>`;
+    return `<button type="button" class="dp-day h-8 w-full cursor-pointer ${cls}" data-d="${dt}">${c.d.getDate()}</button>`;
   }).join('');
   $('#dp-calendar').innerHTML = `
     <div class="grid grid-cols-7 text-[11px] text-slate-500 mb-1">${['一','二','三','四','五','六','日'].map(w=>`<div class="text-center py-1">${w}</div>`).join('')}</div>
     <div class="grid grid-cols-7 gap-y-1 text-[12px]">${html}</div>`;
-  $$('.dp-day').forEach(b => b.onclick = () => {
-    const dt = _sod(new Date(+b.dataset.d));
-    if (s.picking==='from' || !s.from || (s.from && s.to)) { s.from=dt; s.to=null; s.picking='to'; }
-    else { if (dt<s.from){ s.to=s.from; s.from=dt; } else s.to=dt; s.picking='from'; }
-    s.preset = 'custom';
-    renderDpPresets(); renderDpCalendar();
-  });
 }
 function openDbDatePicker() {
   dbDatePending = { preset:dbDateState.preset, from:dbDateState.from?new Date(dbDateState.from):null, to:dbDateState.to?new Date(dbDateState.to):null, picking:'from', viewMonth:dbDateState.from?new Date(dbDateState.from):new Date() };
@@ -991,10 +991,14 @@ function renderDashboard() {
   $('#db-owner').onchange = renderDashboard;
   $('#db-period-label').textContent = dbPeriodLabel(dbDateState);
   $('#db-period-btn').onclick = (e) => { e.stopPropagation(); $('#db-period-pop').classList.contains('hidden') ? openDbDatePicker() : closeDbDatePicker(); };
-  $('#dp-prev').onclick = () => { dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()-1, 1); renderDpCalendar(); };
-  $('#dp-next').onclick = () => { dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()+1, 1); renderDpCalendar(); };
+  $('#dp-prev').onclick = () => { if(!dbDatePending) return; dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()-1, 1); renderDpCalendar(); };
+  $('#dp-next').onclick = () => { if(!dbDatePending) return; dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()+1, 1); renderDpCalendar(); };
   $('#dp-cancel').onclick = closeDbDatePicker;
   $('#dp-apply').onclick = () => { dbDateState = { preset:dbDatePending.preset, from:dbDatePending.from, to:dbDatePending.to }; closeDbDatePicker(); renderDashboard(); };
+  $('#dp-from').onclick = () => { if(!dbDatePending) return; dbDatePending.picking='from'; renderDpCalendar(); };
+  $('#dp-to').onclick = () => { if(!dbDatePending) return; dbDatePending.picking='to'; renderDpCalendar(); };
+  $('#db-presets').onclick = e => { const b = e.target.closest('.dp-preset'); if (b && dbDatePending) _onPresetPick(b.dataset.k); };
+  $('#dp-calendar').onclick = e => { const b = e.target.closest('.dp-day'); if (b && dbDatePending) _onDayPick(+b.dataset.d); };
   const proj = $('#db-project').value, owner = $('#db-owner').value;
   let list = [...state.records];
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);

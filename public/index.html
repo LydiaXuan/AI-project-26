@@ -1125,19 +1125,41 @@ function setupDrop(sel, cb) {
   el.ondragleave = () => el.classList.remove('drop-active');
   el.ondrop = e => { e.preventDefault(); el.classList.remove('drop-active'); const f = e.dataTransfer.files[0]; if (f) cb(f); };
 }
-async function preprocessOCR(file, scale=2.4) {
+async function preprocessOCR(file, scale=3.2) {
+  // 3.2x 放大 + 大津式二值化（纯黑白），让 Tesseract 识别数字最准
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
       const c = document.createElement('canvas');
-      c.width = img.width * scale; c.height = img.height * scale;
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
       const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, c.width, c.height);
       const data = ctx.getImageData(0, 0, c.width, c.height);
       const d = data.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-        const v = g < 110 ? Math.max(0, g-30) : Math.min(255, g+30);
+      // 灰度
+      const gray = new Uint8Array(d.length / 4);
+      for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+        gray[j] = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+      }
+      // 大津阈值（Otsu）
+      const hist = new Uint32Array(256);
+      for (const g of gray) hist[g]++;
+      let total = gray.length, sumAll = 0;
+      for (let i = 0; i < 256; i++) sumAll += i * hist[i];
+      let wB = 0, sumB = 0, maxVar = 0, thresh = 127;
+      for (let t = 0; t < 256; t++) {
+        wB += hist[t]; if (!wB) continue;
+        const wF = total - wB; if (!wF) break;
+        sumB += t * hist[t];
+        const mB = sumB / wB, mF = (sumAll - sumB) / wF;
+        const between = wB * wF * (mB - mF) * (mB - mF);
+        if (between > maxVar) { maxVar = between; thresh = t; }
+      }
+      // 二值化
+      for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+        const v = gray[j] > thresh ? 255 : 0;
         d[i] = d[i+1] = d[i+2] = v;
       }
       ctx.putImageData(data, 0, 0);
@@ -1149,23 +1171,38 @@ async function preprocessOCR(file, scale=2.4) {
 }
 window.runOCR = async () => {
   $('#ocr-progress').classList.remove('hidden');
-  $('#ocr-status').textContent = '预处理中…'; $('#ocr-bar').style.width = '5%';
+  $('#ocr-status').textContent = '初始化 OCR…'; $('#ocr-bar').style.width = '3%';
+  let worker;
   try {
+    // 用 worker API 才能 setParameters 加字符白名单（大幅提升数字识别准度）
+    worker = await Tesseract.createWorker('eng', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          $('#ocr-bar').style.width = Math.min(95, 20 + m.progress * 70) + '%';
+        }
+      }
+    });
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789.,%-+ABCabc ',
+      preserve_interword_spaces: '1',
+    });
     const blobs = [ocrFile1, ocrFile2].filter(Boolean);
     const results = [];
     for (let i = 0; i < blobs.length; i++) {
+      $('#ocr-status').textContent = `预处理截图 (${i+1}/${blobs.length})…`;
       const pp = await preprocessOCR(blobs[i]);
       $('#ocr-status').textContent = `OCR 识别中… (${i+1}/${blobs.length})`;
-      const r = await Tesseract.recognize(pp, 'eng', { logger: m => { if (m.status === 'recognizing text') $('#ocr-bar').style.width = (10 + ((m.progress + i)/blobs.length)*85) + '%'; } });
+      const r = await worker.recognize(pp);
       results.push(r.data.text);
     }
-    $('#ocr-bar').style.width = '100%'; $('#ocr-status').textContent = '识别完成';
+    $('#ocr-bar').style.width = '100%'; $('#ocr-status').textContent = '识别完成 — 请核对下方表格';
     ocrResult = parseOCR(results[0] || '', results[1] || '');
     renderOCRPreview();
     $('#ocr-preview').classList.remove('hidden');
     $('#ocr-apply-btn').disabled = false;
     $('#ocr-apply-btn').className = 'px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700';
   } catch (e) { toast('OCR 失败：'+(e.message||e),'error'); }
+  finally { if (worker) try { await worker.terminate(); } catch {} }
 };
 let ocrRawText = '';
 function parseOCR(installsText, retainedText) {
@@ -1252,14 +1289,16 @@ function renderOCRPreview() {
       <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciLow" value="${v.ciLow}"></td>
       <td><input class="ocr-cell w-full text-right p-1 outline-none focus:bg-indigo-50" data-i="${i}" data-f="ciHigh" value="${v.ciHigh}"></td></tr>`).join('');
   $$('.ocr-cell').forEach(c => c.oninput = e => { ocrResult[+e.target.dataset.i][e.target.dataset.f] = e.target.value; });
-  // Show raw OCR text below the preview table (collapsible) for manual cross-check
+  // Show raw OCR text below the preview table (default open) for manual cross-check
   let rawBox = $('#ocr-raw-box');
   if (!rawBox) {
     rawBox = document.createElement('details');
     rawBox.id = 'ocr-raw-box';
     rawBox.className = 'mt-3 text-xs';
+    rawBox.open = true;  // 默认展开，方便用户对比识别原文
     $('#ocr-preview').appendChild(rawBox);
   }
+  rawBox.open = true;
   rawBox.innerHTML = `<summary class="cursor-pointer text-slate-500 hover:text-slate-700 font-semibold mb-2">📄 查看 OCR 识别原文（用于核对/手动修正）</summary>
     <pre class="bg-slate-50 border border-slate-200 rounded p-3 text-[11px] text-slate-600 whitespace-pre-wrap max-h-48 overflow-auto font-mono">${escapeHTML(ocrRawText)}</pre>`;
 }

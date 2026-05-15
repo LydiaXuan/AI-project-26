@@ -19,6 +19,7 @@ select { -webkit-appearance:none; -moz-appearance:none; appearance:none;
 .active-card { background:#F8FAFF; border-color:#818CF8 !important; box-shadow:0 4px 20px -2px rgba(99,102,241,.1); }
 textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(99,102,241,.1); }
 .drop-active { border-color:#818CF8 !important; background:#EEF2FF !important; }
+.paste-hover { box-shadow: 0 0 0 2px #818CF8; border-color:#818CF8 !important; }
 .chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:9999px; font-size:11px; font-weight:600; background:#EEF2FF; color:#4F46E5; border:1px solid #C7D2FE; }
 .chip button { color:#818CF8; font-weight:700; }
 .chip-grey { background:#F1F5F9; color:#475569; border-color:#E2E8F0; }
@@ -496,6 +497,7 @@ function route(name) {
 window.route = route;
 
 let formData = null;
+let variantPasteTargetIdx = -1;
 function blankForm() {
   return {
     id: nextRecordId(), type: 'ab',
@@ -641,6 +643,10 @@ function renderVariants() {
     dz.ondragover = e => { e.preventDefault(); dz.classList.add('drop-active'); };
     dz.ondragleave = () => dz.classList.remove('drop-active');
     dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drop-active'); const f = e.dataTransfer.files[0]; if (f) setVariantImage(i, f); };
+    dz.onmouseenter = () => {
+      variantPasteTargetIdx = i;
+      grid.querySelectorAll('.image-drop').forEach(d => d.classList.toggle('paste-hover', d === dz));
+    };
   });
 }
 window.toggleAdopt = i => { formData.variants[i].adopted = !formData.variants[i].adopted; renderVariants(); };
@@ -1599,6 +1605,13 @@ window.addEventListener('paste', e => {
     const img = new Image();
     img.onload = () => { cropImg = img; layoutCropCanvas(); $('#crop-canvas-wrap').classList.remove('hidden'); $('#crop-apply-btn').disabled = false; $('#crop-apply-btn').className = 'px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700'; };
     img.src = URL.createObjectURL(file);
+  } else if (currentRoute === 'form' && formData) {
+    const n = ratioToCount(formData.ratio);
+    let target = variantPasteTargetIdx;
+    if (target < 0 || target >= n) {
+      target = formData.variants.findIndex((v, idx) => idx < n && !v.img);
+    }
+    if (target >= 0) setVariantImage(target, file);
   }
 });
 

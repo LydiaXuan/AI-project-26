@@ -378,8 +378,8 @@ const EFFECT_META = {
   good:      { icon:'👍', label:'不错',       cls:'bg-emerald-50 text-emerald-600 border-emerald-100' },
   neutral_p: { icon:'➖', label:'持平(+)',    cls:'bg-slate-100 text-slate-600 border-slate-200' },
   neutral_n: { icon:'➖', label:'持平(-)',    cls:'bg-slate-100 text-slate-500 border-slate-200' },
-  exp_p:     { icon:'📈', label:'经验(+)',    cls:'bg-indigo-50 text-indigo-600 border-indigo-100' },
-  exp_n:     { icon:'📈', label:'经验(-)',    cls:'bg-amber-50 text-amber-700 border-amber-100' },
+  exp_p:     { icon:'📈', label:'经验决策(+)', cls:'bg-indigo-50 text-indigo-600 border-indigo-100' },
+  exp_n:     { icon:'📈', label:'经验决策(-)', cls:'bg-amber-50 text-amber-700 border-amber-100' },
   bad:       { icon:'❌', label:'很差',       cls:'bg-rose-100 text-rose-700 border-rose-200' },
 };
 function effectBadgeHTML(eff) {
@@ -788,11 +788,11 @@ function variantRowHTML(v, i, ctrl) {
   const winBar = isWin ? '<div class="absolute top-0 left-0 w-1 h-full bg-emerald-400 rounded-l-lg"></div>' : '';
   const trophy = isWin ? ' 🏆' : '';
   const ciDisplay = (v.ciLow!=='' && v.ciHigh!=='' && v.ciLow!=null && v.ciHigh!=null) ?
-    `<div class="flex items-center gap-0.5 font-bold ${isWin?'text-emerald-600':(isBad?'text-rose-500':'text-slate-600')}">
+    `<div class="flex items-center gap-0.5 font-bold">
        <span class="text-slate-400 font-normal">【</span>
-       <span class="${isWin?'bg-emerald-100/50':(isBad?'bg-rose-50':'bg-slate-100')} px-1 rounded">${formatPct(v.ciLow)}</span>
+       <span class="px-1 rounded">${formatPctColored(v.ciLow)}</span>
        <span class="text-slate-400 font-normal">~</span>
-       <span class="${isWin?'bg-emerald-100/50':(isBad?'bg-rose-50':'bg-slate-100')} px-1 rounded">${formatPct(v.ciHigh)}</span>
+       <span class="px-1 rounded">${formatPctColored(v.ciHigh)}</span>
        <span class="text-slate-400 font-normal">】</span>
      </div>` : `<span class="font-bold text-slate-400">-</span>`;
   const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
@@ -815,6 +815,12 @@ function variantRowHTML(v, i, ctrl) {
 }
 function formatNum(x) { if (x === '' || x == null || isNaN(+x)) return '--'; return Number(x).toLocaleString(); }
 function formatPct(x) { if (x === '' || x == null) return '--'; const n = +x; return (n > 0 ? '+' : '') + n + '%'; }
+function formatPctColored(x) {
+  if (x === '' || x == null) return '<span class="text-slate-400">--</span>';
+  const n = +x; if (isNaN(n)) return '<span class="text-slate-400">--</span>';
+  const color = n > 0 ? 'text-emerald-600' : (n < 0 ? 'text-rose-500' : 'text-slate-600');
+  return `<span class="${color}">${(n > 0 ? '+' : '') + n + '%'}</span>`;
+}
 
 function openDetail(id, cardEl) {
   const r = state.records.find(x => x.id === id); if (!r) return;
@@ -845,13 +851,13 @@ function detailHTML(r) {
        eff === 'bad' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700">显著负向</span>' :
        eff === 'good' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-600">不错</span>' :
        '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-500">' + (EFFECT_META[eff]?.label || '观察') + '</span>');
-    const ci = isControl ? '<span class="text-slate-400">-</span>' : ((v.ciLow!=='' && v.ciHigh!=='') ? `${formatPct(v.ciLow)} ~ ${formatPct(v.ciHigh)}` : '<span class="text-slate-400">-</span>');
+    const ci = isControl ? '<span class="text-slate-400">-</span>' : ((v.ciLow!=='' && v.ciHigh!=='') ? `${formatPctColored(v.ciLow)} <span class="text-slate-400">~</span> ${formatPctColored(v.ciHigh)}` : '<span class="text-slate-400">-</span>');
     const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
     return `<tr class="${eff==='superb'?'bg-emerald-50/30':''}">
       <td class="pl-5 pr-2 py-3"><div class="w-14 h-14 rounded border border-slate-200 ${eff==='bad'?'grayscale':''}" style="${imgStyle}"></div></td>
       <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.installs)}</td>
       <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.retained)}</td>
-      <td class="px-3 py-3 text-right font-bold ${eff==='superb'?'text-emerald-600':(eff==='bad'?'text-rose-500':'text-slate-500')} whitespace-nowrap">${ci}</td>
+      <td class="px-3 py-3 text-right font-bold whitespace-nowrap">${ci}</td>
       <td class="px-5 py-3 text-right">${verdict}</td>
     </tr>`;
   }).join('');

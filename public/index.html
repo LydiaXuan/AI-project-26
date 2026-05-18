@@ -948,18 +948,26 @@ window.deleteCurrent = async () => {
 };
 
 // ---------- Timeline ----------
+function recordEffectiveTime(r) {
+  const raw = r.type === 'direct'
+    ? (r.updateDate || r.updatedAt)
+    : (r.endDate || r.startDate || r.updatedAt);
+  if (!raw) return 0;
+  const t = typeof raw === 'number' ? raw : new Date(raw).getTime();
+  return isNaN(t) ? (r.updatedAt || 0) : t;
+}
 function renderTimeline() {
   fillSelect('#tl-project', ['全部项目', ...state.meta.projects], $('#tl-project').value || '全部项目');
   $('#tl-project').onchange = renderTimeline;
   $('#tl-search').oninput = renderTimeline;
   const search = $('#tl-search').value.trim().toLowerCase();
   const proj = $('#tl-project').value;
-  let list = [...state.records].sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+  let list = [...state.records].sort((a,b) => recordEffectiveTime(b) - recordEffectiveTime(a));
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
   if (search) list = list.filter(r => JSON.stringify(r).toLowerCase().includes(search));
   const cont = $('#timeline-list'); cont.innerHTML = '';
   $('#timeline-empty').classList.toggle('hidden', list.length > 0);
-  list.forEach(r => cont.appendChild(timelineCard(r)));
+  list.forEach(r => cont.appendChild(r.type === 'direct' ? directCard(r) : timelineCard(r)));
 }
 function timelineCard(r) {
   const ctrl = r.variants?.[0];
@@ -992,6 +1000,43 @@ function timelineCard(r) {
       </div>
     </div>`;
   wrap.querySelector('.test-card').onclick = () => openDetail(r.id, wrap.querySelector('.test-card'));
+  return wrap;
+}
+function directCard(r) {
+  const dateStr = r.updateDate || new Date(r.updatedAt || Date.now()).toISOString().slice(0,10);
+  const attrChips = (r.attrs || []).map(a => `<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-semibold rounded">${escapeHTML(a)}</span>`).join('');
+  const beforeStyle = r.imageBefore ? `background-image:url('${r.imageBefore}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
+  const afterStyle  = r.imageAfter  ? `background-image:url('${r.imageAfter}'); background-size:contain; background-position:center; background-repeat:no-repeat;`  : 'background:#F1F5F9;';
+  const wrap = document.createElement('div');
+  wrap.className = 'relative pl-8 mb-6 group';
+  wrap.innerHTML = `
+    <div class="absolute left-0 top-6 w-[23px] h-[23px] rounded-full bg-sky-500 border-[4px] border-white shadow-sm z-10"></div>
+    <div class="bg-white rounded-xl border border-slate-200 p-5 hover:border-slate-300 shadow-sm">
+      <div class="flex justify-between items-start mb-4">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <span class="text-xs font-bold text-slate-400 font-mono">${dateStr}</span>
+            <span class="text-[10px] font-mono text-slate-400">#${r.id}</span>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-600">直接更新</span>
+            ${attrChips}
+          </div>
+          <h3 class="text-[15px] font-bold text-slate-800">${escapeHTML(r.project || '未命名')} — ${escapeHTML(r.noteChange || '直接更新')}</h3>
+          <div class="text-xs text-slate-400 mt-0.5">${escapeHTML(r.owner||'-')}</div>
+        </div>
+        <button type="button" onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded shrink-0">编辑</button>
+      </div>
+      <div class="flex items-center gap-4 justify-start">
+        <div class="flex flex-col items-center">
+          <span class="text-[11px] font-semibold text-slate-400 mb-1.5">原始</span>
+          <div class="w-24 h-24 rounded-lg border border-slate-200" style="${beforeStyle}"></div>
+        </div>
+        <svg class="w-6 h-6 text-slate-300 mt-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        <div class="flex flex-col items-center">
+          <span class="text-[11px] font-semibold text-sky-600 mb-1.5">更新后</span>
+          <div class="w-24 h-24 rounded-lg border border-sky-200 shadow-sm" style="${afterStyle}"></div>
+        </div>
+      </div>
+    </div>`;
   return wrap;
 }
 function variantRowHTML(v, i, ctrl) {

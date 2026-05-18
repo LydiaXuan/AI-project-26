@@ -255,7 +255,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               <span id="tl-period-label">所有时间</span>
               <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
-            <div id="tl-period-pop" class="hidden absolute top-full right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl flex" style="width:520px">
+            <div id="tl-period-pop" class="hidden fixed z-[100] bg-white border border-slate-200 rounded-xl shadow-xl flex" style="width:520px">
               <div id="tl-presets" class="w-28 border-r border-slate-100 p-2 space-y-0.5 text-[13px]"></div>
               <div class="flex-1 p-4">
                 <div class="flex gap-3 mb-3 items-end">
@@ -291,9 +291,10 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             <option value="not-adopted">未应用</option>
           </select>
           <select id="tl-retest" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100">
-            <option value="all">复测：全部</option>
+            <option value="all">复测状态：全部</option>
             <option value="pending">待复测</option>
-            <option value="done">复测项</option>
+            <option value="doing">复测项</option>
+            <option value="completed">复测完成</option>
             <option value="none">无标记</option>
           </select>
           <select id="tl-project" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100"></select>
@@ -1020,27 +1021,31 @@ function recordIsAdopted(r) {
   if (r.type === 'direct') return true;  // 直接更新本身即应用
   return (r.variants || []).some(v => v.adopted);
 }
+const RETEST_META = {
+  pending:   { icon: '⏳', label: '待复测', cls: 'bg-amber-50 text-amber-700' },
+  doing:     { icon: '🔄', label: '复测项', cls: 'bg-indigo-50 text-indigo-700' },
+  completed: { icon: '✓',  label: '复测完成', cls: 'bg-emerald-50 text-emerald-700' },
+};
 function recordRetestStates(r) {
-  // 返回 { pending: [name...], done: [name...] }；direct 走 record 级，A/B 走 variant 级
+  // 返回 { pending: [name...], doing: [...], completed: [...] }
+  // direct 走 record 级，A/B 走 variant 级
+  const buckets = { pending: [], doing: [], completed: [] };
   if (r.type === 'direct') {
-    return {
-      pending: r.retestStatus === 'pending' ? ['此记录'] : [],
-      done:    r.retestStatus === 'done'    ? ['此记录'] : [],
-    };
+    if (buckets[r.retestStatus]) buckets[r.retestStatus].push('此记录');
+    return buckets;
   }
-  const pending = [], done = [];
   (r.variants || []).forEach(v => {
-    if (v.retestStatus === 'pending') pending.push(v.name);
-    if (v.retestStatus === 'done')    done.push(v.name);
+    if (buckets[v.retestStatus]) buckets[v.retestStatus].push(v.name);
   });
-  return { pending, done };
+  return buckets;
 }
 function retestBadgeHTML(r) {
-  const { pending, done } = recordRetestStates(r);
-  let html = '';
-  if (pending.length) html += `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700">⏳ 待复测：${pending.map(escapeHTML).join(', ')}</span>`;
-  if (done.length)    html += `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">✓ 复测项：${done.map(escapeHTML).join(', ')}</span>`;
-  return html;
+  const states = recordRetestStates(r);
+  return Object.keys(RETEST_META).map(k => {
+    if (!states[k] || !states[k].length) return '';
+    const m = RETEST_META[k];
+    return `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${m.cls}">${m.icon} ${m.label}：${states[k].map(escapeHTML).join(', ')}</span>`;
+  }).join('');
 }
 function retestBtnHTML(r) {
   return `<button type="button" onclick="event.stopPropagation(); openRetestPicker('${r.id}', this)" class="text-xs px-2 py-1 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded inline-flex items-center gap-0.5">复测<svg class="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>`;
@@ -1054,10 +1059,11 @@ window.openRetestPicker = (id, btn) => {
   const pop = document.createElement('div');
   pop.className = 'retest-popover fixed z-[60] bg-white border border-slate-200 rounded-lg shadow-xl p-1 min-w-[200px]';
   pop.innerHTML =
-    '<div class="px-2 py-1 text-[10px] text-slate-400 font-semibold">点击循环：无 → 待复测 → 复测项</div>' +
+    '<div class="px-2 py-1 text-[10px] text-slate-400 font-semibold">点击循环：无 → 待复测 → 复测项 → 复测完成</div>' +
     items.map(it => {
-      const lbl = it.status === 'pending' ? '⏳ 待复测' : it.status === 'done' ? '✓ 复测项' : '⟲ 未标记';
-      const cls = it.status === 'pending' ? 'text-amber-700 bg-amber-50' : it.status === 'done' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400';
+      const m = RETEST_META[it.status];
+      const lbl = m ? `${m.icon} ${m.label}` : '⟲ 未标记';
+      const cls = m ? m.cls : 'text-slate-400';
       return `<button type="button" data-k="${it.key}" class="rp-opt w-full text-left px-2 py-1.5 text-[12px] rounded hover:bg-slate-50 flex justify-between items-center gap-3">
         <span class="text-slate-700 font-medium">${escapeHTML(it.label)}</span>
         <span class="${cls} px-1.5 py-0.5 rounded text-[11px] font-semibold">${lbl}</span>
@@ -1076,7 +1082,12 @@ window.openRetestPicker = (id, btn) => {
     const b = e.target.closest('.rp-opt'); if (!b) return;
     e.stopPropagation();
     const k = b.dataset.k;
-    const cycle = cur => cur === null ? 'pending' : cur === 'pending' ? 'done' : null;
+    const cycle = cur => {
+      if (cur === null || cur === undefined) return 'pending';
+      if (cur === 'pending')   return 'doing';
+      if (cur === 'doing')     return 'completed';
+      return null; // completed → null
+    };
     if (k === '_record') r.retestStatus = cycle(r.retestStatus || null);
     else { const v = r.variants[+k]; if (v) v.retestStatus = cycle(v.retestStatus || null); }
     r.updatedAt = Date.now();
@@ -1124,11 +1135,9 @@ function renderTimeline() {
   if (tlAdoption === 'not-adopted') list = list.filter(r => !recordIsAdopted(r));
   if (tlRetest !== 'all') {
     list = list.filter(r => {
-      const { pending, done } = recordRetestStates(r);
-      if (tlRetest === 'pending') return pending.length > 0;
-      if (tlRetest === 'done')    return done.length > 0;
-      if (tlRetest === 'none')    return pending.length === 0 && done.length === 0;
-      return true;
+      const states = recordRetestStates(r);
+      if (tlRetest === 'none') return !states.pending.length && !states.doing.length && !states.completed.length;
+      return (states[tlRetest] || []).length > 0;
     });
   }
   if (search) list = list.filter(r => JSON.stringify(r).toLowerCase().includes(search));
@@ -1532,8 +1541,19 @@ function renderTlCalendar() {
 }
 function openTlDatePicker() {
   tlDatePending = { preset:tlDateState.preset, from:tlDateState.from?new Date(tlDateState.from):null, to:tlDateState.to?new Date(tlDateState.to):null, picking:'from', viewMonth:tlDateState.from?new Date(tlDateState.from):new Date() };
-  $('#tl-period-pop').classList.remove('hidden');
+  const pop = $('#tl-period-pop');
+  const btn = $('#tl-period-btn');
+  pop.classList.remove('hidden');
   renderTlPresets(); renderTlCalendar();
+  // fixed 定位，从按钮 rect 算坐标，避开任何父容器的 overflow / stacking
+  const r = btn.getBoundingClientRect();
+  const pw = 520, ph = pop.offsetHeight || 380;
+  let top = r.bottom + 8;
+  if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 8);
+  let left = r.right - pw;
+  if (left < 8) left = 8;
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
 }
 function closeTlDatePicker(){ $('#tl-period-pop').classList.add('hidden'); }
 function bindTlDatePicker() {

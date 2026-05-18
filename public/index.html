@@ -719,6 +719,8 @@ function renderForm() {
       const v = e.target.value;
       if (e.target.checked) { if (!formData.attrs.includes(v)) formData.attrs.push(v); }
       else { formData.attrs = formData.attrs.filter(x => x !== v); }
+      applyAutoControlImage();
+      renderVariants();
     };
   });
   // 老记录里如果有 notePurpose，加载时合并到 noteChange 一次（首次进表单生效）
@@ -731,6 +733,7 @@ function renderForm() {
   $('#f-note-design').value = formData.noteDesign || '';
   $('#f-note-change').oninput = e => formData.noteChange = e.target.value;
   $('#f-note-design').oninput = e => formData.noteDesign = e.target.value;
+  applyAutoControlImage();
   renderVariants();
 }
 
@@ -861,8 +864,48 @@ function renderVariants() {
   });
 }
 window.toggleAdopt = i => { formData.variants[i].adopted = !formData.variants[i].adopted; renderVariants(); };
-window.clearVariantImage = i => { formData.variants[i].img = ''; renderVariants(); };
-async function setVariantImage(i, file) { formData.variants[i].img = await compressImage(file); renderVariants(); }
+window.clearVariantImage = i => { formData.variants[i].img = ''; if (i === 0) formData.variants[0]._auto = false; renderVariants(); };
+async function setVariantImage(i, file) {
+  formData.variants[i].img = await compressImage(file);
+  if (i === 0) formData.variants[0]._auto = false;
+  renderVariants();
+}
+
+function getLatestApplied(attr, excludeId) {
+  const events = [];
+  for (const r of state.records) {
+    if (excludeId && r.id === excludeId) continue;
+    if (!Array.isArray(r.attrs) || !r.attrs.includes(attr)) continue;
+    if (r.type === 'direct') {
+      if (r.imageAfter) {
+        const t = r.updateDate ? new Date(r.updateDate).getTime() : (r.updatedAt || 0);
+        events.push({ img: r.imageAfter, time: isNaN(t) ? (r.updatedAt||0) : t });
+      }
+    } else {
+      const adopted = (r.variants || []).find(v => v.adopted && v.img);
+      if (adopted) {
+        const ts = r.endDate || r.startDate;
+        const t = ts ? new Date(ts).getTime() : (r.updatedAt || 0);
+        events.push({ img: adopted.img, time: isNaN(t) ? (r.updatedAt||0) : t });
+      }
+    }
+  }
+  events.sort((a, b) => b.time - a.time);
+  return events[0]?.img || '';
+}
+
+function applyAutoControlImage() {
+  if (!formData || formData.type !== 'ab') return;
+  const v0 = formData.variants?.[0]; if (!v0) return;
+  if (v0.img && !v0._auto) return;
+  if (!Array.isArray(formData.attrs) || formData.attrs.length !== 1) {
+    if (v0._auto) { v0.img = ''; v0._auto = false; }
+    return;
+  }
+  const img = getLatestApplied(formData.attrs[0], formData.id);
+  if (img) { v0.img = img; v0._auto = true; }
+  else if (v0._auto) { v0.img = ''; v0._auto = false; }
+}
 function pickFile() {
   return new Promise(res => {
     const inp = document.createElement('input');

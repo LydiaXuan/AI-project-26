@@ -977,7 +977,7 @@ function timelineCard(r) {
   const hasBad = variants.some(v => v.role !== 'control' && computeEffect(v, ctrl) === 'bad');
   const adoptedV = variants.find(v => v.adopted);
   const dotColor = adoptedV ? 'bg-indigo-500' : (winner ? 'bg-emerald-500' : (hasBad ? 'bg-rose-500' : 'bg-slate-400'));
-  const cardRing = adoptedV ? 'border-indigo-200' : 'border-slate-200';
+  const cardRing = 'border-slate-200';
   const statusBadge = adoptedV ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-600">已采用 · ${escapeHTML(adoptedV.name)}</span>` :
     (winner ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600">显著胜出</span>' : '');
   const dateStr = r.startDate || new Date(r.updatedAt || Date.now()).toISOString().slice(0,10);
@@ -1014,7 +1014,8 @@ function directCard(r) {
   wrap.className = 'relative pl-8 mb-6 group';
   wrap.innerHTML = `
     <div class="absolute left-0 top-6 w-[23px] h-[23px] rounded-full bg-sky-500 border-[4px] border-white shadow-sm z-10"></div>
-    <div class="bg-white rounded-xl border border-sky-200 p-5 hover:border-sky-300 shadow-sm">
+    <div class="relative bg-sky-50/40 rounded-xl border border-sky-300 p-5 hover:border-sky-400 shadow-sm overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-sky-500"></div>
       <div class="flex justify-between items-start mb-4">
         <div class="min-w-0">
           <div class="flex items-center gap-2 mb-1 flex-wrap">
@@ -1054,8 +1055,8 @@ function variantRowHTML(v, i, ctrl) {
               isBad ? 'border-slate-100 bg-slate-50/50 opacity-70' :
               'border-slate-100 bg-slate-50/50';
   const deltaCls = (delta && +delta > 0) ? 'text-emerald-600' : (delta ? 'text-rose-500' : 'text-slate-400');
-  const sideBar = isAdopted ? '<div class="absolute top-0 left-0 w-1 h-full bg-indigo-500 rounded-l-lg"></div>' :
-                  isWin ? '<div class="absolute top-0 left-0 w-1 h-full bg-emerald-400 rounded-l-lg"></div>' : '';
+  const topBar = isAdopted ? '<div class="absolute top-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-lg"></div>' :
+                  isWin ? '<div class="absolute top-0 left-0 right-0 h-1 bg-emerald-400 rounded-t-lg"></div>' : '';
   const trophy = isWin ? ' 🏆' : '';
   const headerRight = isControl
     ? '<span class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-1.5 rounded shrink-0">基准线</span>'
@@ -1072,8 +1073,8 @@ function variantRowHTML(v, i, ctrl) {
      </div>` : `<span class="font-bold text-slate-400">-</span>`;
   const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
   return `
-    <div class="variant-card flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative">
-      ${sideBar}
+    <div class="variant-card flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative overflow-hidden">
+      ${topBar}
       <div class="vc-header flex justify-between items-start gap-1 mb-2">
         <span class="text-[13px] font-bold ${isWin||isAdopted?'text-slate-800':'text-slate-700'} truncate">${escapeHTML(v.name)}${trophy}</span>
         ${headerRight}

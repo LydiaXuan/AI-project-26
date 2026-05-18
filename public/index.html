@@ -1158,8 +1158,41 @@ function retestBadgeHTML(r) {
   }).join('');
 }
 function retestBtnHTML(r) {
-  return `<button type="button" onclick="event.stopPropagation(); openRetestPicker('${r.id}', this)" class="text-xs px-2 py-1 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded inline-flex items-center gap-0.5">复测<svg class="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>`;
+  // A/B 类型在每张变体卡上已经有 retestPill，header 不再渲染按钮（避免冗余）
+  if (r.type !== 'direct') return '';
+  const s = r.retestStatus;
+  const m = RETEST_META[s];
+  const label = m ? `${m.icon} ${m.label}` : '⟲ 标记复测';
+  const cls = m ? m.cls : 'text-slate-500 bg-slate-50 hover:bg-slate-100';
+  return `<button type="button" onclick="event.stopPropagation(); cycleDirectRetest('${r.id}')" class="text-xs px-2 py-1 ${cls} rounded">${label}</button>`;
 }
+const _cycleRetest = cur => {
+  if (cur === null || cur === undefined) return 'pending';
+  if (cur === 'pending')   return 'doing';
+  if (cur === 'doing')     return 'completed';
+  return null;
+};
+window.cycleVariantRetest = async (id, idx) => {
+  const r = state.records.find(x => x.id === id); if (!r) return;
+  const v = r.variants?.[idx]; if (!v) return;
+  v.retestStatus = _cycleRetest(v.retestStatus || null);
+  let promoted = 0;
+  if (v.retestStatus === 'doing') promoted = autoPromotePendingRetests(r);
+  r.updatedAt = Date.now();
+  await saveRecords();
+  renderTimeline();
+  if (promoted > 0) toast(`已自动把 ${promoted} 条更早的「待复测」标为「复测完成」`, 'success');
+};
+window.cycleDirectRetest = async id => {
+  const r = state.records.find(x => x.id === id); if (!r) return;
+  r.retestStatus = _cycleRetest(r.retestStatus || null);
+  let promoted = 0;
+  if (r.retestStatus === 'doing') promoted = autoPromotePendingRetests(r);
+  r.updatedAt = Date.now();
+  await saveRecords();
+  renderTimeline();
+  if (promoted > 0) toast(`已自动把 ${promoted} 条更早的「待复测」标为「复测完成」`, 'success');
+};
 window.openRetestPicker = (id, btn) => {
   document.querySelectorAll('.retest-popover').forEach(p => p.remove());
   const r = state.records.find(x => x.id === id); if (!r) return;
@@ -1305,7 +1338,7 @@ function timelineCard(r) {
         </div>
       </div>
       <div class="variant-grid grid grid-cols-1 xl:grid-cols-${Math.min(Math.max(variants.length,1), 4)} gap-4">
-        ${variants.map((v, i) => variantRowHTML(v, i, ctrl)).join('')}
+        ${variants.map((v, i) => variantRowHTML(v, i, ctrl, r.id)).join('')}
       </div>
     </div>`;
   wrap.querySelector('.test-card').onclick = () => openDetail(r.id, wrap.querySelector('.test-card'));
@@ -1353,14 +1386,14 @@ function directCard(r) {
     </div>`;
   return wrap;
 }
-function variantRowHTML(v, i, ctrl) {
+function variantRowHTML(v, i, ctrl, recordId) {
   const isControl = v.role === 'control';
   const eff = !isControl ? computeEffect(v, ctrl) : null;
   const cInst = parseFloat(ctrl?.installs), inst = parseFloat(v.installs);
   const delta = (!isControl && !isNaN(cInst) && !isNaN(inst) && cInst > 0) ? ((inst - cInst) / cInst * 100).toFixed(1) : null;
   const isWin = eff === 'superb', isBad = eff === 'bad';
   const isAdopted = !!v.adopted;
-  const cls = isAdopted ? 'border-indigo-300 bg-indigo-50/40' :
+  const cls = isAdopted ? 'border-indigo-300 bg-indigo-100/60' :
               isWin ? 'border-emerald-200 bg-emerald-50/30' :
               isBad ? 'border-slate-100 bg-slate-50/50 opacity-70' :
               'border-slate-100 bg-slate-50/50';
@@ -1371,8 +1404,19 @@ function variantRowHTML(v, i, ctrl) {
   const headerRight = isControl
     ? '<span class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-1.5 rounded shrink-0">基准线</span>'
     : isAdopted
-      ? `<span class="inline-flex items-center gap-0.5 text-[11px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded shrink-0">✓ 已采用${delta!==null?` · ${delta>0?'+':''}${delta}%`:''}</span>`
+      ? `<span class="inline-flex items-center gap-0.5 text-[11px] font-bold text-indigo-700 bg-white border border-indigo-300 px-1.5 py-0.5 rounded shrink-0 shadow-sm">✓ 已采用${delta!==null?` · ${delta>0?'+':''}${delta}%`:''}</span>`
       : (delta!==null ? `<span class="text-[12px] font-bold ${deltaCls} shrink-0">${delta>0?'+':''}${delta}%</span>` : '');
+  // 复测小按钮（非 control）：点击直接循环 无 → 待复测 → 复测项 → 复测完成 → 无
+  const rs = v.retestStatus;
+  const rm = RETEST_META[rs];
+  const retestIcon = rm ? rm.icon : '⟲';
+  const retestPillCls = rm ? rm.cls : 'text-slate-400 bg-slate-100 hover:bg-slate-200';
+  const retestTip = rm ? `${rm.label}（点击循环）` : '标记复测';
+  const retestPill = (!isControl && recordId) ? `
+    <button type="button" onclick="event.stopPropagation(); cycleVariantRetest('${recordId}', ${i})" title="${retestTip}"
+      class="text-[10px] px-1.5 py-0.5 rounded ${retestPillCls} shrink-0 hover:opacity-80 cursor-pointer">
+      ${retestIcon}
+    </button>` : '';
   const ciDisplay = (v.ciLow!=='' && v.ciHigh!=='' && v.ciLow!=null && v.ciHigh!=null) ?
     `<div class="flex items-center gap-0.5 font-bold">
        <span class="text-slate-400 font-normal">【</span>
@@ -1385,8 +1429,11 @@ function variantRowHTML(v, i, ctrl) {
   return `
     <div class="variant-card flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative overflow-hidden">
       ${topBar}
-      <div class="vc-header flex justify-between items-start gap-1 mb-2">
-        <span class="text-[13px] font-bold ${isWin||isAdopted?'text-slate-800':'text-slate-700'} truncate">${escapeHTML(v.name)}${trophy}</span>
+      <div class="vc-header flex justify-between items-center gap-1 mb-2">
+        <div class="flex items-center gap-1 min-w-0">
+          <span class="text-[13px] font-bold ${isWin||isAdopted?'text-slate-800':'text-slate-700'} truncate">${escapeHTML(v.name)}${trophy}</span>
+          ${retestPill}
+        </div>
         ${headerRight}
       </div>
       <div class="vc-image w-full max-w-[140px] h-28 mx-auto rounded border border-slate-200 mb-2 bg-slate-50/40 ${isBad?'grayscale':''}" style="${imgStyle}"></div>

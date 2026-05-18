@@ -1095,8 +1095,9 @@ function renderDashboard() {
   let list = [...state.records];
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
   if (owner && owner !== '全部成员') list = list.filter(r => r.owner === owner);
-  if (dbDateState.from) { const fT = _sod(dbDateState.from).getTime(); list = list.filter(r => (r.updatedAt||0) >= fT); }
-  if (dbDateState.to)   { const tT = _eod(dbDateState.to).getTime();   list = list.filter(r => (r.updatedAt||0) <= tT); }
+  const _recDate = r => { const d = r.startDate ? new Date(r.startDate).getTime() : (r.updatedAt || 0); return isNaN(d) ? (r.updatedAt||0) : d; };
+  if (dbDateState.from) { const fT = _sod(dbDateState.from).getTime(); list = list.filter(r => _recDate(r) >= fT); }
+  if (dbDateState.to)   { const tT = _eod(dbDateState.to).getTime();   list = list.filter(r => _recDate(r) <= tT); }
 
   const total = list.length;
   const adopted = list.filter(r => (r.variants||[]).some(v => v.adopted)).length;

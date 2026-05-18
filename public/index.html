@@ -419,14 +419,19 @@ function computeEffect(v, control) {
     if (lo >= 10) return 'superb';            // 下限 ≥ 10% → 🏆 很好
     if (lo >= 0)  return 'good';              // CI 整体 ≥ 0 → 👍 不错
     if (hi < 0)   return 'bad';               // CI 整体 < 0 → ❌ 很差
-    // 跨 0：先看稳定性
-    if (lo <= -5 || hi >= 10) {               // 不稳定（区间距 0 远）→ 经验决策
+    // 跨 0：先看宽度
+    const width = hi - lo;
+    const mid = (lo + hi) / 2;
+    if (width > 20) {
+      // 区间太散，正常按 install 决经验决策；但若 mid 明显偏负（≤ -5%）
+      // 说明方向其实清楚，直接判很差
+      if (mid <= -5) return 'bad';
       if (!isNaN(inst) && !isNaN(cInst)) return inst > cInst ? 'exp_p' : 'exp_n';
       return 'exp_n';
     }
-    // 跨 0 但稳定 → 用中间值判趋势
-    const mid = (lo + hi) / 2;
-    if (mid >= 5) return 'good';
+    // 跨 0 且区间窄：先看擦边正向（lo 几乎贴 0 + hi 有意义地正）
+    if (lo >= -2 && hi >= 5) return 'good';
+    // 否则用中间值判
     if (mid > 0)  return 'neutral_p';
     return 'neutral_n';                       // mid ≤ 0
   }

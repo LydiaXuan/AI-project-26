@@ -109,6 +109,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
       <div class="flex-1 overflow-y-auto p-8 hide-scrollbar relative">
         <div class="max-w-[1400px] mx-auto space-y-6 pb-24">
 
+          <div id="form-ab-body" class="space-y-6">
           <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-5 flex items-center gap-2">
               <span class="w-1 h-3 bg-indigo-500 rounded-full"></span> 基础实验属性
@@ -177,6 +178,63 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             </div>
             <div id="variants-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5"></div>
           </section>
+          </div>
+
+          <div id="form-direct-body" class="space-y-6 hidden">
+            <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-5 flex items-center gap-2">
+                <span class="w-1 h-3 bg-indigo-500 rounded-full"></span> 基本信息
+              </h2>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 mb-5">
+                <div>
+                  <label class="text-[12px] text-slate-500 block mb-1">项目</label>
+                  <div class="flex items-center gap-2 border-b border-slate-200 pb-1">
+                    <select id="d-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none flex-1 cursor-pointer"></select>
+                    <button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="text-[12px] text-slate-500 block mb-1">负责人</label>
+                  <div class="flex items-center gap-2 border-b border-slate-200 pb-1">
+                    <select id="d-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none flex-1 cursor-pointer"></select>
+                    <button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="text-[12px] text-slate-500 block mb-1">更新日期</label>
+                  <input id="d-date" type="date" class="w-full text-[13px] font-semibold text-slate-800 bg-transparent outline-none border-b border-slate-200 pb-1 cursor-pointer">
+                </div>
+              </div>
+              <div class="mb-4">
+                <label class="text-[12px] text-slate-500 block mb-2">截图类型 <span class="text-[10px] text-slate-400">(可多选)</span></label>
+                <div class="flex gap-2" id="d-attrs">
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="icon" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">icon</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="五图" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">五图</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="置顶" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">置顶</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="视频" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">视频</div></label>
+                </div>
+              </div>
+              <div>
+                <label class="text-[12px] text-slate-500 block mb-2">改动内容</label>
+                <input id="d-note" type="text" placeholder="做了什么改动" class="w-full text-[13px] text-slate-800 bg-slate-50 rounded-lg px-4 py-2.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400">
+              </div>
+            </section>
+            <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-5 flex items-center gap-2">
+                <span class="w-1 h-3 bg-indigo-500 rounded-full"></span> 截图对比
+              </h2>
+              <div class="grid grid-cols-2 gap-6 max-w-md">
+                <div>
+                  <label class="text-[12px] text-slate-500 block mb-2">原始</label>
+                  <div id="d-image-before" class="d-image-drop relative h-28 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors" data-slot="before"></div>
+                </div>
+                <div>
+                  <label class="text-[12px] text-slate-500 block mb-2">更新后</label>
+                  <div id="d-image-after" class="d-image-drop relative h-28 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors" data-slot="after"></div>
+                </div>
+              </div>
+            </section>
+          </div>
 
         </div>
       </div>
@@ -598,6 +656,7 @@ function blankForm() {
     startDate: '', endDate: '', confidence: 95,
     attrs: [],
     noteChange: '', notePurpose: '', noteDesign: '', summary: '',
+    updateDate: '', imageBefore: '', imageAfter: '',
     variants: [
       { name:'原始版本',  tag:'CONTROL',   role:'control', installs:'', retained:'', ciLow:'', ciHigh:'', img:'', adopted:false },
       { name:'方案 A',    tag:'VARIANT 1', role:'variant', installs:'', retained:'', ciLow:'', ciHigh:'', img:'', adopted:false },
@@ -633,6 +692,10 @@ function renderForm() {
     b.className = `form-type-btn px-5 py-1.5 text-[13px] rounded-md ${on?'bg-white text-slate-800 shadow-sm font-semibold':'text-slate-500 hover:text-slate-700 font-medium'}`;
     b.onclick = () => { formData.type = b.dataset.type; renderForm(); };
   });
+  const isDirect = formData.type === 'direct';
+  $('#form-ab-body').classList.toggle('hidden', isDirect);
+  $('#form-direct-body').classList.toggle('hidden', !isDirect);
+  if (isDirect) { renderDirectForm(); return; }
   fillSelect('#f-project', state.meta.projects, formData.project);
   fillSelect('#f-owner', state.meta.owners, formData.owner);
   fillSelect('#f-ratio', state.meta.ratios, formData.ratio);
@@ -670,6 +733,56 @@ function renderForm() {
   $('#f-note-design').oninput = e => formData.noteDesign = e.target.value;
   renderVariants();
 }
+
+function renderDirectForm() {
+  fillSelect('#d-project', state.meta.projects, formData.project);
+  fillSelect('#d-owner', state.meta.owners, formData.owner);
+  $('#d-project').onchange = e => formData.project = e.target.value;
+  $('#d-owner').onchange = e => formData.owner = e.target.value;
+  $('#d-date').value = formData.updateDate || '';
+  $('#d-date').onchange = e => formData.updateDate = e.target.value;
+  if (!Array.isArray(formData.attrs)) formData.attrs = [];
+  $$('#d-attrs input').forEach(c => {
+    c.checked = formData.attrs.includes(c.value);
+    c.onchange = e => {
+      const v = e.target.value;
+      if (e.target.checked) { if (!formData.attrs.includes(v)) formData.attrs.push(v); }
+      else { formData.attrs = formData.attrs.filter(x => x !== v); }
+    };
+  });
+  $('#d-note').value = formData.noteChange || '';
+  $('#d-note').oninput = e => formData.noteChange = e.target.value;
+  paintDirectSlot('before');
+  paintDirectSlot('after');
+}
+
+function paintDirectSlot(slot) {
+  const el = $(slot === 'before' ? '#d-image-before' : '#d-image-after');
+  const img = slot === 'before' ? formData.imageBefore : formData.imageAfter;
+  if (img) {
+    el.innerHTML = `<img src="${img}" class="absolute inset-0 w-full h-full object-contain rounded-lg" onclick="event.stopPropagation();showLightbox('${img}')">
+      <button type="button" onclick="event.stopPropagation();clearDirectImage('${slot}')" class="absolute top-1 right-1 w-5 h-5 bg-white/90 border border-slate-200 rounded-full text-xs leading-none">✕</button>`;
+  } else {
+    el.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none">
+      <svg class="w-5 h-5 mb-1 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      <span class="text-[11px] font-medium">点击 / 拖拽 / Ctrl+V</span>
+    </div>`;
+  }
+  el.onclick = () => pickFile().then(f => f && setDirectImage(slot, f));
+  el.ondragover = e => { e.preventDefault(); el.classList.add('drop-active'); };
+  el.ondragleave = () => el.classList.remove('drop-active');
+  el.ondrop = e => { e.preventDefault(); el.classList.remove('drop-active'); const f = e.dataTransfer.files[0]; if (f) setDirectImage(slot, f); };
+}
+
+async function setDirectImage(slot, file) {
+  const data = await compressImage(file);
+  if (slot === 'before') formData.imageBefore = data; else formData.imageAfter = data;
+  paintDirectSlot(slot);
+}
+window.clearDirectImage = slot => {
+  if (slot === 'before') formData.imageBefore = ''; else formData.imageAfter = '';
+  paintDirectSlot(slot);
+};
 function fillSelect(sel, items, value) {
   const el = $(sel);
   el.innerHTML = items.map(x => `<option ${x===value?'selected':''}>${escapeHTML(x)}</option>`).join('');
@@ -1833,6 +1946,12 @@ window.addEventListener('paste', e => {
     img.onload = () => { cropImg = img; layoutCropCanvas(); $('#crop-canvas-wrap').classList.remove('hidden'); $('#crop-apply-btn').disabled = false; $('#crop-apply-btn').className = 'px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700'; };
     img.src = URL.createObjectURL(file);
   } else if (currentRoute === 'form' && formData) {
+    if (formData.type === 'direct') {
+      if (!formData.imageBefore) setDirectImage('before', file);
+      else if (!formData.imageAfter) setDirectImage('after', file);
+      else setDirectImage('after', file);
+      return;
+    }
     const n = ratioToCount(formData.ratio);
     let target = variantPasteTargetIdx;
     if (target < 0 || target >= n) {

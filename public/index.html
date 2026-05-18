@@ -817,7 +817,7 @@ function renderVariants() {
         </div>
       </div>
       <div class="p-4 flex-1 flex flex-col bg-slate-50/50 border-t border-slate-100">
-        <div class="flex-1 flex flex-col justify-center gap-3.5">
+        <div class="flex flex-col gap-3.5">
           <div class="flex justify-between items-center"><label class="text-[12px] font-semibold text-slate-500">首次安装</label><input value="${v.installs}" data-field="installs" data-i="${i}" class="vf w-20 text-right text-[13px] font-bold text-slate-800 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none pb-0.5" placeholder="--"></div>
           <div class="flex justify-between items-center"><label class="text-[12px] font-semibold text-slate-500">保留安装</label><input value="${v.retained}" data-field="retained" data-i="${i}" class="vf w-20 text-right text-[13px] font-bold text-slate-800 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none pb-0.5" placeholder="--"></div>
           ${isControl ? '' : `
@@ -842,8 +842,8 @@ function renderVariants() {
             </div>
           `}
         </div>
-        ${isControl ? `<div class="pt-3"><div class="w-full text-[12px] font-semibold text-slate-400 text-center py-2">基础对照组 (-)</div></div>` : `
-          <div class="pt-3"><button onclick="toggleAdopt(${i})" class="w-full text-[12px] font-bold ${v.adopted?'text-emerald-700 bg-emerald-50 border-emerald-200':'text-slate-600 bg-white border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'} border rounded-lg py-2 shadow-sm transition-all">${v.adopted?'✓ 已采用':'标记为采用'}</button></div>
+        ${isControl ? `<div class="mt-auto pt-3"><div class="w-full text-[12px] font-semibold text-slate-400 text-center py-2">基础对照组 (-)</div></div>` : `
+          <div class="mt-auto pt-3"><button onclick="toggleAdopt(${i})" class="w-full text-[12px] font-bold ${v.adopted?'text-emerald-700 bg-emerald-50 border-emerald-200':'text-slate-600 bg-white border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'} border rounded-lg py-2 shadow-sm transition-all">${v.adopted?'✓ 已采用':'标记为采用'}</button></div>
         `}
       </div>`;
     grid.appendChild(card);

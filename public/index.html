@@ -2001,7 +2001,7 @@ function updateCropPreview() {
     const slice = document.createElement('canvas');
     slice.width = cropImg.width; slice.height = sliceH;
     slice.getContext('2d').drawImage(cropImg, 0, splits[i], cropImg.width, sliceH, 0, 0, cropImg.width, sliceH);
-    const trimmed = padToSquare(trimToMainBlockSync(slice));
+    const trimmed = trimToMainBlockSync(slice);
     const sc = Math.min(MAX / trimmed.width, MAX / trimmed.height, 1);
     const thumb = document.createElement('canvas');
     thumb.width = Math.max(1, trimmed.width * sc);
@@ -2029,20 +2029,9 @@ window.applyCrop = async () => {
 // 异步版（applyCrop 用）
 function trimTopBottom(canvas) {
   return new Promise(res => {
-    const c = padToSquare(trimToMainBlockSync(canvas));
+    const c = trimToMainBlockSync(canvas);
     c.toBlob(b => res(b));
   });
-}
-function padToSquare(canvas) {
-  const size = Math.max(canvas.width, canvas.height);
-  if (canvas.width === size && canvas.height === size) return canvas;
-  const out = document.createElement('canvas');
-  out.width = size; out.height = size;
-  const ctx = out.getContext('2d');
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, size, size);
-  ctx.drawImage(canvas, Math.round((size - canvas.width) / 2), Math.round((size - canvas.height) / 2));
-  return out;
 }
 
 // ---------- Paste handler ----------

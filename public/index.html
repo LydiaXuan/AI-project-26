@@ -250,6 +250,40 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4 4m0 0l4-4m-4 4V4"/></svg>
             <span id="tl-sort-label">最新在上</span>
           </button>
+          <div class="relative">
+            <button id="tl-period-btn" type="button" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100 flex items-center gap-1.5">
+              <span id="tl-period-label">所有时间</span>
+              <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="tl-period-pop" class="hidden absolute top-full right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl flex" style="width:520px">
+              <div id="tl-presets" class="w-28 border-r border-slate-100 p-2 space-y-0.5 text-[13px]"></div>
+              <div class="flex-1 p-4">
+                <div class="flex gap-3 mb-3 items-end">
+                  <div class="flex-1">
+                    <label class="text-[11px] text-slate-500 block mb-1">开始日期</label>
+                    <input id="tlp-from" type="text" class="w-full text-[13px] font-semibold border-b-2 border-indigo-500 focus:outline-none pb-1 bg-transparent text-slate-800 cursor-pointer" readonly>
+                  </div>
+                  <span class="pb-1.5 text-slate-400">—</span>
+                  <div class="flex-1">
+                    <label class="text-[11px] text-slate-500 block mb-1">结束日期</label>
+                    <input id="tlp-to" type="text" class="w-full text-[13px] font-semibold border-b-2 border-slate-200 focus:outline-none pb-1 bg-transparent text-slate-800 cursor-pointer" readonly>
+                  </div>
+                </div>
+                <div class="flex justify-between items-center mb-2 mt-3">
+                  <span id="tlp-month-label" class="text-[13px] font-semibold text-slate-700"></span>
+                  <div class="flex gap-1">
+                    <button type="button" id="tlp-prev" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500 cursor-pointer">‹</button>
+                    <button type="button" id="tlp-next" class="w-7 h-7 hover:bg-slate-100 rounded flex items-center justify-center text-slate-500 cursor-pointer">›</button>
+                  </div>
+                </div>
+                <div id="tlp-calendar"></div>
+                <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100">
+                  <button type="button" id="tlp-cancel" class="px-4 py-1 text-[13px] text-slate-500 hover:bg-slate-50 rounded cursor-pointer">取消</button>
+                  <button type="button" id="tlp-apply" class="px-4 py-1 text-[13px] font-semibold text-indigo-600 hover:bg-indigo-50 rounded cursor-pointer">应用</button>
+                </div>
+              </div>
+            </div>
+          </div>
           <select id="tl-owner" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100"></select>
           <select id="tl-adoption" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100">
             <option value="all">应用状态：全部</option>
@@ -1013,6 +1047,7 @@ function renderTimeline() {
   $('#tl-adoption').value = tlAdoption;
   $('#tl-retest').value = tlRetest;
   $('#tl-sort-label').textContent = tlSortOrder === 'desc' ? '最新在上' : '最早在上';
+  $('#tl-period-label').textContent = dbPeriodLabel(tlDateState);
   $('#tl-project').onchange = renderTimeline;
   $('#tl-search').oninput = renderTimeline;
   $('#tl-owner').onchange = e => { tlOwner = e.target.value; renderTimeline(); };
@@ -1027,6 +1062,8 @@ function renderTimeline() {
   });
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
   if (tlOwner && tlOwner !== '全部成员') list = list.filter(r => r.owner === tlOwner);
+  if (tlDateState.from) { const fT = _sod(tlDateState.from).getTime(); list = list.filter(r => recordEffectiveTime(r) >= fT); }
+  if (tlDateState.to)   { const tT = _eod(tlDateState.to).getTime();   list = list.filter(r => recordEffectiveTime(r) <= tT); }
   if (tlAdoption === 'adopted')     list = list.filter(r => recordIsAdopted(r));
   if (tlAdoption === 'not-adopted') list = list.filter(r => !recordIsAdopted(r));
   if (tlRetest === 'pending') list = list.filter(r => r.retestStatus === 'pending');
@@ -1375,6 +1412,107 @@ function bindDbDatePicker() {
     if (!pop.contains(e.target) && !e.target.closest('#db-period-btn')) closeDbDatePicker();
   });
 }
+
+// ---------- Timeline date picker (与仪表盘独立 state，复用 DB_PRESETS / presetToRange) ----------
+let tlDateState = { preset: 'all', from: null, to: null };
+let tlDatePending = null;
+function renderTlPresets() {
+  $('#tl-presets').innerHTML = DB_PRESETS.map(([k,n]) =>
+    `<button type="button" class="tlp-preset w-full text-left px-3 py-1.5 rounded text-[13px] cursor-pointer ${tlDatePending.preset===k?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}" data-k="${k}">${n}</button>`
+  ).join('');
+}
+function _onTlPresetPick(k) {
+  tlDatePending.preset = k;
+  if (k!=='custom') { const r = presetToRange(k); if (r){ tlDatePending.from=r.from; tlDatePending.to=r.to; } }
+  tlDatePending.picking = 'from';
+  if (tlDatePending.from) tlDatePending.viewMonth = new Date(tlDatePending.from);
+  renderTlPresets(); renderTlCalendar();
+}
+function _onTlDayPick(timeMs) {
+  const s = tlDatePending;
+  const dt = _sod(new Date(timeMs));
+  if (s.picking==='from' || !s.from || (s.from && s.to)) { s.from=dt; s.to=null; s.picking='to'; }
+  else { if (dt<s.from){ s.to=s.from; s.from=dt; } else s.to=dt; s.picking='from'; }
+  s.preset = 'custom';
+  renderTlPresets(); renderTlCalendar();
+}
+function renderTlCalendar() {
+  const s = tlDatePending, v = s.viewMonth;
+  const year=v.getFullYear(), month=v.getMonth();
+  const firstWk = (new Date(year,month,1).getDay()||7);
+  const dim = new Date(year,month+1,0).getDate();
+  const pdim = new Date(year,month,0).getDate();
+  const cells = [];
+  for (let i=firstWk-1;i>0;i--) cells.push({d:new Date(year,month-1,pdim-i+1),other:true});
+  for (let d=1;d<=dim;d++) cells.push({d:new Date(year,month,d),other:false});
+  while (cells.length%7!==0){ const last=cells[cells.length-1].d; cells.push({d:_addD(last,1),other:true}); }
+  $('#tlp-month-label').textContent = `${year}年${month+1}月`;
+  $('#tlp-from').value = s.from?_fmtD(s.from):'';
+  $('#tlp-to').value = s.to?_fmtD(s.to):'';
+  $('#tlp-from').classList.toggle('border-indigo-500', s.picking==='from');
+  $('#tlp-from').classList.toggle('border-slate-200', s.picking!=='from');
+  $('#tlp-to').classList.toggle('border-indigo-500', s.picking==='to');
+  $('#tlp-to').classList.toggle('border-slate-200', s.picking!=='to');
+  const f = s.from?_sod(s.from).getTime():null, to = s.to?_sod(s.to).getTime():null;
+  const html = cells.map(c => {
+    const dt = _sod(c.d).getTime();
+    const isStart = f && dt===f, isEnd = to && dt===to, inR = f && to && dt>=f && dt<=to;
+    let cls = 'rounded';
+    if (isStart || isEnd) cls = 'bg-indigo-600 text-white font-bold rounded-full';
+    else if (inR) cls = 'bg-indigo-50 text-indigo-700';
+    else if (c.other) cls = 'text-slate-300';
+    else cls = 'text-slate-700 hover:bg-slate-100 rounded';
+    return `<button type="button" class="tlp-day h-8 w-full cursor-pointer ${cls}" data-d="${dt}">${c.d.getDate()}</button>`;
+  }).join('');
+  $('#tlp-calendar').innerHTML = `
+    <div class="grid grid-cols-7 text-[11px] text-slate-500 mb-1">${['一','二','三','四','五','六','日'].map(w=>`<div class="text-center py-1">${w}</div>`).join('')}</div>
+    <div class="grid grid-cols-7 gap-y-1 text-[12px]">${html}</div>`;
+}
+function openTlDatePicker() {
+  tlDatePending = { preset:tlDateState.preset, from:tlDateState.from?new Date(tlDateState.from):null, to:tlDateState.to?new Date(tlDateState.to):null, picking:'from', viewMonth:tlDateState.from?new Date(tlDateState.from):new Date() };
+  $('#tl-period-pop').classList.remove('hidden');
+  renderTlPresets(); renderTlCalendar();
+}
+function closeTlDatePicker(){ $('#tl-period-pop').classList.add('hidden'); }
+function bindTlDatePicker() {
+  const btn = $('#tl-period-btn');
+  if (!btn || btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('#tl-period-pop').classList.contains('hidden') ? openTlDatePicker() : closeTlDatePicker();
+  });
+  $('#tlp-prev').addEventListener('click', (e) => { e.stopPropagation(); if(!tlDatePending) return; tlDatePending.viewMonth = new Date(tlDatePending.viewMonth.getFullYear(), tlDatePending.viewMonth.getMonth()-1, 1); renderTlCalendar(); });
+  $('#tlp-next').addEventListener('click', (e) => { e.stopPropagation(); if(!tlDatePending) return; tlDatePending.viewMonth = new Date(tlDatePending.viewMonth.getFullYear(), tlDatePending.viewMonth.getMonth()+1, 1); renderTlCalendar(); });
+  $('#tlp-cancel').addEventListener('click', (e) => { e.stopPropagation(); closeTlDatePicker(); });
+  $('#tlp-apply').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!tlDatePending) { closeTlDatePicker(); return; }
+    tlDateState = { preset: tlDatePending.preset, from: tlDatePending.from, to: tlDatePending.to };
+    closeTlDatePicker();
+    renderTimeline();
+  });
+  $('#tlp-from').addEventListener('click', (e) => { e.stopPropagation(); if(!tlDatePending) return; tlDatePending.picking='from'; renderTlCalendar(); });
+  $('#tlp-to').addEventListener('click', (e) => { e.stopPropagation(); if(!tlDatePending) return; tlDatePending.picking='to'; renderTlCalendar(); });
+  $('#tl-presets').addEventListener('click', (e) => {
+    const b = e.target.closest('.tlp-preset');
+    if (!b || !tlDatePending) return;
+    e.stopPropagation();
+    _onTlPresetPick(b.dataset.k);
+  });
+  $('#tlp-calendar').addEventListener('click', (e) => {
+    const b = e.target.closest('.tlp-day');
+    if (!b || !tlDatePending) return;
+    e.stopPropagation();
+    _onTlDayPick(+b.dataset.d);
+  });
+  document.addEventListener('click', (e) => {
+    const pop = $('#tl-period-pop');
+    if (!pop || pop.classList.contains('hidden')) return;
+    if (!pop.contains(e.target) && !e.target.closest('#tl-period-btn')) closeTlDatePicker();
+  });
+}
+
 function renderDashboard() {
   fillSelect('#db-project', ['全部项目', ...state.meta.projects], $('#db-project').value || '全部项目');
   fillSelect('#db-owner', ['全部成员', ...state.meta.owners], $('#db-owner').value || '全部成员');
@@ -2164,6 +2302,7 @@ async function bootApp() {
     $('#folder-status').textContent = _folder ? _folder.name : '未连接';
     renderPending(); renderProfileMini();
     bindDbDatePicker();
+    bindTlDatePicker();
     $('#splash').classList.add('hidden');
     $('#app').classList.remove('hidden');
     $('#app').classList.add('flex');

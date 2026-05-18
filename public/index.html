@@ -1679,7 +1679,9 @@ function parseOCR(installsText, retainedText) {
                (retainedText ? '\n\n【保留安装识别原文】\n' + retainedText : '');
   const installs = extractNumsAndCIs(installsText);
   const retained = extractNumsAndCIs(retainedText).numbers;
-  const n = Math.max(installs.numbers.length, 1);
+  // 至少显示当前流量比例对应的变体数（默认 4 行）；OCR 没识别到的留空让用户手填
+  const targetN = ratioToCount(formData?.ratio || '') || 4;
+  const n = Math.max(installs.numbers.length, retained.length, targetN);
   const variants = [];
   for (let i = 0; i < n; i++) {
     variants.push({
@@ -1711,24 +1713,41 @@ function extractNumsAndCIs(text) {
     const stripped = line.replace(/[+\-±]?\d+\.?\d*\s*%/g, ' ');
     const matches = [...stripped.matchAll(numRe)];
     if (matches.length === 0) return;
-    // Pick the LARGEST valid number on this line (Play Console: "已调整"
-    // is rightmost and typically the largest value — that's what user wants)
-    let best = null;
+    // 收集这行所有合法的大数字，去掉相邻重复（同一行 raw 和 adjusted 通常相同/相近）
+    const validNums = [];
     for (const m of matches) {
       const n = parseInt(m[1].replace(/,/g, ''), 10);
       if (isNaN(n) || n < 100 || n > 99999999) continue;
-      if (!best || n > best) best = n;
+      validNums.push(n);
     }
-    if (best == null) return;
-    numbers.push(best);
-    letters.push(line.match(/\b([A-C])\b/)?.[1] || null);
-    cis.push(scanCI(norm, idx));
+    if (validNums.length === 0) return;
+    // 多个 raw/adjusted 对：(a, a) / (a, b) 表示同一个变体；多对则是 OCR 把多变体压一行
+    const dedup = [];
+    for (let i = 0; i < validNums.length; i++) {
+      const cur = validNums[i];
+      const prev = dedup[dedup.length - 1];
+      // 与前一个值差距 < 10% → 视为同一变体的 raw/adjusted，保留较大者
+      if (prev != null && Math.abs(cur - prev) / Math.max(cur, prev) < 0.1) {
+        dedup[dedup.length - 1] = Math.max(prev, cur);
+      } else {
+        dedup.push(cur);
+      }
+    }
+    const lineLetter = line.match(/\b([A-C])\b/)?.[1] || null;
+    const lineCI = scanCI(norm, idx);
+    dedup.forEach((n, i) => {
+      numbers.push(n);
+      letters.push(i === 0 ? lineLetter : null);
+      cis.push(i === 0 ? lineCI : null);
+    });
   });
   return { numbers, cis, letters };
 }
 function scanCI(lines, centerIdx) {
   // 把各种 Unicode 减号 / 全角符号统一成 ASCII，再做 pattern 匹配
   const normSign = s => s.replace(/[−–—]/g, '-');
+  // 合理 CI 区间：±30%。Tesseract 把 -5.2% 错读成 -52% 这类异常值直接拒绝
+  const valid = r => r && Math.abs(r.low) <= 30 && Math.abs(r.high) <= 30 ? r : null;
   const tryMatch = (raw) => {
     const text = normSign(raw);
     // 1) Two signed %s — 最严格，必须放第一位（"-14.8% -7.7%" 不会被 pattern 3 吃掉第二个负号）
@@ -1771,7 +1790,7 @@ function scanCI(lines, centerIdx) {
   };
   const center = lines[centerIdx] || '';
   // a) Same line first
-  let r = tryMatch(center);
+  let r = valid(tryMatch(center));
   if (r) return r;
   // b) Combine adjacent lines that DON'T carry their own install number
   //    (those belong to the same row, just split by OCR). Stop when we hit
@@ -1789,7 +1808,7 @@ function scanCI(lines, centerIdx) {
       added = true;
     }
     if (!added) break;
-    r = tryMatch(combined);
+    r = valid(tryMatch(combined));
     if (r) return r;
   }
   return null;

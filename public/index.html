@@ -919,7 +919,8 @@ function detailHTML(r) {
       <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.installs)}</td>
       <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.retained)}</td>
       <td class="px-3 py-3 text-right font-bold whitespace-nowrap">${ci}</td>
-      <td class="px-5 py-3 text-right">${verdict}</td>
+      <td class="px-3 py-3 text-right">${verdict}</td>
+      <td class="w-full"></td>
     </tr>`;
   }).join('');
   return `
@@ -934,7 +935,7 @@ function detailHTML(r) {
       <div class="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
         <table class="w-full text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
-            <tr><th class="pl-5 pr-2 py-3 w-[88px]">变体</th><th class="px-3 py-3 text-right">首次安装</th><th class="px-3 py-3 text-right">保留安装</th><th class="px-3 py-3 text-right">置信区间</th><th class="px-5 py-3 text-right">测试效果</th></tr>
+            <tr><th class="pl-5 pr-2 py-3 w-[88px]">变体</th><th class="px-3 py-3 text-right">首次安装</th><th class="px-3 py-3 text-right">保留安装</th><th class="px-3 py-3 text-right">置信区间</th><th class="px-3 py-3 text-right">测试效果</th><th class="w-full"></th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100 text-[13px]">${rows}</tbody>
         </table>
@@ -1046,26 +1047,50 @@ function openDbDatePicker() {
   renderDpPresets(); renderDpCalendar();
 }
 function closeDbDatePicker(){ $('#db-period-pop').classList.add('hidden'); }
-window.addEventListener('click', e => {
-  const pop = $('#db-period-pop');
-  if (!pop || pop.classList.contains('hidden')) return;
-  if (!pop.contains(e.target) && !e.target.closest('#db-period-btn')) closeDbDatePicker();
-});
+function bindDbDatePicker() {
+  const btn = $('#db-period-btn');
+  if (!btn || btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('#db-period-pop').classList.contains('hidden') ? openDbDatePicker() : closeDbDatePicker();
+  });
+  $('#dp-prev').addEventListener('click', (e) => { e.stopPropagation(); if(!dbDatePending) return; dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()-1, 1); renderDpCalendar(); });
+  $('#dp-next').addEventListener('click', (e) => { e.stopPropagation(); if(!dbDatePending) return; dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()+1, 1); renderDpCalendar(); });
+  $('#dp-cancel').addEventListener('click', (e) => { e.stopPropagation(); closeDbDatePicker(); });
+  $('#dp-apply').addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!dbDatePending) { closeDbDatePicker(); return; }
+    dbDateState = { preset: dbDatePending.preset, from: dbDatePending.from, to: dbDatePending.to };
+    closeDbDatePicker();
+    renderDashboard();
+  });
+  $('#dp-from').addEventListener('click', (e) => { e.stopPropagation(); if(!dbDatePending) return; dbDatePending.picking='from'; renderDpCalendar(); });
+  $('#dp-to').addEventListener('click', (e) => { e.stopPropagation(); if(!dbDatePending) return; dbDatePending.picking='to'; renderDpCalendar(); });
+  $('#db-presets').addEventListener('click', (e) => {
+    const b = e.target.closest('.dp-preset');
+    if (!b || !dbDatePending) return;
+    e.stopPropagation();
+    _onPresetPick(b.dataset.k);
+  });
+  $('#dp-calendar').addEventListener('click', (e) => {
+    const b = e.target.closest('.dp-day');
+    if (!b || !dbDatePending) return;
+    e.stopPropagation();
+    _onDayPick(+b.dataset.d);
+  });
+  document.addEventListener('click', (e) => {
+    const pop = $('#db-period-pop');
+    if (!pop || pop.classList.contains('hidden')) return;
+    if (!pop.contains(e.target) && !e.target.closest('#db-period-btn')) closeDbDatePicker();
+  });
+}
 function renderDashboard() {
   fillSelect('#db-project', ['全部项目', ...state.meta.projects], $('#db-project').value || '全部项目');
   fillSelect('#db-owner', ['全部成员', ...state.meta.owners], $('#db-owner').value || '全部成员');
   $('#db-project').onchange = renderDashboard;
   $('#db-owner').onchange = renderDashboard;
   $('#db-period-label').textContent = dbPeriodLabel(dbDateState);
-  $('#db-period-btn').onclick = (e) => { e.stopPropagation(); $('#db-period-pop').classList.contains('hidden') ? openDbDatePicker() : closeDbDatePicker(); };
-  $('#dp-prev').onclick = () => { if(!dbDatePending) return; dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()-1, 1); renderDpCalendar(); };
-  $('#dp-next').onclick = () => { if(!dbDatePending) return; dbDatePending.viewMonth = new Date(dbDatePending.viewMonth.getFullYear(), dbDatePending.viewMonth.getMonth()+1, 1); renderDpCalendar(); };
-  $('#dp-cancel').onclick = closeDbDatePicker;
-  $('#dp-apply').onclick = () => { dbDateState = { preset:dbDatePending.preset, from:dbDatePending.from, to:dbDatePending.to }; closeDbDatePicker(); renderDashboard(); };
-  $('#dp-from').onclick = () => { if(!dbDatePending) return; dbDatePending.picking='from'; renderDpCalendar(); };
-  $('#dp-to').onclick = () => { if(!dbDatePending) return; dbDatePending.picking='to'; renderDpCalendar(); };
-  $('#db-presets').onclick = e => { const b = e.target.closest('.dp-preset'); if (b && dbDatePending) _onPresetPick(b.dataset.k); };
-  $('#dp-calendar').onclick = e => { const b = e.target.closest('.dp-day'); if (b && dbDatePending) _onDayPick(+b.dataset.d); };
   const proj = $('#db-project').value, owner = $('#db-owner').value;
   let list = [...state.records];
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
@@ -1822,6 +1847,7 @@ async function bootApp() {
     await loadAll();
     $('#folder-status').textContent = _folder ? _folder.name : '未连接';
     renderPending(); renderProfileMini();
+    bindDbDatePicker();
     $('#splash').classList.add('hidden');
     $('#app').classList.remove('hidden');
     $('#app').classList.add('flex');

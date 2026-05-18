@@ -361,15 +361,19 @@ function computeEffect(v, control) {
   const lo = parseFloat(v.ciLow), hi = parseFloat(v.ciHigh);
   const inst = parseFloat(v.installs), cInst = parseFloat(control?.installs);
   if (hasCI && !isNaN(lo) && !isNaN(hi)) {
-    if (lo > 0) return 'superb';
-    if (hi < 0) return 'bad';
-    if (!isNaN(inst) && !isNaN(cInst) && cInst > 0) {
-      const diff = (inst - cInst) / cInst;
-      if (diff > 0.05) return 'good';
-      if (diff > 0) return 'neutral_p';
-      return 'neutral_n';
+    if (lo >= 10) return 'superb';            // 下限 ≥ 10% → 🏆 很好
+    if (lo >= 0)  return 'good';              // CI 整体 ≥ 0 → 👍 不错
+    if (hi < 0)   return 'bad';               // CI 整体 < 0 → ❌ 很差
+    // 跨 0：先看稳定性
+    if (lo <= -5 || hi >= 10) {               // 不稳定（区间距 0 远）→ 经验决策
+      if (!isNaN(inst) && !isNaN(cInst)) return inst > cInst ? 'exp_p' : 'exp_n';
+      return 'exp_n';
     }
-    return 'neutral_p';
+    // 跨 0 但稳定 → 用中间值判趋势
+    const mid = (lo + hi) / 2;
+    if (mid >= 5) return 'good';
+    if (mid > 0)  return 'neutral_p';
+    return 'neutral_n';                       // mid ≤ 0
   }
   if (!isNaN(inst) && !isNaN(cInst)) return inst > cInst ? 'exp_p' : 'exp_n';
   return null;

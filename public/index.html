@@ -1020,26 +1020,82 @@ function recordIsAdopted(r) {
   if (r.type === 'direct') return true;  // 直接更新本身即应用
   return (r.variants || []).some(v => v.adopted);
 }
+function recordRetestStates(r) {
+  // 返回 { pending: [name...], done: [name...] }；direct 走 record 级，A/B 走 variant 级
+  if (r.type === 'direct') {
+    return {
+      pending: r.retestStatus === 'pending' ? ['此记录'] : [],
+      done:    r.retestStatus === 'done'    ? ['此记录'] : [],
+    };
+  }
+  const pending = [], done = [];
+  (r.variants || []).forEach(v => {
+    if (v.retestStatus === 'pending') pending.push(v.name);
+    if (v.retestStatus === 'done')    done.push(v.name);
+  });
+  return { pending, done };
+}
 function retestBadgeHTML(r) {
-  if (r.retestStatus === 'pending') return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700">⏳ 待复测</span>';
-  if (r.retestStatus === 'done')    return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">✓ 复测项</span>';
-  return '';
+  const { pending, done } = recordRetestStates(r);
+  let html = '';
+  if (pending.length) html += `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700">⏳ 待复测：${pending.map(escapeHTML).join(', ')}</span>`;
+  if (done.length)    html += `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">✓ 复测项：${done.map(escapeHTML).join(', ')}</span>`;
+  return html;
 }
 function retestBtnHTML(r) {
-  const s = r.retestStatus || 'none';
-  const label = s === 'pending' ? '⏳ 待复测' : s === 'done' ? '✓ 复测项' : '⟲ 标记复测';
-  const cls = s === 'pending' ? 'text-amber-700 bg-amber-50 hover:bg-amber-100'
-            : s === 'done'    ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-            : 'text-slate-500 bg-slate-50 hover:bg-slate-100';
-  return `<button type="button" onclick="event.stopPropagation(); toggleRetest('${r.id}')" class="text-xs px-2 py-1 ${cls} rounded">${label}</button>`;
+  return `<button type="button" onclick="event.stopPropagation(); openRetestPicker('${r.id}', this)" class="text-xs px-2 py-1 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded inline-flex items-center gap-0.5">复测<svg class="w-2.5 h-2.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>`;
 }
-window.toggleRetest = async id => {
+window.openRetestPicker = (id, btn) => {
+  document.querySelectorAll('.retest-popover').forEach(p => p.remove());
   const r = state.records.find(x => x.id === id); if (!r) return;
-  const cur = r.retestStatus || null;
-  r.retestStatus = cur === null ? 'pending' : cur === 'pending' ? 'done' : null;
-  r.updatedAt = Date.now();
-  await saveRecords();
-  renderTimeline();
+  const items = r.type === 'direct'
+    ? [{ key: '_record', label: '此记录', status: r.retestStatus || null }]
+    : (r.variants || []).map((v, i) => ({ key: String(i), label: v.name, status: v.retestStatus || null }));
+  const pop = document.createElement('div');
+  pop.className = 'retest-popover fixed z-[60] bg-white border border-slate-200 rounded-lg shadow-xl p-1 min-w-[200px]';
+  pop.innerHTML =
+    '<div class="px-2 py-1 text-[10px] text-slate-400 font-semibold">点击循环：无 → 待复测 → 复测项</div>' +
+    items.map(it => {
+      const lbl = it.status === 'pending' ? '⏳ 待复测' : it.status === 'done' ? '✓ 复测项' : '⟲ 未标记';
+      const cls = it.status === 'pending' ? 'text-amber-700 bg-amber-50' : it.status === 'done' ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400';
+      return `<button type="button" data-k="${it.key}" class="rp-opt w-full text-left px-2 py-1.5 text-[12px] rounded hover:bg-slate-50 flex justify-between items-center gap-3">
+        <span class="text-slate-700 font-medium">${escapeHTML(it.label)}</span>
+        <span class="${cls} px-1.5 py-0.5 rounded text-[11px] font-semibold">${lbl}</span>
+      </button>`;
+    }).join('');
+  document.body.appendChild(pop);
+  const rect = btn.getBoundingClientRect();
+  const pw = pop.offsetWidth || 200, ph = pop.offsetHeight || 0;
+  let top = rect.bottom + 4;
+  if (top + ph > window.innerHeight - 8) top = Math.max(8, rect.top - ph - 4);
+  let left = rect.right - pw;
+  if (left < 8) left = 8;
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+  pop.onclick = async e => {
+    const b = e.target.closest('.rp-opt'); if (!b) return;
+    e.stopPropagation();
+    const k = b.dataset.k;
+    const cycle = cur => cur === null ? 'pending' : cur === 'pending' ? 'done' : null;
+    if (k === '_record') r.retestStatus = cycle(r.retestStatus || null);
+    else { const v = r.variants[+k]; if (v) v.retestStatus = cycle(v.retestStatus || null); }
+    r.updatedAt = Date.now();
+    await saveRecords();
+    cleanup();
+    renderTimeline();
+  };
+  const cleanup = () => {
+    pop.remove();
+    document.removeEventListener('click', onDoc, true);
+    window.removeEventListener('scroll', cleanup, true);
+    window.removeEventListener('resize', cleanup);
+  };
+  const onDoc = evt => { if (!pop.contains(evt.target) && !btn.contains(evt.target)) cleanup(); };
+  setTimeout(() => {
+    document.addEventListener('click', onDoc, true);
+    window.addEventListener('scroll', cleanup, true);
+    window.addEventListener('resize', cleanup);
+  }, 0);
 };
 function renderTimeline() {
   fillSelect('#tl-project', ['全部项目', ...state.meta.projects], $('#tl-project').value || '全部项目');
@@ -1066,9 +1122,15 @@ function renderTimeline() {
   if (tlDateState.to)   { const tT = _eod(tlDateState.to).getTime();   list = list.filter(r => recordEffectiveTime(r) <= tT); }
   if (tlAdoption === 'adopted')     list = list.filter(r => recordIsAdopted(r));
   if (tlAdoption === 'not-adopted') list = list.filter(r => !recordIsAdopted(r));
-  if (tlRetest === 'pending') list = list.filter(r => r.retestStatus === 'pending');
-  if (tlRetest === 'done')    list = list.filter(r => r.retestStatus === 'done');
-  if (tlRetest === 'none')    list = list.filter(r => !r.retestStatus);
+  if (tlRetest !== 'all') {
+    list = list.filter(r => {
+      const { pending, done } = recordRetestStates(r);
+      if (tlRetest === 'pending') return pending.length > 0;
+      if (tlRetest === 'done')    return done.length > 0;
+      if (tlRetest === 'none')    return pending.length === 0 && done.length === 0;
+      return true;
+    });
+  }
   if (search) list = list.filter(r => JSON.stringify(r).toLowerCase().includes(search));
   const cont = $('#timeline-list'); cont.innerHTML = '';
   $('#timeline-empty').classList.toggle('hidden', list.length > 0);

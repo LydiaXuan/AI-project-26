@@ -245,9 +245,25 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
     <section id="view-timeline" class="view flex-1 flex flex-col h-full hidden">
       <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-sm">
         <h1 class="text-[17px] font-bold text-slate-800">实验时间线</h1>
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center">
+          <button id="tl-sort-btn" type="button" title="切换顺序" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4 4m0 0l4-4m-4 4V4"/></svg>
+            <span id="tl-sort-label">最新在上</span>
+          </button>
+          <select id="tl-owner" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100"></select>
+          <select id="tl-adoption" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100">
+            <option value="all">应用状态：全部</option>
+            <option value="adopted">已应用</option>
+            <option value="not-adopted">未应用</option>
+          </select>
+          <select id="tl-retest" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100">
+            <option value="all">复测：全部</option>
+            <option value="pending">待复测</option>
+            <option value="done">复测项</option>
+            <option value="none">无标记</option>
+          </select>
           <select id="tl-project" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100"></select>
-          <input id="tl-search" type="text" placeholder="搜索备注、人员、ID..." class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[12px] font-medium rounded-full w-48 shadow-sm outline-none placeholder-slate-400">
+          <input id="tl-search" type="text" placeholder="搜索备注、人员、ID..." class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-[12px] font-medium rounded-full w-40 shadow-sm outline-none placeholder-slate-400">
         </div>
       </header>
       <div class="flex-1 p-8 overflow-hidden">
@@ -962,14 +978,60 @@ function recordEffectiveTime(r) {
   const t = typeof raw === 'number' ? raw : new Date(raw).getTime();
   return isNaN(t) ? (r.updatedAt || 0) : t;
 }
+let tlSortOrder = 'desc';   // 'desc' 最新在上 / 'asc' 最早在上
+let tlAdoption = 'all';     // 'all' / 'adopted' / 'not-adopted'
+let tlRetest   = 'all';     // 'all' / 'pending' / 'done' / 'none'
+let tlOwner    = '全部成员';
+function recordIsAdopted(r) {
+  if (r.type === 'direct') return true;  // 直接更新本身即应用
+  return (r.variants || []).some(v => v.adopted);
+}
+function retestBadgeHTML(r) {
+  if (r.retestStatus === 'pending') return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700">⏳ 待复测</span>';
+  if (r.retestStatus === 'done')    return '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">✓ 复测项</span>';
+  return '';
+}
+function retestBtnHTML(r) {
+  const s = r.retestStatus || 'none';
+  const label = s === 'pending' ? '⏳ 待复测' : s === 'done' ? '✓ 复测项' : '⟲ 标记复测';
+  const cls = s === 'pending' ? 'text-amber-700 bg-amber-50 hover:bg-amber-100'
+            : s === 'done'    ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+            : 'text-slate-500 bg-slate-50 hover:bg-slate-100';
+  return `<button type="button" onclick="event.stopPropagation(); toggleRetest('${r.id}')" class="text-xs px-2 py-1 ${cls} rounded">${label}</button>`;
+}
+window.toggleRetest = async id => {
+  const r = state.records.find(x => x.id === id); if (!r) return;
+  const cur = r.retestStatus || null;
+  r.retestStatus = cur === null ? 'pending' : cur === 'pending' ? 'done' : null;
+  r.updatedAt = Date.now();
+  await saveRecords();
+  renderTimeline();
+};
 function renderTimeline() {
   fillSelect('#tl-project', ['全部项目', ...state.meta.projects], $('#tl-project').value || '全部项目');
+  fillSelect('#tl-owner', ['全部成员', ...state.meta.owners], tlOwner);
+  $('#tl-adoption').value = tlAdoption;
+  $('#tl-retest').value = tlRetest;
+  $('#tl-sort-label').textContent = tlSortOrder === 'desc' ? '最新在上' : '最早在上';
   $('#tl-project').onchange = renderTimeline;
   $('#tl-search').oninput = renderTimeline;
+  $('#tl-owner').onchange = e => { tlOwner = e.target.value; renderTimeline(); };
+  $('#tl-adoption').onchange = e => { tlAdoption = e.target.value; renderTimeline(); };
+  $('#tl-retest').onchange = e => { tlRetest = e.target.value; renderTimeline(); };
+  $('#tl-sort-btn').onclick = () => { tlSortOrder = tlSortOrder === 'desc' ? 'asc' : 'desc'; renderTimeline(); };
   const search = $('#tl-search').value.trim().toLowerCase();
   const proj = $('#tl-project').value;
-  let list = [...state.records].sort((a,b) => recordEffectiveTime(b) - recordEffectiveTime(a));
+  let list = [...state.records].sort((a,b) => {
+    const ta = recordEffectiveTime(a), tb = recordEffectiveTime(b);
+    return tlSortOrder === 'desc' ? tb - ta : ta - tb;
+  });
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
+  if (tlOwner && tlOwner !== '全部成员') list = list.filter(r => r.owner === tlOwner);
+  if (tlAdoption === 'adopted')     list = list.filter(r => recordIsAdopted(r));
+  if (tlAdoption === 'not-adopted') list = list.filter(r => !recordIsAdopted(r));
+  if (tlRetest === 'pending') list = list.filter(r => r.retestStatus === 'pending');
+  if (tlRetest === 'done')    list = list.filter(r => r.retestStatus === 'done');
+  if (tlRetest === 'none')    list = list.filter(r => !r.retestStatus);
   if (search) list = list.filter(r => JSON.stringify(r).toLowerCase().includes(search));
   const cont = $('#timeline-list'); cont.innerHTML = '';
   $('#timeline-empty').classList.toggle('hidden', list.length > 0);
@@ -993,15 +1055,19 @@ function timelineCard(r) {
     <div class="test-card bg-white rounded-xl border ${cardRing} p-5 cursor-pointer hover:border-slate-300 shadow-sm" data-id="${r.id}">
       <div class="flex justify-between items-start mb-4">
         <div>
-          <div class="flex items-center gap-2 mb-1">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
             <span class="text-xs font-bold text-slate-400 font-mono">${dateStr}</span>
             <span class="text-[10px] font-mono text-slate-400">#${r.id}</span>
             ${statusBadge}
+            ${retestBadgeHTML(r)}
           </div>
           <h3 class="text-[15px] font-bold text-slate-800">${escapeHTML(r.project || '未命名')} — ${escapeHTML(r.noteChange || r.notePurpose || r.component || 'A/B 测试')}</h3>
           <div class="text-xs text-slate-400 mt-0.5">${escapeHTML(r.owner||'-')} · ${escapeHTML(r.component||'-')} · 置信度 ${r.confidence||'-'}%</div>
         </div>
-        <button onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded">编辑</button>
+        <div class="flex items-center gap-1 shrink-0">
+          ${retestBtnHTML(r)}
+          <button onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded">编辑</button>
+        </div>
       </div>
       <div class="variant-grid grid grid-cols-1 xl:grid-cols-${Math.min(Math.max(variants.length,1), 4)} gap-4">
         ${variants.map((v, i) => variantRowHTML(v, i, ctrl)).join('')}
@@ -1027,12 +1093,16 @@ function directCard(r) {
             <span class="text-xs font-bold text-slate-400 font-mono">${dateStr}</span>
             <span class="text-[10px] font-mono text-slate-400">#${r.id}</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-600">直接更新 · 已应用</span>
+            ${retestBadgeHTML(r)}
             ${attrChips}
           </div>
           <h3 class="text-[15px] font-bold text-slate-800">${escapeHTML(r.project || '未命名')} — ${escapeHTML(r.noteChange || '直接更新')}</h3>
           <div class="text-xs text-slate-400 mt-0.5">${escapeHTML(r.owner||'-')}</div>
         </div>
-        <button type="button" onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded shrink-0">编辑</button>
+        <div class="flex items-center gap-1 shrink-0">
+          ${retestBtnHTML(r)}
+          <button type="button" onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded">编辑</button>
+        </div>
       </div>
       <div class="flex items-center gap-4 justify-start">
         <div class="flex flex-col items-center">

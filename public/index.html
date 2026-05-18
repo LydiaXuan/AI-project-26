@@ -1026,6 +1026,31 @@ const RETEST_META = {
   doing:     { icon: '🔄', label: '复测项', cls: 'bg-indigo-50 text-indigo-700' },
   completed: { icon: '✓',  label: '复测完成', cls: 'bg-emerald-50 text-emerald-700' },
 };
+// 当某变体/记录被切换到「复测项」时，自动把更早的、同项目 + 共享 attrs 的
+// 「待复测」变体/记录一并升级为「复测完成」。返回被改动的「条数」用于 toast 提示
+function autoPromotePendingRetests(currentRecord) {
+  if (!currentRecord || !Array.isArray(currentRecord.attrs) || !currentRecord.attrs.length) return 0;
+  const curTime = recordEffectiveTime(currentRecord);
+  let promoted = 0;
+  for (const r of state.records) {
+    if (r.id === currentRecord.id) continue;
+    if (r.project !== currentRecord.project) continue;
+    if (recordEffectiveTime(r) >= curTime) continue;  // 必须比当前早
+    if (!Array.isArray(r.attrs) || !r.attrs.length) continue;
+    const sharedAttr = r.attrs.some(a => currentRecord.attrs.includes(a));
+    if (!sharedAttr) continue;
+    let changed = false;
+    if (r.type === 'direct') {
+      if (r.retestStatus === 'pending') { r.retestStatus = 'completed'; promoted++; changed = true; }
+    } else {
+      (r.variants || []).forEach(v => {
+        if (v.retestStatus === 'pending') { v.retestStatus = 'completed'; promoted++; changed = true; }
+      });
+    }
+    if (changed) r.updatedAt = Date.now();
+  }
+  return promoted;
+}
 function recordRetestStates(r) {
   // 返回 { pending: [name...], doing: [...], completed: [...] }
   // direct 走 record 级，A/B 走 variant 级
@@ -1088,12 +1113,16 @@ window.openRetestPicker = (id, btn) => {
       if (cur === 'doing')     return 'completed';
       return null; // completed → null
     };
-    if (k === '_record') r.retestStatus = cycle(r.retestStatus || null);
-    else { const v = r.variants[+k]; if (v) v.retestStatus = cycle(v.retestStatus || null); }
+    let newStatus;
+    if (k === '_record') { r.retestStatus = cycle(r.retestStatus || null); newStatus = r.retestStatus; }
+    else { const v = r.variants[+k]; if (v) { v.retestStatus = cycle(v.retestStatus || null); newStatus = v.retestStatus; } }
+    let promoted = 0;
+    if (newStatus === 'doing') promoted = autoPromotePendingRetests(r);
     r.updatedAt = Date.now();
     await saveRecords();
     cleanup();
     renderTimeline();
+    if (promoted > 0) toast(`已自动把 ${promoted} 条更早的「待复测」标为「复测完成」`, 'success');
   };
   const cleanup = () => {
     pop.remove();

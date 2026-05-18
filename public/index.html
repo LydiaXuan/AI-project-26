@@ -1015,8 +1015,9 @@ function recordEffectiveTime(r) {
 }
 let tlSortOrder = 'desc';   // 'desc' 最新在上 / 'asc' 最早在上
 let tlAdoption = 'all';     // 'all' / 'adopted' / 'not-adopted'
-let tlOwners   = [];        // 多选，空数组 = 全部
-let tlRetests  = [];        // 多选，空数组 = 全部（含无标记）
+// 多选状态：null = 全部（无筛选），[] = 显式无勾，[a,b] = 筛选到这些
+let tlOwners   = null;
+let tlRetests  = null;
 const TL_RETEST_OPTS = [
   { value: 'pending',   label: '⏳ 待复测' },
   { value: 'doing',     label: '🔄 复测项' },
@@ -1028,10 +1029,12 @@ function recordIsAdopted(r) {
   return (r.variants || []).some(v => v.adopted);
 }
 
-// 多选按钮 label：空选 = 全部；1 选 = 显示具体值；N 选 = N 选
+// 多选按钮 label：null=全部 / []=无 / 1 选=具体值 / N 选=N 选
 function updateMultiLabel(labelSel, prefix, selected, options) {
   const el = $(labelSel); if (!el) return;
-  if (!selected.length) { el.textContent = `${prefix}：全部`; return; }
+  if (selected === null) { el.textContent = `${prefix}：全部`; return; }
+  if (selected.length === 0) { el.textContent = `${prefix}：无`; return; }
+  if (selected.length === options.length) { el.textContent = `${prefix}：全部`; return; }
   if (selected.length === 1) {
     const o = options.find(x => x.value === selected[0]);
     el.textContent = `${prefix}：${o?.label || selected[0]}`;
@@ -1047,12 +1050,16 @@ function openMultiFilter(btnId, options, getSelected, setSelected, onChange) {
   pop.className = 'multi-filter-pop fixed z-[60] bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-w-[180px] max-w-[280px] max-h-[60vh] overflow-y-auto';
   const render = () => {
     const sel = getSelected();
-    const isAll = sel.length === 0;
-    pop.innerHTML = `<div class="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between">
+    const isAll = sel === null || (Array.isArray(sel) && sel.length === options.length);
+    const isNone = Array.isArray(sel) && sel.length === 0;
+    pop.innerHTML = `<div class="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between gap-2">
         <span class="text-[10px] text-slate-400 font-semibold">多选</span>
-        <button type="button" class="mf-reset text-[11px] text-indigo-500 hover:underline ${isAll?'opacity-40 pointer-events-none':''}">重置(全部)</button>
+        <div class="flex gap-2">
+          <button type="button" class="mf-all text-[11px] text-indigo-500 hover:underline ${isAll?'opacity-40 pointer-events-none':''}">全选</button>
+          <button type="button" class="mf-none text-[11px] text-slate-500 hover:underline ${isNone?'opacity-40 pointer-events-none':''}">全部取消</button>
+        </div>
       </div>` + options.map(o => {
-      const checked = isAll || sel.includes(o.value);
+      const checked = isAll || (Array.isArray(sel) && sel.includes(o.value));
       return `<label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
         <input type="checkbox" data-v="${escapeHTML(o.value)}" ${checked ? 'checked' : ''} class="rounded">
         <span class="text-[13px] text-slate-700">${escapeHTML(o.label)}</span>
@@ -1061,17 +1068,19 @@ function openMultiFilter(btnId, options, getSelected, setSelected, onChange) {
     pop.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.onchange = (e) => {
         const v = e.target.dataset.v;
-        let next = getSelected().slice();
-        if (next.length === 0) next = options.map(o => o.value); // 空 → 展开成全选数组方便取消单个
+        const cur = getSelected();
+        // 当前是 null（=全部已勾），点击意味着取消其中一个 → 展开成显式数组
+        let next = cur === null ? options.map(o => o.value) : cur.slice();
         if (e.target.checked) { if (!next.includes(v)) next.push(v); }
         else next = next.filter(x => x !== v);
-        // 归一：全勾或全清都视为「全部」(空数组)
-        if (next.length === 0 || next.length === options.length) next = [];
+        // 归一：勾全部 → 视为 null
+        if (next.length === options.length) next = null;
         setSelected(next);
         render(); onChange();
       };
     });
-    pop.querySelector('.mf-reset').onclick = () => { setSelected([]); render(); onChange(); };
+    pop.querySelector('.mf-all').onclick = () => { setSelected(null); render(); onChange(); };
+    pop.querySelector('.mf-none').onclick = () => { setSelected([]); render(); onChange(); };
   };
   document.body.appendChild(pop);
   render();
@@ -1244,12 +1253,12 @@ function renderTimeline() {
     return tlSortOrder === 'desc' ? tb - ta : ta - tb;
   });
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
-  if (tlOwners.length) list = list.filter(r => tlOwners.includes(r.owner));
+  if (tlOwners !== null) list = list.filter(r => tlOwners.includes(r.owner));
   if (tlDateState.from) { const fT = _sod(tlDateState.from).getTime(); list = list.filter(r => recordEffectiveTime(r) >= fT); }
   if (tlDateState.to)   { const tT = _eod(tlDateState.to).getTime();   list = list.filter(r => recordEffectiveTime(r) <= tT); }
   if (tlAdoption === 'adopted')     list = list.filter(r => recordIsAdopted(r));
   if (tlAdoption === 'not-adopted') list = list.filter(r => !recordIsAdopted(r));
-  if (tlRetests.length) {
+  if (tlRetests !== null) {
     list = list.filter(r => {
       const states = recordRetestStates(r);
       return tlRetests.some(k => {

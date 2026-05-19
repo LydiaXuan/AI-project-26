@@ -433,13 +433,20 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
       <div id="crop-drop" class="h-36 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-400 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50">
         <span class="text-xs">点击 / 拖拽 / Ctrl+V 上传包含全部变体的大图</span>
       </div>
-      <div class="flex items-center gap-3 text-sm">
-        <span class="text-slate-500">变体数：</span>
-        <div class="flex p-0.5 bg-slate-100 rounded-lg">
-          <button class="crop-n-btn px-3 py-1 text-xs font-semibold rounded-md bg-white shadow-sm" data-n="2">2</button>
-          <button class="crop-n-btn px-3 py-1 text-xs font-medium text-slate-500" data-n="3">3</button>
-          <button class="crop-n-btn px-3 py-1 text-xs font-medium text-slate-500" data-n="4">4</button>
+      <div class="flex items-center gap-4 flex-wrap text-sm">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input id="crop-has-control" type="checkbox" class="rounded">
+          <span class="text-slate-700 text-[13px]">首张是原始版本</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-500">方案数：</span>
+          <div class="flex p-0.5 bg-slate-100 rounded-lg">
+            <button class="crop-n-btn px-3 py-1 text-xs font-medium text-slate-500" data-n="1">1</button>
+            <button class="crop-n-btn px-3 py-1 text-xs font-semibold rounded-md bg-white shadow-sm" data-n="2">2</button>
+            <button class="crop-n-btn px-3 py-1 text-xs font-medium text-slate-500" data-n="3">3</button>
+          </div>
         </div>
+        <span id="crop-n-hint" class="text-[12px] text-slate-400">共切 2 片：2 方案</span>
       </div>
       <div id="crop-canvas-wrap" class="hidden relative bg-slate-50 rounded-lg overflow-hidden">
         <canvas id="crop-canvas" class="block max-w-full"></canvas>
@@ -2362,9 +2369,13 @@ window.applyOCR = () => {
 };
 
 // ---------- Batch crop ----------
-let cropImg = null, cropN = 2, cropDividers = [];
+// cropVariantN：方案数 1/2/3（永远只算方案，不含 control）
+// cropHasControl：截图首张是否为原始版本（默认不勾，control 走自动填）
+// 总切片数 cropN（getter）= cropVariantN + (cropHasControl ? 1 : 0)
+let cropImg = null, cropVariantN = 2, cropHasControl = false, cropDividers = [];
+Object.defineProperty(window, 'cropN', { get: () => cropVariantN + (cropHasControl ? 1 : 0) });
 window.openCropModal = () => {
-  cropImg = null; cropN = 2; cropDividers = [];
+  cropImg = null; cropVariantN = 2; cropHasControl = false; cropDividers = [];
   $('#crop-modal').classList.remove('hidden'); $('#crop-modal').classList.add('flex');
   $('#crop-canvas-wrap').classList.add('hidden');
   $('#crop-preview-wrap').classList.add('hidden');
@@ -2372,7 +2383,9 @@ window.openCropModal = () => {
   $('#crop-apply-btn').disabled = true;
   $('#crop-apply-btn').className = 'px-4 py-1.5 text-sm bg-slate-200 text-slate-500 rounded-lg';
   $('#crop-drop').innerHTML = '<span class="text-xs">点击 / 拖拽 / Ctrl+V 上传包含全部变体的大图</span>';
-  $$('.crop-n-btn').forEach(b => b.onclick = () => { cropN = +b.dataset.n; updateCropNButtons(); if (cropImg) layoutCropDividers(); });
+  $('#crop-has-control').checked = cropHasControl;
+  $('#crop-has-control').onchange = e => { cropHasControl = e.target.checked; updateCropNButtons(); if (cropImg) layoutCropDividers(); };
+  $$('.crop-n-btn').forEach(b => b.onclick = () => { cropVariantN = +b.dataset.n; updateCropNButtons(); if (cropImg) layoutCropDividers(); });
   updateCropNButtons();
   setupDrop('#crop-drop', f => {
     const img = new Image();
@@ -2383,9 +2396,12 @@ window.openCropModal = () => {
 window.closeCrop = () => { $('#crop-modal').classList.add('hidden'); $('#crop-modal').classList.remove('flex'); };
 function updateCropNButtons() {
   $$('.crop-n-btn').forEach(b => {
-    const on = +b.dataset.n === cropN;
+    const on = +b.dataset.n === cropVariantN;
     b.className = on ? 'crop-n-btn px-3 py-1 text-xs font-semibold rounded-md bg-white shadow-sm' : 'crop-n-btn px-3 py-1 text-xs font-medium text-slate-500';
   });
+  const total = cropVariantN + (cropHasControl ? 1 : 0);
+  const breakdown = cropHasControl ? `1 原始 + ${cropVariantN} 方案` : `${cropVariantN} 方案`;
+  const hint = $('#crop-n-hint'); if (hint) hint.textContent = `共切 ${total} 片：${breakdown}`;
 }
 // Cache row brightness for source image (used by auto-split)
 let cropRowBright = null;
@@ -2528,7 +2544,7 @@ function updateCropPreview() {
   wrap.classList.remove('hidden');
   row.innerHTML = '';
   const splits = [0, ...cropDividers.map(d => d.pct), 1].map(p => Math.round(p * cropImg.height));
-  const labels = ['对照','A','B','C'];
+  const labels = cropHasControl ? ['原始','A','B','C'] : ['A','B','C','D'];
   const MAX = 96;
   for (let i = 0; i < cropN; i++) {
     const sliceH = Math.max(1, splits[i+1] - splits[i]);
@@ -2550,15 +2566,20 @@ function updateCropPreview() {
 }
 window.applyCrop = async () => {
   if (!cropImg || !formData) return;
+  const total = cropVariantN + (cropHasControl ? 1 : 0);
+  const startIdx = cropHasControl ? 0 : 1;  // 不含原始时跳过 control，保留自动填
   const splits = [0, ...cropDividers.map(d => d.pct), 1].map(p => Math.round(p * cropImg.height));
-  for (let i = 0; i < cropN && i < formData.variants.length; i++) {
+  for (let i = 0; i < total; i++) {
+    const target = startIdx + i;
+    if (target >= formData.variants.length) break;
     const c = document.createElement('canvas');
     c.width = cropImg.width; c.height = Math.max(1, splits[i+1] - splits[i]);
     c.getContext('2d').drawImage(cropImg, 0, splits[i], cropImg.width, c.height, 0, 0, cropImg.width, c.height);
     const trimmed = await trimTopBottom(c);
-    formData.variants[i].img = await compressImage(trimmed);
+    formData.variants[target].img = await compressImage(trimmed);
+    if (target === 0) formData.variants[0]._auto = false;  // 显式覆盖了 control
   }
-  closeCrop(); renderVariants(); toast(`已裁剪 ${cropN} 张图`,'success');
+  closeCrop(); renderVariants(); toast(`已裁剪 ${total} 张图`,'success');
 };
 // 异步版（applyCrop 用）
 function trimTopBottom(canvas) {

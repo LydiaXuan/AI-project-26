@@ -121,8 +121,8 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                   <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">实验组件</label>
-                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','组件')">+</button></div>
+                  <label class="text-[13px] font-medium text-slate-500">实验类型</label>
+                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','类型')">+</button></div>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                   <label class="text-[13px] font-medium text-slate-500">测试人</label>
@@ -150,6 +150,10 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                     <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="98" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">98%</div></label>
                     <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="99" class="peer sr-only" checked><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">99%</div></label>
                   </div>
+                </div>
+                <div class="flex items-center justify-between pb-3 invisible" aria-hidden="true">
+                  <label class="text-[13px] font-medium">占位</label>
+                  <span class="text-[13px]">—</span>
                 </div>
                 <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                   <label class="text-[13px] font-medium text-slate-500">测试属性 <span class="text-[10px] text-slate-400">(可多选)</span></label>
@@ -2011,7 +2015,7 @@ window.toggleExpand = (tid, btn) => {
 function groupBy(list, key) { const m = {}; list.forEach(r => { const v = r[key] || '未分类'; (m[v] = m[v] || []).push(r); }); return m; }
 function computeStats(map) { return Object.entries(map).map(([k, arr]) => { const total = arr.length; const adopted = arr.filter(r => (r.variants||[]).some(v => v.adopted)).length; return { key: k, total, adopted, rate: total ? adopted/total*100 : 0 }; }); }
 window.exportCSV = () => {
-  const rows = [['ID','项目','负责人','组件','开始','结束','置信度','是否采纳','改动内容']];
+  const rows = [['ID','项目','负责人','类型','开始','结束','置信度','是否采纳','改动内容']];
   state.records.forEach(r => rows.push([r.id, r.project, r.owner, r.component, r.startDate, r.endDate, r.confidence, (r.variants||[]).some(v=>v.adopted)?'是':'否', r.noteChange||'']));
   const csv = rows.map(r => r.map(x => `"${String(x||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob(['﻿'+csv], { type:'text/csv;charset=utf-8' });
@@ -2043,7 +2047,7 @@ function renderSettings() {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         ${chipsSection('项目', 'projects')}
         ${chipsSection('负责人', 'owners')}
-        ${chipsSection('实验组件', 'components')}
+        ${chipsSection('实验类型', 'components')}
         ${chipsSection('流量分配比例', 'ratios')}
       </div>
     </section>

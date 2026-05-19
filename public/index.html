@@ -1010,9 +1010,11 @@ window.deleteCurrent = async () => {
 
 // ---------- Timeline ----------
 function recordEffectiveTime(r) {
+  // A/B 用「开始测试时间」(startDate)，未填回退到 endDate / updatedAt
+  // direct 用 updateDate
   const raw = r.type === 'direct'
     ? (r.updateDate || r.updatedAt)
-    : (r.endDate || r.startDate || r.updatedAt);
+    : (r.startDate || r.endDate || r.updatedAt);
   if (!raw) return 0;
   const t = typeof raw === 'number' ? raw : new Date(raw).getTime();
   return isNaN(t) ? (r.updatedAt || 0) : t;

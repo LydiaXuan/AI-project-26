@@ -288,6 +288,10 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             <span id="tl-owner-label">测试人：全部</span>
             <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
+          <button id="tl-attrs-btn" type="button" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100 flex items-center gap-1">
+            <span id="tl-attrs-label">测试属性：全部</span>
+            <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
           <select id="tl-adoption" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100">
             <option value="all">应用状态：全部</option>
             <option value="adopted">已应用</option>
@@ -1017,7 +1021,14 @@ let tlSortOrder = 'desc';   // 'desc' 最新在上 / 'asc' 最早在上
 let tlAdoption = 'all';     // 'all' / 'adopted' / 'not-adopted'
 // 多选状态：null = 全部（无筛选），[] = 显式无勾，[a,b] = 筛选到这些
 let tlOwners   = null;
+let tlAttrs    = null;
 let tlRetests  = null;
+const TL_ATTR_OPTS = [
+  { value: 'icon', label: 'icon' },
+  { value: '五图', label: '五图' },
+  { value: '置顶', label: '置顶' },
+  { value: '视频', label: '视频' },
+];
 const TL_RETEST_OPTS = [
   { value: 'pending',   label: '⏳ 待复测' },
   { value: 'doing',     label: '🔄 复测项' },
@@ -1261,6 +1272,7 @@ function renderTimeline() {
   $('#tl-sort-label').textContent = tlSortOrder === 'desc' ? '最新在上' : '最早在上';
   $('#tl-period-label').textContent = dbPeriodLabel(tlDateState);
   updateMultiLabel('#tl-owner-label', '测试人', tlOwners, state.meta.owners.map(o => ({value:o, label:o})));
+  updateMultiLabel('#tl-attrs-label', '测试属性', tlAttrs, TL_ATTR_OPTS);
   updateMultiLabel('#tl-retest-label', '复测状态', tlRetests, TL_RETEST_OPTS);
   $('#tl-project').onchange = renderTimeline;
   $('#tl-search').oninput = renderTimeline;
@@ -1271,6 +1283,12 @@ function renderTimeline() {
     openMultiFilter('#tl-owner-btn',
       state.meta.owners.map(o => ({value:o, label:o})),
       () => tlOwners, next => { tlOwners = next; },
+      renderTimeline);
+  };
+  $('#tl-attrs-btn').onclick = e => {
+    e.stopPropagation();
+    openMultiFilter('#tl-attrs-btn', TL_ATTR_OPTS,
+      () => tlAttrs, next => { tlAttrs = next; },
       renderTimeline);
   };
   $('#tl-retest-btn').onclick = e => {
@@ -1287,6 +1305,7 @@ function renderTimeline() {
   });
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
   if (tlOwners !== null) list = list.filter(r => tlOwners.includes(r.owner));
+  if (tlAttrs !== null) list = list.filter(r => Array.isArray(r.attrs) && r.attrs.some(a => tlAttrs.includes(a)));
   if (tlDateState.from) { const fT = _sod(tlDateState.from).getTime(); list = list.filter(r => recordEffectiveTime(r) >= fT); }
   if (tlDateState.to)   { const tT = _eod(tlDateState.to).getTime();   list = list.filter(r => recordEffectiveTime(r) <= tT); }
   if (tlAdoption === 'adopted')     list = list.filter(r => recordIsAdopted(r));
@@ -1368,7 +1387,6 @@ function directCard(r) {
           <div class="text-xs text-slate-400 mt-0.5">${escapeHTML(r.owner||'-')}</div>
         </div>
         <div class="flex items-center gap-1 shrink-0">
-          ${retestBtnHTML(r)}
           <button type="button" onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded">编辑</button>
         </div>
       </div>

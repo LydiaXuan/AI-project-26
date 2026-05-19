@@ -2221,7 +2221,10 @@ function normalizeLine(line) {
   return line
     .replace(/[Oo](?=\d)|(?<=\d)[Oo]/g, '0')   // O→0 next to digits
     .replace(/[Il|](?=\d)|(?<=\d)[Il|]/g, '1') // I/l/|→1 next to digits
-    .replace(/[，]/g, ',');                     // full-width comma
+    .replace(/[，]/g, ',')                      // full-width comma
+    // Tesseract 经常把千分位逗号误读成点：1-3 位数 + 点 + 3 位数 + 非数字非百分号 → 视为千分位
+    // 例：「47.940 -13.5%」→「47,940 -13.5%」；不影响 CI 小数「13.5%」「-0.83%」
+    .replace(/(\d{1,3})\.(\d{3})(?=[^\d%]|$)/g, '$1,$2');
 }
 function extractNumsAndCIs(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);

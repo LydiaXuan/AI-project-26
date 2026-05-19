@@ -1450,7 +1450,7 @@ function variantRowHTML(v, i, ctrl, recordId) {
   const isAdopted = !!v.adopted;
   const cls = isAdopted ? 'border-indigo-300 bg-indigo-100/60' :
               isWin ? 'border-emerald-200 bg-emerald-50/30' :
-              isBad ? 'border-slate-200 bg-slate-100/70 text-slate-500' :
+              isBad ? 'border-slate-200 bg-slate-100/70' :
               'border-slate-100 bg-slate-50/50';
   const deltaCls = (delta && +delta > 0) ? 'text-emerald-600' : (delta ? 'text-rose-500' : 'text-slate-400');
   const topBar = isAdopted ? '<div class="absolute top-0 left-0 right-0 h-1 bg-indigo-500 rounded-t-lg"></div>' :

@@ -114,56 +114,52 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-5 flex items-center gap-2">
               <span class="w-1 h-3 bg-indigo-500 rounded-full"></span> 基础实验属性
             </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 items-stretch">
-              <div class="flex flex-col justify-center gap-y-5 py-2">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">归属项目</label>
-                  <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
-                </div>
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">实验类型</label>
-                  <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','类型')">+</button></div>
-                </div>
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">测试人</label>
-                  <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
-                </div>
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
-                  <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1 py-2">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">归属项目</label>
+                <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">测试周期</label>
+                <div class="flex items-center gap-2">
+                  <input id="f-start" type="date" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer">
+                  <span class="text-slate-300">-</span>
+                  <input id="f-end" type="date" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer">
                 </div>
               </div>
-              <div class="flex flex-col justify-center gap-y-5 py-2">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">测试周期</label>
-                  <div class="flex items-center gap-2">
-                    <input id="f-start" type="date" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer">
-                    <span class="text-slate-300">-</span>
-                    <input id="f-end" type="date" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right cursor-pointer">
-                  </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">实验类型</label>
+                <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','类型')">+</button></div>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">目标置信度</label>
+                <div class="flex gap-2" id="f-confidence">
+                  <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="90" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">90%</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="95" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">95%</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="98" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">98%</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="99" class="peer sr-only" checked><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">99%</div></label>
                 </div>
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">目标置信度</label>
-                  <div class="flex gap-2" id="f-confidence">
-                    <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="90" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">90%</div></label>
-                    <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="95" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">95%</div></label>
-                    <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="98" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">98%</div></label>
-                    <label class="segmented-btn cursor-pointer"><input type="radio" name="conf" value="99" class="peer sr-only" checked><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">99%</div></label>
-                  </div>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">测试人</label>
+                <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">测试属性 <span class="text-[10px] text-slate-400">(可多选)</span></label>
+                <div class="flex gap-2" id="f-attrs">
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="icon" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">icon</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="五图" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">五图</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="置顶" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">置顶</div></label>
+                  <label class="segmented-btn cursor-pointer"><input type="checkbox" value="视频" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">视频</div></label>
                 </div>
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <label class="text-[13px] font-medium text-slate-500">测试属性 <span class="text-[10px] text-slate-400">(可多选)</span></label>
-                  <div class="flex gap-2" id="f-attrs">
-                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="icon" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">icon</div></label>
-                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="五图" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">五图</div></label>
-                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="置顶" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">置顶</div></label>
-                    <label class="segmented-btn cursor-pointer"><input type="checkbox" value="视频" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">视频</div></label>
-                  </div>
-                </div>
-                <div class="flex items-center justify-between pb-3 invisible" aria-hidden="true">
-                  <label class="text-[13px] font-medium">占位</label>
-                  <span class="text-[13px]">—</span>
-                </div>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
+                <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
+              </div>
+              <div class="flex items-center justify-between pb-3 invisible" aria-hidden="true">
+                <label class="text-[13px] font-medium">占位</label>
+                <span class="text-[13px]">—</span>
               </div>
             </div>
             <div class="mt-3 pt-4 border-t border-slate-100 space-y-3">

@@ -800,7 +800,7 @@ function renderDirectForm() {
   $('#d-project').onchange = e => formData.project = e.target.value;
   $('#d-owner').onchange = e => formData.owner = e.target.value;
   $('#d-date').value = formData.updateDate || '';
-  $('#d-date').onchange = e => formData.updateDate = e.target.value;
+  $('#d-date').onchange = e => { formData.updateDate = e.target.value; applyAutoDirectBeforeImage(); paintDirectSlot('before'); };
   if (!Array.isArray(formData.attrs)) formData.attrs = [];
   $$('#d-attrs input').forEach(c => {
     c.checked = formData.attrs.includes(c.value);
@@ -808,12 +808,28 @@ function renderDirectForm() {
       const v = e.target.value;
       if (e.target.checked) { if (!formData.attrs.includes(v)) formData.attrs.push(v); }
       else { formData.attrs = formData.attrs.filter(x => x !== v); }
+      applyAutoDirectBeforeImage();
+      paintDirectSlot('before');
     };
   });
   $('#d-note').value = formData.noteChange || '';
   $('#d-note').oninput = e => formData.noteChange = e.target.value;
+  applyAutoDirectBeforeImage();
   paintDirectSlot('before');
   paintDirectSlot('after');
+}
+
+function applyAutoDirectBeforeImage() {
+  if (!formData || formData.type !== 'direct') return;
+  if (formData.imageBefore && !formData._autoBefore) return;  // 用户手动设过，不覆盖
+  if (!Array.isArray(formData.attrs) || formData.attrs.length !== 1) {
+    if (formData._autoBefore) { formData.imageBefore = ''; formData._autoBefore = false; }
+    return;
+  }
+  const ms = formData.updateDate ? new Date(formData.updateDate).getTime() : Date.now();
+  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(ms) ? Date.now() : ms);
+  if (img) { formData.imageBefore = img; formData._autoBefore = true; }
+  else if (formData._autoBefore) { formData.imageBefore = ''; formData._autoBefore = false; }
 }
 
 function paintDirectSlot(slot) {
@@ -836,11 +852,13 @@ function paintDirectSlot(slot) {
 
 async function setDirectImage(slot, file) {
   const data = await compressImage(file);
-  if (slot === 'before') formData.imageBefore = data; else formData.imageAfter = data;
+  if (slot === 'before') { formData.imageBefore = data; formData._autoBefore = false; }
+  else formData.imageAfter = data;
   paintDirectSlot(slot);
 }
 window.clearDirectImage = slot => {
-  if (slot === 'before') formData.imageBefore = ''; else formData.imageAfter = '';
+  if (slot === 'before') { formData.imageBefore = ''; formData._autoBefore = false; }
+  else formData.imageAfter = '';
   paintDirectSlot(slot);
 };
 function fillSelect(sel, items, value) {

@@ -764,7 +764,7 @@ function renderForm() {
   fillSelect('#f-owner', state.meta.owners, formData.owner);
   fillSelect('#f-ratio', state.meta.ratios, formData.ratio);
   fillSelect('#f-component', state.meta.components, formData.component);
-  $('#f-project').onchange = e => formData.project = e.target.value;
+  $('#f-project').onchange = e => { formData.project = e.target.value; applyAutoControlImage(); renderVariants(); };
   $('#f-owner').onchange = e => formData.owner = e.target.value;
   $('#f-ratio').onchange = e => { formData.ratio = e.target.value; renderVariants(); };
   $('#f-component').onchange = e => formData.component = e.target.value;
@@ -804,7 +804,7 @@ function renderForm() {
 function renderDirectForm() {
   fillSelect('#d-project', state.meta.projects, formData.project);
   fillSelect('#d-owner', state.meta.owners, formData.owner);
-  $('#d-project').onchange = e => formData.project = e.target.value;
+  $('#d-project').onchange = e => { formData.project = e.target.value; applyAutoDirectBeforeImage(); paintDirectSlot('before'); };
   $('#d-owner').onchange = e => formData.owner = e.target.value;
   $('#d-date').value = formData.updateDate || '';
   $('#d-date').onchange = e => { formData.updateDate = e.target.value; applyAutoDirectBeforeImage(); paintDirectSlot('before'); };
@@ -834,7 +834,7 @@ function applyAutoDirectBeforeImage() {
     return;
   }
   const ms = formData.updateDate ? new Date(formData.updateDate).getTime() : Date.now();
-  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(ms) ? Date.now() : ms);
+  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(ms) ? Date.now() : ms, formData.project);
   if (img) { formData.imageBefore = img; formData._autoBefore = true; }
   else if (formData._autoBefore) { formData.imageBefore = ''; formData._autoBefore = false; }
 }
@@ -957,15 +957,17 @@ async function setVariantImage(i, file) {
   renderVariants();
 }
 
-function getLatestApplied(attr, excludeId, beforeTime) {
-  // 收集所有「该属性下、当前生效图」事件，按时间倒序取最新
+function getLatestApplied(attr, excludeId, beforeTime, projectFilter) {
+  // 收集所有「该属性下、当前项目下、当前生效图」事件，按时间倒序取最新
   // - 直接更新：imageAfter @ updateDate
   // - A/B 已采用变体：adopted.img @ endDate||startDate（采用结束后生效）
   // - A/B control 变体（兜底）：variants[0].img @ startDate（开测时即代表当时线上图，
   //   适配「首次使用工具上传 control 但还没采用任何方案」的场景）
+  // projectFilter：只看同项目，避免不同项目互相串图
   const events = [];
   for (const r of state.records) {
     if (excludeId && r.id === excludeId) continue;
+    if (projectFilter && r.project !== projectFilter) continue;
     if (!Array.isArray(r.attrs) || !r.attrs.includes(attr)) continue;
     const push = (img, ts) => {
       if (!img) return;
@@ -996,7 +998,7 @@ function applyAutoControlImage() {
     return;
   }
   const startMs = formData.startDate ? new Date(formData.startDate).getTime() : Date.now();
-  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(startMs) ? Date.now() : startMs);
+  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(startMs) ? Date.now() : startMs, formData.project);
   if (img) { v0.img = img; v0._auto = true; }
   else if (v0._auto) { v0.img = ''; v0._auto = false; }
 }

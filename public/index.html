@@ -680,7 +680,7 @@ function toast(msg, type='info') {
 }
 function escapeHTML(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
-function compressImage(fileOrBlob, maxSize=480, q=0.72) {
+function compressImage(fileOrBlob, maxSize=720, q=0.85) {
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
@@ -1582,27 +1582,6 @@ function detailSpotlightHTML(r) {
   </div>`;
 }
 function detailHTML(r) {
-  const ctrl = r.variants?.[0];
-  const variants = (r.variants || []).slice(0, ratioToCount(r.ratio));
-  const rows = variants.map(v => {
-    const isControl = v.role === 'control';
-    const eff = !isControl ? computeEffect(v, ctrl) : null;
-    const verdict = isControl ? '<span class="font-medium text-slate-400">基准线</span>' :
-      (eff === 'superb' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-700">显著胜出</span>' :
-       eff === 'bad' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700">显著负向</span>' :
-       eff === 'good' ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-600">不错</span>' :
-       '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-500">' + (EFFECT_META[eff]?.label || '观察') + '</span>');
-    const ci = isControl ? '<span class="text-slate-400">-</span>' : ((v.ciLow!=='' && v.ciHigh!=='') ? `${formatPctColored(v.ciLow)} <span class="text-slate-400">~</span> ${formatPctColored(v.ciHigh)}` : '<span class="text-slate-400">-</span>');
-    const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
-    return `<tr class="${eff==='superb'?'bg-emerald-50/30':''}">
-      <td class="pl-5 pr-2 py-3"><div class="w-14 h-14 rounded border border-slate-200" style="${imgStyle}"></div></td>
-      <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.installs)}</td>
-      <td class="px-3 py-3 text-right font-bold text-slate-700">${formatNum(v.retained)}</td>
-      <td class="px-3 py-3 text-right font-bold whitespace-nowrap">${ci}</td>
-      <td class="px-3 py-3 text-right">${verdict}</td>
-      <td class="w-full"></td>
-    </tr>`;
-  }).join('');
   return `
     <div class="p-6 border-b border-slate-100 bg-white shrink-0">
       <h2 class="text-lg font-bold text-slate-800 mb-2 pr-8">${escapeHTML(r.project || '-')} — ${escapeHTML(r.noteChange || r.notePurpose || r.component || '-')}</h2>
@@ -1613,14 +1592,6 @@ function detailHTML(r) {
     </div>
     <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 space-y-6">
       ${detailSpotlightHTML(r)}
-      <div class="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
-        <table class="w-full text-left text-sm whitespace-nowrap">
-          <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
-            <tr><th class="pl-5 pr-2 py-3 w-[88px]">变体</th><th class="px-3 py-3 text-right">首次安装</th><th class="px-3 py-3 text-right">保留安装</th><th class="px-3 py-3 text-right">置信区间</th><th class="px-3 py-3 text-right">测试效果</th><th class="w-full"></th></tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 text-[13px]">${rows}</tbody>
-        </table>
-      </div>
       <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
         <div class="flex items-center gap-2 mb-3"><span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span><h3 class="text-[13px] font-bold">团队复盘总结</h3></div>
         <textarea id="detail-summary" rows="4" placeholder="在此输入结论..." class="w-full text-[13px] text-slate-700 bg-slate-50 border border-transparent rounded-lg p-3 resize-none placeholder-slate-400 hover:border-slate-300">${escapeHTML(r.summary||'')}</textarea>

@@ -238,7 +238,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
       <div class="absolute bottom-0 left-0 right-0 h-16 bg-white/90 backdrop-blur-md border-t border-slate-200 flex items-center justify-end px-8 gap-3 z-30">
         <button onclick="discardForm()" class="px-5 py-2 text-[13px] font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 shadow-sm">放弃修改</button>
         <button id="form-delete-btn" onclick="deleteCurrent()" class="hidden px-5 py-2 text-[13px] font-semibold text-rose-600 bg-white border border-rose-200 rounded-lg hover:bg-rose-50 shadow-sm">删除</button>
-        <button onclick="saveForm()" class="px-6 py-2 text-[13px] font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-[0_2px_10px_rgba(79,70,229,.3)]">保存并同步配置</button>
+        <button id="save-form-btn" onclick="saveForm()" class="px-6 py-2 text-[13px] font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-[0_2px_10px_rgba(79,70,229,.3)] disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center gap-2">保存并同步配置</button>
       </div>
     </section>
 
@@ -1026,15 +1026,28 @@ window.addMetaInput = (key, label, ph='') => {
 window.discardForm = () => { if (confirm('放弃当前修改？')) { formData = null; route('timeline'); } };
 window.saveForm = async () => {
   if (!formData) return;
-  formData.updatedAt = Date.now();
-  const i = state.records.findIndex(r => r.id === formData.id);
-  if (i >= 0) state.records[i] = formData; else state.records.push(formData);
-  ['project','owner','ratio','component'].forEach(k => {
-    const arr = state.meta[k + 's'];
-    if (formData[k] && arr && !arr.includes(formData[k])) arr.push(formData[k]);
-  });
-  await Promise.all([saveRecords(), saveMeta()]);
-  toast('已保存', 'success'); route('timeline');
+  const btn = $('#save-form-btn');
+  const origHTML = btn?.innerHTML;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>保存中…';
+  }
+  try {
+    formData.updatedAt = Date.now();
+    const i = state.records.findIndex(r => r.id === formData.id);
+    if (i >= 0) state.records[i] = formData; else state.records.push(formData);
+    ['project','owner','ratio','component'].forEach(k => {
+      const arr = state.meta[k + 's'];
+      if (formData[k] && arr && !arr.includes(formData[k])) arr.push(formData[k]);
+    });
+    await Promise.all([saveRecords(), saveMeta()]);
+    toast('已保存', 'success');
+    route('timeline');
+  } catch (e) {
+    console.error(e);
+    toast('保存失败：' + (e.message || e), 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
+  }
 };
 window.deleteCurrent = async () => {
   if (!formData) return;

@@ -762,7 +762,7 @@ function renderForm() {
   $('#f-ratio').onchange = e => { formData.ratio = e.target.value; renderVariants(); };
   $('#f-component').onchange = e => formData.component = e.target.value;
   $('#f-start').value = formData.startDate || ''; $('#f-end').value = formData.endDate || '';
-  $('#f-start').onchange = e => formData.startDate = e.target.value;
+  $('#f-start').onchange = e => { formData.startDate = e.target.value; applyAutoControlImage(); renderVariants(); };
   $('#f-end').onchange = e => formData.endDate = e.target.value;
   $$('#f-confidence input').forEach(r => {
     r.checked = +r.value === +formData.confidence;
@@ -932,23 +932,30 @@ async function setVariantImage(i, file) {
   renderVariants();
 }
 
-function getLatestApplied(attr, excludeId) {
+function getLatestApplied(attr, excludeId, beforeTime) {
+  // 收集所有「该属性下、当前生效图」事件，按时间倒序取最新
+  // - 直接更新：imageAfter @ updateDate
+  // - A/B 已采用变体：adopted.img @ endDate||startDate（采用结束后生效）
+  // - A/B control 变体（兜底）：variants[0].img @ startDate（开测时即代表当时线上图，
+  //   适配「首次使用工具上传 control 但还没采用任何方案」的场景）
   const events = [];
   for (const r of state.records) {
     if (excludeId && r.id === excludeId) continue;
     if (!Array.isArray(r.attrs) || !r.attrs.includes(attr)) continue;
+    const push = (img, ts) => {
+      if (!img) return;
+      const t = ts ? new Date(ts).getTime() : (r.updatedAt || 0);
+      const ms = isNaN(t) ? (r.updatedAt || 0) : t;
+      if (beforeTime && ms >= beforeTime) return;  // 并行实验防穿越
+      events.push({ img, time: ms });
+    };
     if (r.type === 'direct') {
-      if (r.imageAfter) {
-        const t = r.updateDate ? new Date(r.updateDate).getTime() : (r.updatedAt || 0);
-        events.push({ img: r.imageAfter, time: isNaN(t) ? (r.updatedAt||0) : t });
-      }
+      push(r.imageAfter, r.updateDate);
     } else {
       const adopted = (r.variants || []).find(v => v.adopted && v.img);
-      if (adopted) {
-        const ts = r.endDate || r.startDate;
-        const t = ts ? new Date(ts).getTime() : (r.updatedAt || 0);
-        events.push({ img: adopted.img, time: isNaN(t) ? (r.updatedAt||0) : t });
-      }
+      if (adopted) push(adopted.img, r.endDate || r.startDate);
+      const ctrl = (r.variants || [])[0];
+      if (ctrl && ctrl.img) push(ctrl.img, r.startDate);
     }
   }
   events.sort((a, b) => b.time - a.time);
@@ -963,7 +970,8 @@ function applyAutoControlImage() {
     if (v0._auto) { v0.img = ''; v0._auto = false; }
     return;
   }
-  const img = getLatestApplied(formData.attrs[0], formData.id);
+  const startMs = formData.startDate ? new Date(formData.startDate).getTime() : Date.now();
+  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(startMs) ? Date.now() : startMs);
   if (img) { v0.img = img; v0._auto = true; }
   else if (v0._auto) { v0.img = ''; v0._auto = false; }
 }

@@ -589,12 +589,34 @@ async function readJSON(name, fb) {
   if (!_folder) return fb;
   try { const fh = await _folder.getFileHandle(name); return JSON.parse(await (await fh.getFile()).text()); } catch { return fb; }
 }
-async function writeJSON(name, data) {
-  if (!_folder) { queuePending(name, data); return; }
+// 解析 a/b/c.json 这种带子目录的路径，逐级 getDirectoryHandle，返回 {dir, file}
+async function _resolvePath(path, createDirs) {
+  const parts = path.split('/');
+  let dir = _folder;
+  for (let i = 0; i < parts.length - 1; i++) {
+    dir = await dir.getDirectoryHandle(parts[i], { create: !!createDirs });
+  }
+  return { dir, file: parts[parts.length - 1] };
+}
+async function writePathRaw(path, data) {
+  const { dir, file } = await _resolvePath(path, true);
+  const fh = await dir.getFileHandle(file, { create: true });
+  const w = await fh.createWritable();
+  await w.write(JSON.stringify(data, null, 2));
+  await w.close();
+}
+// 写文件（支持子目录）；失败 → 入 pending 队列，不丢数据。返回是否成功落盘
+async function writeJSON(path, data) {
+  if (!_folder) { queuePending(path, data); return false; }
+  try { await writePathRaw(path, data); return true; }
+  catch (e) { queuePending(path, data); return false; }
+}
+async function deletePath(path) {
+  if (!_folder) return;
   try {
-    const fh = await _folder.getFileHandle(name, { create:true });
-    const w = await fh.createWritable(); await w.write(JSON.stringify(data, null, 2)); await w.close();
-  } catch (e) { queuePending(name, data); }
+    const { dir, file } = await _resolvePath(path, false);
+    await dir.removeEntry(file);
+  } catch {}
 }
 function queuePending(name, data) {
   state.pending = state.pending.filter(p => p.name !== name);
@@ -606,16 +628,51 @@ async function flushPending() {
   let ok = 0;
   for (const p of [...state.pending]) {
     try {
-      const fh = await _folder.getFileHandle(p.name, { create:true });
-      const w = await fh.createWritable(); await w.write(JSON.stringify(p.data, null, 2)); await w.close();
+      await writePathRaw(p.name, p.data);
       state.pending = state.pending.filter(x => x !== p); ok++;
     } catch {}
   }
   await kvSet('pending', state.pending); renderPending();
   return ok;
 }
+// ---- 单记录文件读写（方案 B：每条记录一个文件，多人并发不互相覆盖）----
+function recordPath(id) { return `records/${id}.json`; }
+async function writeRecordFile(r) { return await writeJSON(recordPath(r.id), r); }
+async function deleteRecordFile(id) { await deletePath(recordPath(id)); }
+async function recordFileExists(id) {
+  if (!_folder) return false;
+  try {
+    const dir = await _folder.getDirectoryHandle('records');
+    await dir.getFileHandle(`${id}.json`);
+    return true;
+  } catch { return false; }
+}
+function bumpRecordId(id) {
+  const m = String(id).match(/^(.*-)(\d+)$/);
+  return m ? m[1] + String(+m[2] + 1).padStart(m[2].length, '0') : id + '-1';
+}
+async function loadAllRecords() {
+  if (!_folder) return [];
+  let dir = null;
+  try { dir = await _folder.getDirectoryHandle('records'); } catch {}
+  if (dir) {
+    const recs = [];
+    for await (const [name, h] of dir.entries()) {
+      if (h.kind !== 'file' || !name.endsWith('.json')) continue;
+      try { recs.push(JSON.parse(await (await h.getFile()).text())); } catch {}
+    }
+    if (recs.length) return recs;
+  }
+  // records/ 不存在或为空 → 从旧 records.json 迁移
+  const legacy = await readJSON('records.json', null);
+  if (Array.isArray(legacy) && legacy.length) {
+    for (const r of legacy) { try { await writeRecordFile(r); } catch {} }
+    return legacy;
+  }
+  return [];
+}
 async function loadAll() {
-  state.records = await readJSON('records.json', []);
+  state.records = await loadAllRecords();
   state.meta = await readJSON('meta.json', { projects:[], owners:[], ratios:[], components:[], lastId:{} });
   state.recycle = await readJSON('recycle.json', []);
   state.pending = (await kvGet('pending')) || [];
@@ -634,9 +691,34 @@ function ensureDefaults() {
   if (!m.projects) m.projects = [];
   if (!m.owners) m.owners = [];
 }
-async function saveRecords() { await writeJSON('records.json', state.records); }
-async function saveMeta() { await writeJSON('meta.json', state.meta); }
-async function saveRecycle() { await writeJSON('recycle.json', state.recycle); }
+// meta.json 仍是共享单文件：保存前 read-merge，多人新增下拉项取并集，避免互相覆盖
+async function saveMeta() {
+  if (_folder) {
+    const disk = await readJSON('meta.json', null);
+    if (disk) {
+      ['projects','owners','ratios','components'].forEach(k => {
+        state.meta[k] = Array.from(new Set([...(disk[k]||[]), ...(state.meta[k]||[])]));
+      });
+      const lid = { ...(disk.lastId||{}) };
+      Object.keys(state.meta.lastId||{}).forEach(y => { lid[y] = Math.max(lid[y]||0, state.meta.lastId[y]||0); });
+      state.meta.lastId = lid;
+    }
+  }
+  await writeJSON('meta.json', state.meta);
+}
+// recycle.json 也是共享单文件：保存前按 id 合并磁盘版本
+async function saveRecycle() {
+  if (_folder) {
+    const disk = await readJSON('recycle.json', null);
+    if (Array.isArray(disk)) {
+      const map = new Map();
+      disk.forEach(r => map.set(r.id, r));
+      state.recycle.forEach(r => map.set(r.id, r));
+      state.recycle = [...map.values()];
+    }
+  }
+  await writeJSON('recycle.json', state.recycle);
+}
 function nextRecordId() {
   const y = new Date().getFullYear();
   const last = state.meta.lastId?.[y] || 0;
@@ -648,13 +730,15 @@ async function softDelete(id) {
   const i = state.records.findIndex(r => r.id === id); if (i < 0) return;
   const rec = state.records.splice(i, 1)[0]; rec._deletedAt = Date.now();
   state.recycle.push(rec);
-  await Promise.all([saveRecords(), saveRecycle()]);
+  await deleteRecordFile(id);
+  await saveRecycle();
 }
 async function restoreRec(id) {
   const i = state.recycle.findIndex(r => r.id === id); if (i < 0) return;
   const rec = state.recycle.splice(i, 1)[0]; delete rec._deletedAt;
   state.records.push(rec);
-  await Promise.all([saveRecords(), saveRecycle()]);
+  await writeRecordFile(rec);
+  await saveRecycle();
 }
 async function purgeRec(id) {
   state.recycle = state.recycle.filter(r => r.id !== id);
@@ -1033,6 +1117,11 @@ window.saveForm = async () => {
     btn.innerHTML = '<svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>保存中…';
   }
   try {
+    // 新记录：防多人同时新建撞 id（撞 id = 撞文件 = 互相覆盖）
+    const isNew = !state.records.some(r => r.id === formData.id);
+    if (isNew) {
+      while (await recordFileExists(formData.id)) formData.id = bumpRecordId(formData.id);
+    }
     formData.updatedAt = Date.now();
     const i = state.records.findIndex(r => r.id === formData.id);
     if (i >= 0) state.records[i] = formData; else state.records.push(formData);
@@ -1040,8 +1129,13 @@ window.saveForm = async () => {
       const arr = state.meta[k + 's'];
       if (formData[k] && arr && !arr.includes(formData[k])) arr.push(formData[k]);
     });
-    await Promise.all([saveRecords(), saveMeta()]);
-    toast('已保存', 'success');
+    const ok = await writeRecordFile(formData);
+    await saveMeta();
+    if (ok) {
+      toast('已保存', 'success');
+    } else {
+      toast('网络写入失败，已存入待同步队列（顶部红标），恢复后自动重试', 'error');
+    }
     route('timeline');
   } catch (e) {
     console.error(e);
@@ -1174,10 +1268,11 @@ const RETEST_META = {
 };
 // 当某变体/记录被切换到「复测项」时，自动把更早的、同项目 + 共享 attrs 的
 // 「待复测」变体/记录一并升级为「复测完成」。返回被改动的「条数」用于 toast 提示
-function autoPromotePendingRetests(currentRecord) {
+async function autoPromotePendingRetests(currentRecord) {
   if (!currentRecord || !Array.isArray(currentRecord.attrs) || !currentRecord.attrs.length) return 0;
   const curTime = recordEffectiveTime(currentRecord);
   let promoted = 0;
+  const changedRecs = [];
   for (const r of state.records) {
     if (r.id === currentRecord.id) continue;
     if (r.project !== currentRecord.project) continue;
@@ -1193,8 +1288,9 @@ function autoPromotePendingRetests(currentRecord) {
         if (v.retestStatus === 'pending') { v.retestStatus = 'completed'; promoted++; changed = true; }
       });
     }
-    if (changed) r.updatedAt = Date.now();
+    if (changed) { r.updatedAt = Date.now(); changedRecs.push(r); }
   }
+  for (const r of changedRecs) await writeRecordFile(r);
   return promoted;
 }
 function recordRetestStates(r) {
@@ -1238,9 +1334,9 @@ window.cycleVariantRetest = async (id, idx) => {
   const v = r.variants?.[idx]; if (!v) return;
   v.retestStatus = _cycleRetest(v.retestStatus || null);
   let promoted = 0;
-  if (v.retestStatus === 'doing') promoted = autoPromotePendingRetests(r);
+  if (v.retestStatus === 'doing') promoted = await autoPromotePendingRetests(r);
   r.updatedAt = Date.now();
-  await saveRecords();
+  await writeRecordFile(r);
   renderTimeline();
   if (promoted > 0) toast(`已自动把 ${promoted} 条更早的「待复测」标为「复测完成」`, 'success');
 };
@@ -1248,9 +1344,9 @@ window.cycleDirectRetest = async id => {
   const r = state.records.find(x => x.id === id); if (!r) return;
   r.retestStatus = _cycleRetest(r.retestStatus || null);
   let promoted = 0;
-  if (r.retestStatus === 'doing') promoted = autoPromotePendingRetests(r);
+  if (r.retestStatus === 'doing') promoted = await autoPromotePendingRetests(r);
   r.updatedAt = Date.now();
-  await saveRecords();
+  await writeRecordFile(r);
   renderTimeline();
   if (promoted > 0) toast(`已自动把 ${promoted} 条更早的「待复测」标为「复测完成」`, 'success');
 };
@@ -1296,9 +1392,9 @@ window.openRetestPicker = (id, btn) => {
     if (k === '_record') { r.retestStatus = cycle(r.retestStatus || null); newStatus = r.retestStatus; }
     else { const v = r.variants[+k]; if (v) { v.retestStatus = cycle(v.retestStatus || null); newStatus = v.retestStatus; } }
     let promoted = 0;
-    if (newStatus === 'doing') promoted = autoPromotePendingRetests(r);
+    if (newStatus === 'doing') promoted = await autoPromotePendingRetests(r);
     r.updatedAt = Date.now();
-    await saveRecords();
+    await writeRecordFile(r);
     cleanup();
     renderTimeline();
     if (promoted > 0) toast(`已自动把 ${promoted} 条更早的「待复测」标为「复测完成」`, 'success');
@@ -1626,7 +1722,8 @@ function detailHTML(r) {
 window.saveSummary = async (id) => {
   const r = state.records.find(x => x.id === id); if (!r) return;
   r.summary = $('#detail-summary').value;
-  await saveRecords(); toast('复盘已保存', 'success');
+  r.updatedAt = Date.now();
+  await writeRecordFile(r); toast('复盘已保存', 'success');
 };
 
 // ---------- Dashboard ----------

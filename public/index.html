@@ -2490,7 +2490,7 @@ function parseOCR(installsText, retainedText) {
   ocrRawText = (installsText ? '【首次安装识别原文】\n' + installsText : '') +
                (retainedText ? '\n\n【保留安装识别原文】\n' + retainedText : '');
   const installs = extractNumsAndCIs(installsText);
-  const retained = extractNumsAndCIs(retainedText).numbers;
+  const retained = extractRetained(retainedText);
   // 至少显示当前流量比例对应的变体数（默认 4 行）；OCR 没识别到的留空让用户手填
   const targetN = ratioToCount(formData?.ratio || '') || 4;
   const n = Math.max(installs.numbers.length, retained.length, targetN);
@@ -2515,6 +2515,24 @@ function normalizeLine(line) {
     // Tesseract 经常把千分位逗号误读成点：1-3 位数 + 点 + 3 位数 + 非数字非百分号 → 视为千分位
     // 例：「47.940 -13.5%」→「47,940 -13.5%」；不影响 CI 小数「13.5%」「-0.83%」
     .replace(/(\d{1,3})\.(\d{3})(?=[^\d%]|$)/g, '$1,$2');
+}
+// 保留安装：可能是小数字（85/97/94），用宽松解析 —— 每行取最大整数（≥1），
+// 不像首次安装那样要求 4 位以上 / ≥100
+function extractRetained(text) {
+  if (!text) return [];
+  const lines = text.split(/\r?\n/).map(l => normalizeLine(l.trim())).filter(Boolean);
+  const nums = [];
+  for (const line of lines) {
+    const stripped = line.replace(/[+\-±]?\d+\.?\d*\s*%/g, ' ');  // 去掉百分数
+    let best = null;
+    for (const m of stripped.matchAll(/\d{1,3}(?:,\d{3})+|\d+/g)) {
+      const n = parseInt(m[0].replace(/,/g, ''), 10);
+      if (isNaN(n) || n < 1 || n > 99999999) continue;
+      if (best == null || n > best) best = n;
+    }
+    if (best != null) nums.push(best);
+  }
+  return nums;
 }
 function extractNumsAndCIs(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);

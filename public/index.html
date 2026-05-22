@@ -2022,6 +2022,8 @@ function openTlDatePicker() {
   tlDatePending = { preset:tlDateState.preset, from:tlDateState.from?new Date(tlDateState.from):null, to:tlDateState.to?new Date(tlDateState.to):null, picking:'from', viewMonth:tlDateState.from?new Date(tlDateState.from):new Date() };
   const pop = $('#tl-period-pop');
   const btn = $('#tl-period-btn');
+  // 移到 body 层级，脱离时间线 header 子树，避免被 #timeline-list 的 z-10 层叠上下文盖住
+  if (pop.parentElement !== document.body) document.body.appendChild(pop);
   pop.classList.remove('hidden');
   renderTlPresets(); renderTlCalendar();
   // fixed 定位，从按钮 rect 算坐标，避开任何父容器的 overflow / stacking

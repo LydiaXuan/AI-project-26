@@ -2579,8 +2579,9 @@ function extractNumsAndCIs(text) {
 function scanCI(lines, centerIdx) {
   // 把各种 Unicode 减号 / 全角符号统一成 ASCII，再做 pattern 匹配
   const normSign = s => s.replace(/[−–—]/g, '-');
-  // 合理 CI 区间：±30%。Tesseract 把 -5.2% 错读成 -52% 这类异常值直接拒绝
-  const valid = r => r && Math.abs(r.low) <= 30 && Math.abs(r.high) <= 30 ? r : null;
+  // CI 合理上界放宽到 ±999%（真实实验可能出现 -98%~+105% 这种超宽区间）；
+  // 只拒绝明显是 OCR 垃圾的 4 位以上百分数
+  const valid = r => r && Math.abs(r.low) <= 999 && Math.abs(r.high) <= 999 ? r : null;
   const tryMatch = (raw) => {
     const text = normSign(raw);
     // 1) Two signed %s — 最严格，必须放第一位（"-14.8% -7.7%" 不会被 pattern 3 吃掉第二个负号）
@@ -2609,7 +2610,7 @@ function scanCI(lines, centerIdx) {
       const p2raw = anyP[anyP.length-1][1].replace(/\s+/g,'');
       let a = parseFloat(p1raw), b = parseFloat(p2raw);
       const aAbs = Math.abs(a), bAbs = Math.abs(b);
-      const looksLikeCI = aAbs <= 30 && bAbs <= 30;
+      const looksLikeCI = aAbs <= 999 && bAbs <= 999;
       const isRatioHeader = (aAbs % 5 === 0 && bAbs % 5 === 0 && aAbs + bAbs === 100); // 70/30, 60/40 等
       // CI 通常带小数（-1%, +5.6%）或左右不等；像「25% 25%」「10% 10%」这种整数等值更可能是均分比例
       const equalIntegers = aAbs === bAbs && !p1raw.includes('.') && !p2raw.includes('.') && !/[+-]/.test(p1raw) && !/[+-]/.test(p2raw);

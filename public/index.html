@@ -653,23 +653,33 @@ function bumpRecordId(id) {
 }
 async function loadAllRecords() {
   if (!_folder) return [];
+  const byId = new Map();
+  // 1) 读 records/ 文件夹里已有的单记录文件
   let dir = null;
   try { dir = await _folder.getDirectoryHandle('records'); } catch {}
   if (dir) {
-    const recs = [];
     for await (const [name, h] of dir.entries()) {
       if (h.kind !== 'file' || !name.endsWith('.json')) continue;
-      try { recs.push(JSON.parse(await (await h.getFile()).text())); } catch {}
+      try { const r = JSON.parse(await (await h.getFile()).text()); byId.set(r.id, r); } catch {}
     }
-    if (recs.length) return recs;
   }
-  // records/ 不存在或为空 → 从旧 records.json 迁移
+  // 2) 读旧 records.json：凡是 records/ 里还没有的记录，补写过去（自愈式迁移，
+  //    迁移中断也能下次续上）。全部补齐成功后把旧文件改名 .bak 不再读，
+  //    避免「已删除的记录从旧文件复活」
   const legacy = await readJSON('records.json', null);
   if (Array.isArray(legacy) && legacy.length) {
-    for (const r of legacy) { try { await writeRecordFile(r); } catch {} }
-    return legacy;
+    let allOk = true;
+    for (const r of legacy) {
+      if (byId.has(r.id)) continue;
+      byId.set(r.id, r);
+      const ok = await writeRecordFile(r);
+      if (!ok) allOk = false;
+    }
+    if (allOk) {
+      try { await writeJSON('records.json.bak', legacy); await deletePath('records.json'); } catch {}
+    }
   }
-  return [];
+  return [...byId.values()];
 }
 async function loadAll() {
   state.records = await loadAllRecords();

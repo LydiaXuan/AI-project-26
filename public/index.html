@@ -1325,14 +1325,14 @@ function openMultiFilter(btnId, options, getSelected, setSelected, onChange) {
   document.querySelectorAll('.multi-filter-pop').forEach(p => p.remove());
   const btn = $(btnId); if (!btn) return;
   const pop = document.createElement('div');
-  pop.className = 'multi-filter-pop fixed z-[60] bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-w-[180px] max-w-[280px] max-h-[60vh] overflow-y-auto';
+  pop.className = 'multi-filter-pop fixed z-[60] bg-white border border-slate-200 rounded-lg shadow-xl p-1 min-w-[120px] max-w-[180px] max-h-[60vh] overflow-y-auto';
   const render = () => {
     const sel = getSelected();              // null = 全部
     const isAll = sel === null;
     const rowHTML = (val, label, on) =>
-      `<button type="button" data-v="${escapeHTML(val)}" class="mf-row w-full text-left px-3 py-1.5 text-[13px] ${on?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}">${escapeHTML(label)}</button>`;
+      `<button type="button" data-v="${escapeHTML(val)}" class="mf-row w-full text-left px-2.5 py-1 text-[12px] rounded-md ${on?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}">${escapeHTML(label)}</button>`;
     pop.innerHTML =
-      '<div class="px-3 py-1 text-[10px] text-slate-400">可多选 · 点击切换</div>' +
+      '<div class="px-2.5 py-0.5 text-[10px] text-slate-400">可多选 · 点击切换</div>' +
       rowHTML('__all__', '全部', isAll) +
       '<div class="my-1 border-t border-slate-100"></div>' +
       options.map(o => rowHTML(o.value, o.label, !isAll && sel.includes(o.value))).join('');

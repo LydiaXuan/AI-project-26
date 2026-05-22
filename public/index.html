@@ -1327,38 +1327,30 @@ function openMultiFilter(btnId, options, getSelected, setSelected, onChange) {
   const pop = document.createElement('div');
   pop.className = 'multi-filter-pop fixed z-[60] bg-white border border-slate-200 rounded-lg shadow-xl py-1 min-w-[180px] max-w-[280px] max-h-[60vh] overflow-y-auto';
   const render = () => {
-    const sel = getSelected();
-    const isAll = sel === null || (Array.isArray(sel) && sel.length === options.length);
-    const isNone = Array.isArray(sel) && sel.length === 0;
-    pop.innerHTML = `<div class="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between gap-2">
-        <span class="text-[10px] text-slate-400 font-semibold">多选</span>
-        <div class="flex gap-2">
-          <button type="button" class="mf-all text-[11px] text-indigo-500 hover:underline ${isAll?'opacity-40 pointer-events-none':''}">全选</button>
-          <button type="button" class="mf-none text-[11px] text-slate-500 hover:underline ${isNone?'opacity-40 pointer-events-none':''}">全部取消</button>
-        </div>
-      </div>` + options.map(o => {
-      const checked = isAll || (Array.isArray(sel) && sel.includes(o.value));
-      return `<label class="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
-        <input type="checkbox" data-v="${escapeHTML(o.value)}" ${checked ? 'checked' : ''} class="rounded">
-        <span class="text-[13px] text-slate-700">${escapeHTML(o.label)}</span>
-      </label>`;
-    }).join('');
-    pop.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.onchange = (e) => {
-        const v = e.target.dataset.v;
+    const sel = getSelected();              // null = 全部
+    const isAll = sel === null;
+    const rowHTML = (val, label, on) =>
+      `<button type="button" data-v="${escapeHTML(val)}" class="mf-row w-full text-left px-3 py-1.5 text-[13px] ${on?'bg-indigo-50 text-indigo-700 font-semibold':'text-slate-600 hover:bg-slate-50'}">${escapeHTML(label)}</button>`;
+    pop.innerHTML =
+      '<div class="px-3 py-1 text-[10px] text-slate-400">可多选 · 点击切换</div>' +
+      rowHTML('__all__', '全部', isAll) +
+      '<div class="my-1 border-t border-slate-100"></div>' +
+      options.map(o => rowHTML(o.value, o.label, !isAll && sel.includes(o.value))).join('');
+    pop.querySelectorAll('.mf-row').forEach(row => {
+      row.onclick = () => {
+        const v = row.dataset.v;
         const cur = getSelected();
-        // 当前是 null（=全部已勾），点击意味着取消其中一个 → 展开成显式数组
-        let next = cur === null ? options.map(o => o.value) : cur.slice();
-        if (e.target.checked) { if (!next.includes(v)) next.push(v); }
-        else next = next.filter(x => x !== v);
-        // 归一：勾全部 → 视为 null
-        if (next.length === options.length) next = null;
-        setSelected(next);
+        if (v === '__all__') {
+          setSelected(null);
+        } else {
+          let arr = (cur === null) ? [] : cur.slice();
+          if (arr.includes(v)) arr = arr.filter(x => x !== v);  // 选中再点 → 取消
+          else arr.push(v);                                     // 未选中点 → 选上
+          setSelected(arr.length === 0 ? null : arr);           // 全取消 → 回到「全部」
+        }
         render(); onChange();
       };
     });
-    pop.querySelector('.mf-all').onclick = () => { setSelected(null); render(); onChange(); };
-    pop.querySelector('.mf-none').onclick = () => { setSelected([]); render(); onChange(); };
   };
   document.body.appendChild(pop);
   render();

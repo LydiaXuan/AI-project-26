@@ -948,6 +948,9 @@ function ratioToCount(s) { if (!s) return 4; const p = s.split('/').map(x => x.t
 
 function renderForm() {
   if (!formData) formData = blankForm();
+  // 重置保存按钮（上次保存成功后跳走没复位，会卡在「保存中…」disabled）
+  const _sb = $('#save-form-btn');
+  if (_sb) { _sb.disabled = false; _sb.textContent = '保存并同步配置'; }
   const isEdit = state.records.some(r => r.id === formData.id);
   $('#form-title').textContent = (isEdit ? '编辑' : '新增') + ' ' + (formData.type === 'ab' ? 'A/B 测试' : '直接更新') + '记录';
   $('#form-id-badge').textContent = formData.displayId ? ('ID: ' + formData.displayId) : 'ID: 新记录（保存后生成）';

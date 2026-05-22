@@ -639,18 +639,6 @@ async function flushPending() {
 function recordPath(id) { return `records/${id}.json`; }
 async function writeRecordFile(r) { return await writeJSON(recordPath(r.id), r); }
 async function deleteRecordFile(id) { await deletePath(recordPath(id)); }
-async function recordFileExists(id) {
-  if (!_folder) return false;
-  try {
-    const dir = await _folder.getDirectoryHandle('records');
-    await dir.getFileHandle(`${id}.json`);
-    return true;
-  } catch { return false; }
-}
-function bumpRecordId(id) {
-  const m = String(id).match(/^(.*-)(\d+)$/);
-  return m ? m[1] + String(+m[2] + 1).padStart(m[2].length, '0') : id + '-1';
-}
 async function loadAllRecords() {
   if (!_folder) return [];
   const byId = new Map();
@@ -729,12 +717,18 @@ async function saveRecycle() {
   }
   await writeJSON('recycle.json', state.recycle);
 }
-function nextRecordId() {
+// displayId：友好编号「2026-53」，给人看的，可能多人撞号（仅展示，无害）
+function nextDisplayId() {
   const y = new Date().getFullYear();
   const last = state.meta.lastId?.[y] || 0;
   state.meta.lastId = state.meta.lastId || {};
   state.meta.lastId[y] = last + 1;
   return `${y}-${String(last+1).padStart(2,'0')}`;
+}
+// id：记录的真实主键，也是存盘文件名。必须全局唯一 → 时间戳 + 随机，
+// 杜绝多人并发新建撞文件互相覆盖
+function genUid() {
+  return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 async function softDelete(id) {
   const i = state.records.findIndex(r => r.id === id); if (i < 0) return;
@@ -806,7 +800,7 @@ let formData = null;
 let variantPasteTargetIdx = -1;
 function blankForm() {
   return {
-    id: nextRecordId(), type: 'ab',
+    id: genUid(), displayId: nextDisplayId(), type: 'ab',
     project: state.meta.projects[0] || '',
     owner: state.meta.owners[0] || '',
     ratio: state.meta.ratios[0] || '',
@@ -843,7 +837,7 @@ function renderForm() {
   if (!formData) formData = blankForm();
   const isEdit = state.records.some(r => r.id === formData.id);
   $('#form-title').textContent = (isEdit ? '编辑' : '新增') + ' ' + (formData.type === 'ab' ? 'A/B 测试' : '直接更新') + '记录';
-  $('#form-id-badge').textContent = 'ID: ' + formData.id;
+  $('#form-id-badge').textContent = 'ID: ' + (formData.displayId || formData.id);
   $('#form-delete-btn').classList.toggle('hidden', !isEdit);
   $$('.form-type-btn').forEach(b => {
     const on = b.dataset.type === formData.type;
@@ -1127,11 +1121,6 @@ window.saveForm = async () => {
     btn.innerHTML = '<svg class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>保存中…';
   }
   try {
-    // 新记录：防多人同时新建撞 id（撞 id = 撞文件 = 互相覆盖）
-    const isNew = !state.records.some(r => r.id === formData.id);
-    if (isNew) {
-      while (await recordFileExists(formData.id)) formData.id = bumpRecordId(formData.id);
-    }
     formData.updatedAt = Date.now();
     const i = state.records.findIndex(r => r.id === formData.id);
     if (i >= 0) state.records[i] = formData; else state.records.push(formData);
@@ -1143,14 +1132,16 @@ window.saveForm = async () => {
     await saveMeta();
     if (ok) {
       toast('已保存', 'success');
+      route('timeline');
     } else {
-      toast('网络写入失败，已存入待同步队列（顶部红标），恢复后自动重试', 'error');
+      // 写盘失败：不跳走，留在表单逼用户重试，避免数据只躺在本地队列被忽略后丢失
+      toast('保存失败！数据还没写入服务器，请检查网络后点「重试保存」，先别关页面', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = '⚠ 重试保存'; }
     }
-    route('timeline');
   } catch (e) {
     console.error(e);
     toast('保存失败：' + (e.message || e), 'error');
-    if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '⚠ 重试保存'; }
   }
 };
 window.deleteCurrent = async () => {
@@ -1500,7 +1491,7 @@ function timelineCard(r) {
         <div>
           <div class="flex items-center gap-2 mb-1 flex-wrap">
             <span class="text-xs font-bold text-slate-400 font-mono">${dateStr}</span>
-            <span class="text-[10px] font-mono text-slate-400">#${r.id}</span>
+            <span class="text-[10px] font-mono text-slate-400">#${r.displayId || r.id}</span>
             ${statusBadge}
             ${retestBadgeHTML(r)}
           </div>
@@ -1534,7 +1525,7 @@ function directCard(r) {
         <div class="min-w-0">
           <div class="flex items-center gap-2 mb-1 flex-wrap">
             <span class="text-xs font-bold text-slate-400 font-mono">${dateStr}</span>
-            <span class="text-[10px] font-mono text-slate-400">#${r.id}</span>
+            <span class="text-[10px] font-mono text-slate-400">#${r.displayId || r.id}</span>
             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-600">直接更新 · 已应用</span>
             ${retestBadgeHTML(r)}
             ${attrChips}
@@ -1705,7 +1696,7 @@ function detailHTML(r) {
     <div class="p-6 border-b border-slate-100 bg-white shrink-0">
       <h2 class="text-lg font-bold text-slate-800 mb-2 pr-8">${escapeHTML(r.project || '-')} — ${escapeHTML(r.noteChange || r.notePurpose || r.component || '-')}</h2>
       <div class="flex flex-wrap gap-4 text-[12px] text-slate-500 font-semibold">
-        <span>ID: ${r.id}</span><span>负责人: ${escapeHTML(r.owner||'-')}</span><span>置信度: ${r.confidence}%</span>
+        <span>ID: ${r.displayId || r.id}</span><span>负责人: ${escapeHTML(r.owner||'-')}</span><span>置信度: ${r.confidence}%</span>
         <span>周期: ${r.startDate||'-'} ~ ${r.endDate||'-'}</span>
       </div>
     </div>
@@ -2119,7 +2110,7 @@ function groupBy(list, key) { const m = {}; list.forEach(r => { const v = r[key]
 function computeStats(map) { return Object.entries(map).map(([k, arr]) => { const total = arr.length; const adopted = arr.filter(r => (r.variants||[]).some(v => v.adopted)).length; return { key: k, total, adopted, rate: total ? adopted/total*100 : 0 }; }); }
 window.exportCSV = () => {
   const rows = [['ID','项目','负责人','类型','开始','结束','置信度','是否采纳','改动内容']];
-  state.records.forEach(r => rows.push([r.id, r.project, r.owner, r.component, r.startDate, r.endDate, r.confidence, (r.variants||[]).some(v=>v.adopted)?'是':'否', r.noteChange||'']));
+  state.records.forEach(r => rows.push([r.displayId || r.id, r.project, r.owner, r.component, r.startDate, r.endDate, r.confidence, (r.variants||[]).some(v=>v.adopted)?'是':'否', r.noteChange||'']));
   const csv = rows.map(r => r.map(x => `"${String(x||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob(['﻿'+csv], { type:'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `aso-records-${new Date().toISOString().slice(0,10)}.csv`; a.click();
@@ -2163,7 +2154,7 @@ function renderSettings() {
       ${state.recycle.length ? `<div class="divide-y divide-slate-100">${state.recycle.map(r => `
         <div class="flex justify-between items-center py-3">
           <div><div class="text-sm font-semibold text-slate-700">${escapeHTML(r.project||'-')} — ${escapeHTML(r.noteChange||r.notePurpose||r.component||'-')}</div>
-          <div class="text-xs text-slate-400 font-mono">#${r.id} · 删除于 ${new Date(r._deletedAt||0).toLocaleString()}</div></div>
+          <div class="text-xs text-slate-400 font-mono">#${r.displayId || r.id} · 删除于 ${new Date(r._deletedAt||0).toLocaleString()}</div></div>
           <div class="flex gap-2">
             <button onclick="onRestore('${r.id}')" class="px-3 py-1 text-xs bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100">还原</button>
             <button onclick="onPurge('${r.id}')" class="px-3 py-1 text-xs bg-rose-50 text-rose-700 rounded hover:bg-rose-100">永久删除</button>

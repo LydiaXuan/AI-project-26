@@ -95,6 +95,8 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
 
   <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
 
+    <div id="health-banner" class="hidden shrink-0 bg-amber-50 border-b border-amber-300 text-amber-800 text-[12px] leading-relaxed px-6 py-2"></div>
+
     <section id="view-form" class="view flex-1 flex flex-col h-full">
       <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0 z-10 shadow-sm">
         <div class="flex items-center gap-4">
@@ -639,16 +641,30 @@ async function flushPending() {
 function recordPath(id) { return `records/${id}.json`; }
 async function writeRecordFile(r) { return await writeJSON(recordPath(r.id), r); }
 async function deleteRecordFile(id) { await deletePath(recordPath(id)); }
+// 写入 + 立刻回读校验（方案②）：确认文件真的落盘且内容一致
+async function writeRecordFileVerified(r) {
+  const ok = await writeRecordFile(r);
+  if (!ok) return false;
+  try {
+    const dir = await _folder.getDirectoryHandle('records');
+    const fh = await dir.getFileHandle(`${r.id}.json`);
+    const back = JSON.parse(await (await fh.getFile()).text());
+    return !!back && back.id === r.id && back.updatedAt === r.updatedAt;
+  } catch { return false; }
+}
+let _loadHealth = { loaded: 0, corrupted: 0, corruptedNames: [] };
 async function loadAllRecords() {
   if (!_folder) return [];
   const byId = new Map();
+  _loadHealth = { loaded: 0, corrupted: 0, corruptedNames: [] };
   // 1) 读 records/ 文件夹里已有的单记录文件
   let dir = null;
   try { dir = await _folder.getDirectoryHandle('records'); } catch {}
   if (dir) {
     for await (const [name, h] of dir.entries()) {
       if (h.kind !== 'file' || !name.endsWith('.json')) continue;
-      try { const r = JSON.parse(await (await h.getFile()).text()); byId.set(r.id, r); } catch {}
+      try { const r = JSON.parse(await (await h.getFile()).text()); byId.set(r.id, r); }
+      catch { _loadHealth.corrupted++; _loadHealth.corruptedNames.push(name); }  // 方案③：损坏文件不再静默跳过
     }
   }
   // 2) 读旧 records.json：凡是 records/ 里还没有的记录，补写过去（自愈式迁移，
@@ -667,7 +683,65 @@ async function loadAllRecords() {
       try { await writeJSON('records.json.bak', legacy); await deletePath('records.json'); } catch {}
     }
   }
-  return [...byId.values()];
+  const recs = [...byId.values()];
+  _loadHealth.loaded = recs.length;
+  return recs;
+}
+// 方案①：检测 displayId 编号缺口（记录 + 回收站都没有的号 → 疑似丢失）
+function detectIdGaps() {
+  const seen = {};
+  const collect = list => (list||[]).forEach(r => {
+    const m = String(r.displayId || r.id || '').match(/^(\d{4})-(\d+)$/);
+    if (m) (seen[m[1]] = seen[m[1]] || new Set()).add(+m[2]);
+  });
+  collect(state.records); collect(state.recycle);
+  const gaps = [];
+  Object.keys(seen).forEach(y => {
+    const set = seen[y];
+    const max = Math.max(...set);
+    for (let i = 1; i <= max; i++) if (!set.has(i)) gaps.push(`${y}-${String(i).padStart(2,'0')}`);
+  });
+  return gaps;
+}
+// 方案⑦：每天首次打开写一份当天全量快照
+async function dailySnapshot() {
+  if (!_folder) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const path = `_backups/${today}.json`;
+  try { const { dir, file } = await _resolvePath(path, false); await dir.getFileHandle(file); return; } catch {}
+  await writeJSON(path, { ts: Date.now(), records: state.records, recycle: state.recycle, meta: state.meta });
+}
+// 方案⑤：每次保存把记录快照存一份到浏览器 IndexedDB（滚动留最近 80 条）
+async function pushLocalBackup(r) {
+  try {
+    let bk = (await kvGet('localBackups')) || [];
+    bk.push({ id: r.id, displayId: r.displayId || r.id, project: r.project || '', noteChange: r.noteChange || '', ts: Date.now(), data: r });
+    if (bk.length > 80) bk = bk.slice(-80);
+    await kvSet('localBackups', bk);
+  } catch {}
+}
+// 方案⑥：写盘失败时把这条记录单独丢进群晖 _failed/ 文件夹，跨设备可见可恢复
+async function dumpFailedRecord(r) {
+  try { await writePathRaw(`_failed/${r.id}.json`, r); return true; } catch { return false; }
+}
+// 方案①③④：加载后体检，有问题就在顶部横幅告警
+function runHealthCheck() {
+  const banner = $('#health-banner');
+  if (!banner) return;
+  const msgs = [];
+  if (_loadHealth.corrupted > 0)
+    msgs.push(`${_loadHealth.corrupted} 个记录文件损坏读不出：${_loadHealth.corruptedNames.join('、')}`);
+  if (state.pending.length > 0)
+    msgs.push(`${state.pending.length} 条记录未同步到服务器 —— 请点左下角红色「未同步」重试，同步成功前别关页面`);
+  const gaps = detectIdGaps();
+  if (gaps.length > 0)
+    msgs.push(`编号缺口：${gaps.join('、')} —— 可能是被永久删除，也可能是丢失，请核对（回收站里没有就是真丢了）`);
+  if (msgs.length) {
+    banner.innerHTML = '<div class="font-bold mb-0.5">⚠ 数据自检发现问题：</div>' + msgs.map(m => `<div>· ${escapeHTML(m)}</div>`).join('');
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
 }
 async function loadAll() {
   state.records = await loadAllRecords();
@@ -800,7 +874,7 @@ let formData = null;
 let variantPasteTargetIdx = -1;
 function blankForm() {
   return {
-    id: genUid(), displayId: nextDisplayId(), type: 'ab',
+    id: genUid(), displayId: null, type: 'ab',
     project: state.meta.projects[0] || '',
     owner: state.meta.owners[0] || '',
     ratio: state.meta.ratios[0] || '',
@@ -837,7 +911,7 @@ function renderForm() {
   if (!formData) formData = blankForm();
   const isEdit = state.records.some(r => r.id === formData.id);
   $('#form-title').textContent = (isEdit ? '编辑' : '新增') + ' ' + (formData.type === 'ab' ? 'A/B 测试' : '直接更新') + '记录';
-  $('#form-id-badge').textContent = 'ID: ' + (formData.displayId || formData.id);
+  $('#form-id-badge').textContent = formData.displayId ? ('ID: ' + formData.displayId) : 'ID: 新记录（保存后生成）';
   $('#form-delete-btn').classList.toggle('hidden', !isEdit);
   $$('.form-type-btn').forEach(b => {
     const on = b.dataset.type === formData.type;
@@ -1122,20 +1196,24 @@ window.saveForm = async () => {
   }
   try {
     formData.updatedAt = Date.now();
+    if (!formData.displayId) formData.displayId = nextDisplayId();  // 保存时才占号，放弃表单不消耗
     const i = state.records.findIndex(r => r.id === formData.id);
     if (i >= 0) state.records[i] = formData; else state.records.push(formData);
     ['project','owner','ratio','component'].forEach(k => {
       const arr = state.meta[k + 's'];
       if (formData[k] && arr && !arr.includes(formData[k])) arr.push(formData[k]);
     });
-    const ok = await writeRecordFile(formData);
+    await pushLocalBackup(formData);            // 方案⑤：先存一份本地备份
+    const ok = await writeRecordFileVerified(formData);  // 方案②：写入 + 回读校验
     await saveMeta();
     if (ok) {
       toast('已保存', 'success');
       route('timeline');
     } else {
-      // 写盘失败：不跳走，留在表单逼用户重试，避免数据只躺在本地队列被忽略后丢失
-      toast('保存失败！数据还没写入服务器，请检查网络后点「重试保存」，先别关页面', 'error');
+      // 写盘失败：不跳走，留在表单逼用户重试；并尝试 dump 到 _failed/ 跨设备可见
+      await dumpFailedRecord(formData);          // 方案⑥
+      runHealthCheck();
+      toast('保存失败！数据没写入服务器（已暂存待同步队列+本地备份），请检查网络后点「重试保存」，先别关页面', 'error');
       if (btn) { btn.disabled = false; btn.innerHTML = '⚠ 重试保存'; }
     }
   } catch (e) {
@@ -2170,8 +2248,40 @@ function renderSettings() {
         <button onclick="onPickFolder()" class="px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">${_folder?'更换':'选择'}文件夹</button>
         <button onclick="retryPending()" class="px-4 py-1.5 text-xs font-bold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200">立即同步</button>
       </div>
+    </section>
+
+    <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><span class="w-1 h-3 bg-emerald-500 rounded-full"></span>本地备份（浏览器留存最近 80 次保存）</h2>
+      <p class="text-xs text-slate-400 mb-4">每次保存自动在本浏览器存一份快照。万一服务器文件丢了 / 损坏了，可在这里找回。仅本机可见。</p>
+      <div id="local-backup-list" class="text-sm text-slate-500">加载中…</div>
     </section>`;
+  renderLocalBackups();
 }
+async function renderLocalBackups() {
+  const box = $('#local-backup-list'); if (!box) return;
+  const bk = (await kvGet('localBackups')) || [];
+  if (!bk.length) { box.innerHTML = '<p class="text-slate-400 text-center py-4">暂无本地备份</p>'; return; }
+  box.innerHTML = `<div class="divide-y divide-slate-100">${[...bk].reverse().map(b => `
+    <div class="flex justify-between items-center py-2.5">
+      <div class="min-w-0">
+        <div class="text-[13px] font-semibold text-slate-700 truncate">#${escapeHTML(b.displayId||b.id)} ${escapeHTML(b.project||'-')} — ${escapeHTML(b.noteChange||'-')}</div>
+        <div class="text-[11px] text-slate-400">${new Date(b.ts).toLocaleString()}</div>
+      </div>
+      <button onclick="restoreLocalBackup('${b.id}',${b.ts})" class="shrink-0 ml-3 px-3 py-1 text-xs bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100">恢复这版</button>
+    </div>`).join('')}</div>`;
+}
+window.restoreLocalBackup = async (id, ts) => {
+  const bk = (await kvGet('localBackups')) || [];
+  const item = bk.find(b => b.id === id && b.ts === ts);
+  if (!item) { toast('备份不存在','error'); return; }
+  if (!confirm(`确认用这份备份恢复记录 #${item.displayId||item.id}？会覆盖当前同 id 记录。`)) return;
+  const rec = JSON.parse(JSON.stringify(item.data));
+  const i = state.records.findIndex(r => r.id === rec.id);
+  if (i >= 0) state.records[i] = rec; else state.records.push(rec);
+  const ok = await writeRecordFileVerified(rec);
+  toast(ok ? '已从本地备份恢复' : '恢复写入失败，已入待同步队列', ok ? 'success' : 'error');
+  runHealthCheck();
+};
 function chipsSection(label, key) {
   const items = state.meta[key] || [];
   return `<div>
@@ -2225,6 +2335,7 @@ window.retryPending = async () => {
   if (!_folder) { toast('未选择文件夹','error'); return; }
   const ok = await flushPending();
   toast(ok ? `已同步 ${ok} 项` : '无可同步项', 'success');
+  runHealthCheck();
   if (currentRoute === 'settings') renderSettings();
 };
 
@@ -2767,6 +2878,8 @@ async function bootApp() {
     renderPending(); renderProfileMini();
     bindDbDatePicker();
     bindTlDatePicker();
+    runHealthCheck();              // 方案①③④：加载体检
+    dailySnapshot();               // 方案⑦：每日全量快照
     $('#splash').classList.add('hidden');
     $('#app').classList.remove('hidden');
     $('#app').classList.add('flex');
@@ -2775,6 +2888,10 @@ async function bootApp() {
     setInterval(() => flushPending(), 30000);
   } catch (e) { console.error(e); toast('加载失败：'+(e.message||e),'error'); }
 }
+// 方案④：有未同步数据时，关闭/刷新页面前弹浏览器确认，防止误关丢数据
+window.addEventListener('beforeunload', e => {
+  if (state.pending && state.pending.length) { e.preventDefault(); e.returnValue = ''; }
+});
 async function start() {
   await openIDB();
   if (!('showDirectoryPicker' in window)) {

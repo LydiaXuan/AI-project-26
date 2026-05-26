@@ -2536,7 +2536,7 @@ function extractNumsAndCIs(text) {
   const norm = lines.map(normalizeLine);
   const numbers = [], cis = [], letters = [];
   // Thousands-separated OR 4+ consecutive digits.
-  const numRe = /(\d{1,3}(?:,\d{3})+|\d{4,})/g;
+  const numRe = /(\d{1,3}(?:,\d{3})+|\d{3,})/g;
   norm.forEach((line, idx) => {
     if (/^\s*$/.test(line)) return;
     // Strip percentages so they don't get matched as integers
@@ -2627,7 +2627,7 @@ function scanCI(lines, centerIdx) {
   //    (those belong to the same row, just split by OCR). Stop when we hit
   //    another row's large number — keeps control-row from leaking
   //    variant-A's CI.
-  const bigNumRe = /(\d{1,3}(?:,\d{3})+|\d{4,})/;
+  const bigNumRe = /(\d{1,3}(?:,\d{3})+|\d{3,})/;
   let combined = center;
   for (let d = 1; d <= 3; d++) {
     let added = false;

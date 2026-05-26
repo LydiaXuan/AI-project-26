@@ -231,14 +231,14 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-5 flex items-center gap-2">
                 <span class="w-1 h-3 bg-indigo-500 rounded-full"></span> 截图对比
               </h2>
-              <div class="grid grid-cols-2 gap-6 max-w-md">
+              <div class="grid grid-cols-2 gap-6 max-w-2xl">
                 <div>
                   <label class="text-[12px] text-slate-500 block mb-2">原始</label>
-                  <div id="d-image-before" class="d-image-drop relative h-28 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors" data-slot="before"></div>
+                  <div id="d-slots-before" class="space-y-3"></div>
                 </div>
                 <div>
                   <label class="text-[12px] text-slate-500 block mb-2">更新后</label>
-                  <div id="d-image-after" class="d-image-drop relative h-28 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors" data-slot="after"></div>
+                  <div id="d-slots-after" class="space-y-3"></div>
                 </div>
               </div>
             </section>
@@ -911,6 +911,7 @@ window.route = route;
 
 let formData = null;
 let variantPasteTargetIdx = -1;
+let variantPasteTargetAttr = 'icon';
 function blankForm() {
   return {
     id: null, displayId: null, type: 'ab',
@@ -1021,6 +1022,7 @@ function renderDirectForm() {
       else { formData.attrs = formData.attrs.filter(x => x !== v); }
       applyAutoDirectBeforeImage();
       paintDirectSlot('before');
+      paintDirectSlot('after');
     };
   });
   $('#d-note').value = formData.noteChange || '';
@@ -1031,58 +1033,121 @@ function renderDirectForm() {
 }
 
 function applyAutoDirectBeforeImage() {
+  // 按 attr 独立填「原始」侧
   if (!formData || formData.type !== 'direct') return;
-  if (formData.imageBefore && !formData._autoBefore) return;  // 用户手动设过，不覆盖
-  if (!Array.isArray(formData.attrs) || formData.attrs.length !== 1) {
-    if (formData._autoBefore) { formData.imageBefore = ''; formData._autoBefore = false; }
-    return;
-  }
+  const attrs = activeAttrs(formData.attrs);
+  formData._autoBeforeByAttr = formData._autoBeforeByAttr || {};
   const ms = formData.updateDate ? new Date(formData.updateDate).getTime() : Date.now();
-  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(ms) ? Date.now() : ms, formData.project);
-  if (img) { formData.imageBefore = img; formData._autoBefore = true; }
-  else if (formData._autoBefore) { formData.imageBefore = ''; formData._autoBefore = false; }
+  const beforeT = isNaN(ms) ? Date.now() : ms;
+  for (const attr of attrs) {
+    const cur = getDirectAsset(formData, 'before', attr);
+    if (cur && !formData._autoBeforeByAttr[attr]) continue;
+    const val = getLatestApplied(attr, formData.id, beforeT, formData.project);
+    if (val) { setDirectAsset(formData, 'before', attr, val); if (attr === 'icon') formData.imageBefore = val; formData._autoBeforeByAttr[attr] = true; }
+    else if (formData._autoBeforeByAttr[attr]) { setDirectAsset(formData, 'before', attr, ''); if (attr === 'icon') formData.imageBefore = ''; formData._autoBeforeByAttr[attr] = false; }
+  }
 }
 
 function paintDirectSlot(slot) {
-  const el = $(slot === 'before' ? '#d-image-before' : '#d-image-after');
-  const img = slot === 'before' ? formData.imageBefore : formData.imageAfter;
-  if (img) {
-    el.innerHTML = `<img src="${img}" class="absolute inset-0 w-full h-full object-contain rounded-lg" onclick="event.stopPropagation();showLightbox('${img}')">
-      <button type="button" onclick="event.stopPropagation();clearDirectImage('${slot}')" class="absolute top-1 right-1 w-5 h-5 bg-white/90 border border-slate-200 rounded-full text-xs leading-none">✕</button>`;
-  } else {
-    el.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none">
-      <svg class="w-5 h-5 mb-1 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-      <span class="text-[11px] font-medium">点击 / 拖拽 / Ctrl+V</span>
-    </div>`;
-  }
-  el.onclick = () => pickFile().then(f => f && setDirectImage(slot, f));
-  el.ondragover = e => { e.preventDefault(); el.classList.add('drop-active'); };
-  el.ondragleave = () => el.classList.remove('drop-active');
-  el.ondrop = e => { e.preventDefault(); el.classList.remove('drop-active'); const f = e.dataTransfer.files[0]; if (f) setDirectImage(slot, f); };
+  const host = $(slot === 'before' ? '#d-slots-before' : '#d-slots-after');
+  if (!host) return;
+  const attrs = activeAttrs(formData.attrs);
+  host.innerHTML = attrs.map(attr => assetSlotHTML(
+    { dataAttrs: `data-slot="${slot}"`, clearFn: `clearDirectAsset('${slot}','${attr}')` },
+    attr, getDirectAsset(formData, slot, attr)
+  )).join('');
+  // 绑定图位
+  host.querySelectorAll('.image-drop').forEach(el => {
+    const attr = el.dataset.attr;
+    el.onclick = () => pickFile().then(f => f && setDirectImageAsset(slot, attr, f));
+    el.ondragover = e => { e.preventDefault(); el.classList.add('drop-active'); };
+    el.ondragleave = () => el.classList.remove('drop-active');
+    el.ondrop = e => { e.preventDefault(); el.classList.remove('drop-active'); const f = e.dataTransfer.files[0]; if (f) setDirectImageAsset(slot, attr, f); };
+  });
+  // 绑定视频 URL 输入
+  host.querySelectorAll('.vasset-url').forEach(inp => {
+    inp.oninput = e => { setDirectAsset(formData, slot, '视频', e.target.value); };
+    inp.onblur = () => paintDirectSlot(slot);
+  });
 }
-
-async function setDirectImage(slot, file) {
+async function setDirectImageAsset(slot, attr, file) {
+  if (attr === '视频') return;  // 视频走 URL 输入
   const data = await compressImage(file);
-  if (slot === 'before') { formData.imageBefore = data; formData._autoBefore = false; }
-  else formData.imageAfter = data;
+  setDirectAsset(formData, slot, attr, data);
+  if (attr === 'icon') {
+    if (slot === 'before') formData.imageBefore = data; else formData.imageAfter = data;
+  }
+  if (slot === 'before') { formData._autoBeforeByAttr = formData._autoBeforeByAttr || {}; formData._autoBeforeByAttr[attr] = false; }
   paintDirectSlot(slot);
 }
-window.clearDirectImage = slot => {
-  if (slot === 'before') { formData.imageBefore = ''; formData._autoBefore = false; }
-  else formData.imageAfter = '';
+window.clearDirectAsset = (slot, attr) => {
+  setDirectAsset(formData, slot, attr, '');
+  if (attr === 'icon') {
+    if (slot === 'before') formData.imageBefore = ''; else formData.imageAfter = '';
+  }
+  if (slot === 'before') { formData._autoBeforeByAttr = formData._autoBeforeByAttr || {}; formData._autoBeforeByAttr[attr] = false; }
   paintDirectSlot(slot);
 };
+// 老 API alias
+async function setDirectImage(slot, file) { await setDirectImageAsset(slot, 'icon', file); }
+window.clearDirectImage = slot => window.clearDirectAsset(slot, 'icon');
 function fillSelect(sel, items, value) {
   const el = $(sel);
   el.innerHTML = items.map(x => `<option ${x===value?'selected':''}>${escapeHTML(x)}</option>`).join('');
   if (!items.includes(value) && items.length) el.value = items[0];
 }
 
+// ===== 多属性资产 helpers =====
+const ATTR_LIST = ['icon', '五图', '置顶', '视频'];
+function activeAttrs(formAttrs) {
+  const sel = (Array.isArray(formAttrs) && formAttrs.length) ? formAttrs : ['icon'];
+  return ATTR_LIST.filter(a => sel.includes(a));
+}
+function getAsset(v, attr) {
+  if (!v) return '';
+  if (v.assets && v.assets[attr] != null && v.assets[attr] !== '') return v.assets[attr];
+  if (attr === 'icon' && v.img) return v.img;  // 老数据兼容：v.img 视作 icon
+  return '';
+}
+function setAsset(v, attr, value) { v.assets = v.assets || {}; v.assets[attr] = value; }
+function variantDisplayImage(v) {
+  return getAsset(v, 'icon') || getAsset(v, '五图') || getAsset(v, '置顶') || '';
+}
+function getDirectAsset(r, slot, attr) {
+  const map = slot === 'before' ? r.assetsBefore : r.assetsAfter;
+  if (map && map[attr] != null && map[attr] !== '') return map[attr];
+  if (attr === 'icon') return slot === 'before' ? (r.imageBefore || '') : (r.imageAfter || '');
+  return '';
+}
+function setDirectAsset(r, slot, attr, value) {
+  const key = slot === 'before' ? 'assetsBefore' : 'assetsAfter';
+  r[key] = r[key] || {};
+  r[key][attr] = value;
+}
+// 渲染单个 slot 的 HTML（image-drop 或 video URL 输入）
+function assetSlotHTML(ctx, attr, val) {
+  // ctx = { dataAttrs: 'data-i="0"' or 'data-slot="before"', clearFn: 'clearVariantAsset(0,\'icon\')' }
+  if (attr === '视频') {
+    return `<div class="space-y-1">
+      <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">视频 (YouTube)</div>
+      <input type="text" value="${escapeHTML(val||'')}" ${ctx.dataAttrs} data-attr="视频" placeholder="https://youtu.be/..." class="vasset-url w-full text-[12px] text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder-slate-400">
+      ${val ? `<a href="${escapeHTML(val)}" target="_blank" rel="noopener" class="text-[10px] text-indigo-500 hover:underline inline-flex items-center gap-0.5">▶ 打开视频</a>` : ''}
+    </div>`;
+  }
+  return `<div class="space-y-1">
+    <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">${escapeHTML(attr)}</div>
+    <div class="image-drop relative h-28 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors" ${ctx.dataAttrs} data-attr="${escapeHTML(attr)}">
+      ${val ? `<img src="${val}" class="absolute inset-0 w-full h-full object-contain rounded-lg" onclick="event.stopPropagation();showLightbox('${val}')"><button type="button" onclick="event.stopPropagation();${ctx.clearFn}" class="absolute top-1 right-1 w-5 h-5 bg-white/90 border border-slate-200 rounded-full text-xs leading-none">✕</button>`
+        : `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none"><svg class="w-5 h-5 mb-1 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg><span class="text-[11px] font-medium">点击 / 拖拽 / Ctrl+V</span></div>`}
+    </div>
+  </div>`;
+}
 function renderVariants() {
   const n = ratioToCount(formData.ratio);
   const tagColors = ['bg-slate-100 text-slate-500','bg-emerald-50 text-emerald-600','bg-indigo-50 text-indigo-600','bg-rose-50 text-rose-600'];
   const bars = ['bg-slate-400','bg-emerald-400','bg-indigo-400','bg-rose-400'];
   const borders = ['hover:border-slate-300','hover:border-emerald-300','hover:border-indigo-300','hover:border-rose-300'];
+  const attrs = activeAttrs(formData.attrs);
 
   const grid = $('#variants-grid');
   grid.className = `grid grid-cols-1 md:grid-cols-2 ${n>=3?'xl:grid-cols-'+n:'xl:grid-cols-2'} gap-5`;
@@ -1093,17 +1158,18 @@ function renderVariants() {
     const eff = !isControl ? computeEffect(v, formData.variants[0]) : null;
     const card = document.createElement('div');
     card.className = `bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col relative overflow-hidden ${borders[i]} transition-shadow`;
+    const slotsHTML = attrs.map(a => assetSlotHTML(
+      { dataAttrs: `data-i="${i}"`, clearFn: `clearVariantAsset(${i},'${a}')` },
+      a, getAsset(v, a)
+    )).join('');
     card.innerHTML = `
       <div class="absolute top-0 left-0 right-0 h-1 ${bars[i]}"></div>
       <div class="p-4 flex justify-between items-center">
         <span class="text-[14px] font-bold text-slate-800">${escapeHTML(v.name)}</span>
         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${tagColors[i]} tracking-wider">${v.tag}</span>
       </div>
-      <div class="px-4 pb-4">
-        <div class="image-drop relative h-28 bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors" data-i="${i}">
-          ${v.img ? `<img src="${v.img}" class="absolute inset-0 w-full h-full object-contain rounded-lg" onclick="event.stopPropagation();showLightbox('${v.img}')"><button onclick="event.stopPropagation();clearVariantImage(${i})" class="absolute top-1 right-1 w-5 h-5 bg-white/90 border border-slate-200 rounded-full text-xs leading-none">✕</button>`
-            : `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400"><svg class="w-5 h-5 mb-1 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg><span class="text-[11px] font-medium">点击 / 拖拽 / Ctrl+V</span></div>`}
-        </div>
+      <div class="px-4 pb-4 space-y-3">
+        ${slotsHTML}
       </div>
       <div class="p-4 flex-1 flex flex-col bg-slate-50/50 border-t border-slate-100">
         <div class="flex flex-col gap-3.5">
@@ -1143,23 +1209,44 @@ function renderVariants() {
   });
   grid.querySelectorAll('.image-drop').forEach(dz => {
     const i = +dz.dataset.i;
-    dz.onclick = () => pickFile().then(f => f && setVariantImage(i, f));
+    const attr = dz.dataset.attr || 'icon';
+    dz.onclick = () => pickFile().then(f => f && setVariantAsset(i, attr, f));
     dz.ondragover = e => { e.preventDefault(); dz.classList.add('drop-active'); };
     dz.ondragleave = () => dz.classList.remove('drop-active');
-    dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drop-active'); const f = e.dataTransfer.files[0]; if (f) setVariantImage(i, f); };
+    dz.ondrop = e => { e.preventDefault(); dz.classList.remove('drop-active'); const f = e.dataTransfer.files[0]; if (f) setVariantAsset(i, attr, f); };
     dz.onmouseenter = () => {
       variantPasteTargetIdx = i;
+      variantPasteTargetAttr = attr;
       grid.querySelectorAll('.image-drop').forEach(d => d.classList.toggle('paste-hover', d === dz));
     };
   });
+  grid.querySelectorAll('.vasset-url').forEach(inp => {
+    const i = +inp.dataset.i;
+    inp.oninput = e => { setAsset(formData.variants[i], '视频', e.target.value); };
+    inp.onblur = () => renderVariants();
+  });
 }
 window.toggleAdopt = i => { formData.variants[i].adopted = !formData.variants[i].adopted; renderVariants(); };
-window.clearVariantImage = i => { formData.variants[i].img = ''; if (i === 0) formData.variants[0]._auto = false; renderVariants(); };
-async function setVariantImage(i, file) {
-  formData.variants[i].img = await compressImage(file);
-  if (i === 0) formData.variants[0]._auto = false;
+// 资产读写（统一走 v.assets[attr]）。老的 setVariantImage/clearVariantImage 作为 alias
+window.clearVariantAsset = (i, attr) => {
+  const v = formData.variants[i]; if (!v) return;
+  setAsset(v, attr, '');
+  if (attr === 'icon' && v.img) v.img = '';   // 同时清掉 legacy 字段
+  if (i === 0) { v._autoByAttr = v._autoByAttr || {}; v._autoByAttr[attr] = false; }
+  renderVariants();
+};
+async function setVariantAsset(i, attr, file) {
+  const v = formData.variants[i]; if (!v) return;
+  if (attr === '视频') { setAsset(v, attr, typeof file === 'string' ? file : ''); renderVariants(); return; }
+  const data = await compressImage(file);
+  setAsset(v, attr, data);
+  if (attr === 'icon') v.img = data;          // 同步 legacy 字段，保证未升级的代码也能读
+  if (i === 0) { v._autoByAttr = v._autoByAttr || {}; v._autoByAttr[attr] = false; }
   renderVariants();
 }
+// 老 API 保留为 alias
+window.clearVariantImage = i => window.clearVariantAsset(i, 'icon');
+async function setVariantImage(i, file) { await setVariantAsset(i, 'icon', file); }
 
 function getLatestApplied(attr, excludeId, beforeTime, projectFilter) {
   // 收集所有「该属性下、当前项目下、当前生效图」事件，按时间倒序取最新
@@ -1181,12 +1268,12 @@ function getLatestApplied(attr, excludeId, beforeTime, projectFilter) {
       events.push({ img, time: ms });
     };
     if (r.type === 'direct') {
-      push(r.imageAfter, r.updateDate);
+      push(getDirectAsset(r, 'after', attr), r.updateDate);
     } else {
-      const adopted = (r.variants || []).find(v => v.adopted && v.img);
-      if (adopted) push(adopted.img, r.endDate || r.startDate);
+      const adopted = (r.variants || []).find(v => v.adopted);
+      if (adopted) push(getAsset(adopted, attr), r.endDate || r.startDate);
       const ctrl = (r.variants || [])[0];
-      if (ctrl && ctrl.img) push(ctrl.img, r.startDate);
+      if (ctrl) push(getAsset(ctrl, attr), r.startDate);
     }
   }
   events.sort((a, b) => b.time - a.time);
@@ -1194,17 +1281,20 @@ function getLatestApplied(attr, excludeId, beforeTime, projectFilter) {
 }
 
 function applyAutoControlImage() {
+  // 按 attr 独立自动填：control 变体每个 attr 各自查最新应用值
   if (!formData || formData.type !== 'ab') return;
   const v0 = formData.variants?.[0]; if (!v0) return;
-  if (v0.img && !v0._auto) return;
-  if (!Array.isArray(formData.attrs) || formData.attrs.length !== 1) {
-    if (v0._auto) { v0.img = ''; v0._auto = false; }
-    return;
-  }
+  const attrs = activeAttrs(formData.attrs);
+  v0._autoByAttr = v0._autoByAttr || {};
   const startMs = formData.startDate ? new Date(formData.startDate).getTime() : Date.now();
-  const img = getLatestApplied(formData.attrs[0], formData.id, isNaN(startMs) ? Date.now() : startMs, formData.project);
-  if (img) { v0.img = img; v0._auto = true; }
-  else if (v0._auto) { v0.img = ''; v0._auto = false; }
+  const beforeT = isNaN(startMs) ? Date.now() : startMs;
+  for (const attr of attrs) {
+    const cur = getAsset(v0, attr);
+    if (cur && !v0._autoByAttr[attr]) continue;  // 用户手动改过 → 不覆盖
+    const val = getLatestApplied(attr, formData.id, beforeT, formData.project);
+    if (val) { setAsset(v0, attr, val); if (attr === 'icon') v0.img = val; v0._autoByAttr[attr] = true; }
+    else if (v0._autoByAttr[attr]) { setAsset(v0, attr, ''); if (attr === 'icon') v0.img = ''; v0._autoByAttr[attr] = false; }
+  }
 }
 function pickFile() {
   return new Promise(res => {
@@ -1627,8 +1717,10 @@ function timelineCard(r) {
 function directCard(r) {
   const dateStr = r.updateDate || new Date(r.updatedAt || Date.now()).toISOString().slice(0,10);
   const attrChips = (r.attrs || []).map(a => `<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-semibold rounded">${escapeHTML(a)}</span>`).join('');
-  const beforeStyle = r.imageBefore ? `background-image:url('${r.imageBefore}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
-  const afterStyle  = r.imageAfter  ? `background-image:url('${r.imageAfter}'); background-size:contain; background-position:center; background-repeat:no-repeat;`  : 'background:#F1F5F9;';
+  const _bImg = getDirectAsset(r, 'before', 'icon') || getDirectAsset(r, 'before', '五图') || getDirectAsset(r, 'before', '置顶');
+  const _aImg = getDirectAsset(r, 'after',  'icon') || getDirectAsset(r, 'after',  '五图') || getDirectAsset(r, 'after',  '置顶');
+  const beforeStyle = _bImg ? `background-image:url('${_bImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
+  const afterStyle  = _aImg ? `background-image:url('${_aImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
   const wrap = document.createElement('div');
   wrap.className = 'relative pl-8 mb-6 group';
   wrap.innerHTML = `
@@ -1704,7 +1796,8 @@ function variantRowHTML(v, i, ctrl, recordId) {
        <span class="px-1 rounded">${formatPctColored(v.ciHigh)}</span>
        <span class="text-slate-400 font-normal">】</span>
      </div>` : `<span class="font-bold text-slate-400">-</span>`;
-  const imgStyle = v.img ? `background-image:url('${v.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
+  const _dispImg = variantDisplayImage(v);
+  const imgStyle = _dispImg ? `background-image:url('${_dispImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
   return `
     <div class="variant-card flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative overflow-hidden">
       ${topBar}
@@ -1782,8 +1875,9 @@ function detailSpotlightHTML(r) {
     : (eff === 'superb' ? '<span class="px-2 py-0.5 rounded text-[12px] font-bold bg-emerald-100 text-emerald-700">🏆 显著胜出</span>'
      : eff === 'bad'    ? '<span class="px-2 py-0.5 rounded text-[12px] font-bold bg-rose-100 text-rose-700">❌ 显著负向</span>'
      : `<span class="px-2 py-0.5 rounded text-[12px] font-bold bg-slate-100 text-slate-600">${EFFECT_META[eff]?.icon||''} ${EFFECT_META[eff]?.label||'观察'}</span>`);
-  const imgStyle = selV.img
-    ? `background-image:url('${selV.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;`
+  const _selImg = variantDisplayImage(selV);
+  const imgStyle = _selImg
+    ? `background-image:url('${_selImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;`
     : 'background:#F1F5F9;';
   const tabs = variants.map((v, i) => {
     const active = i === selIdx;
@@ -1793,7 +1887,7 @@ function detailSpotlightHTML(r) {
   return `<div id="detail-spotlight" class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
     <div class="flex p-1 gap-1 bg-slate-50 border-b border-slate-200">${tabs}</div>
     <div class="p-4 space-y-3">
-      <div class="w-full h-[360px] rounded border border-slate-100 bg-slate-50/40 ${selV.img ? 'cursor-zoom-in' : ''}" style="${imgStyle}" ${selV.img ? `onclick="showLightbox('${selV.img}')"` : ''}></div>
+      <div class="w-full h-[360px] rounded border border-slate-100 bg-slate-50/40 ${_selImg ? 'cursor-zoom-in' : ''}" style="${imgStyle}" ${_selImg ? `onclick="showLightbox('${_selImg}')"` : ''}></div>
       <div class="flex items-center justify-between flex-wrap gap-3 pt-1">
         <div class="flex gap-5 text-[12px]">
           <div><span class="text-slate-500 font-semibold">首次安装</span> <span class="text-slate-800 font-bold ml-1">${formatNum(selV.installs)}</span></div>
@@ -2885,8 +2979,13 @@ window.applyCrop = async () => {
     c.width = cropImg.width; c.height = Math.max(1, splits[i+1] - splits[i]);
     c.getContext('2d').drawImage(cropImg, 0, splits[i], cropImg.width, c.height, 0, 0, cropImg.width, c.height);
     const trimmed = await trimTopBottom(c);
-    formData.variants[target].img = await compressImage(trimmed);
-    if (target === 0) formData.variants[0]._auto = false;  // 显式覆盖了 control
+    const _data = await compressImage(trimmed);
+    setAsset(formData.variants[target], 'icon', _data);
+    formData.variants[target].img = _data;   // 同步 legacy
+    if (target === 0) {
+      formData.variants[0]._autoByAttr = formData.variants[0]._autoByAttr || {};
+      formData.variants[0]._autoByAttr.icon = false;
+    }
   }
   closeCrop(); renderVariants(); toast(`已裁剪 ${total} 张图`,'success');
 };
@@ -2913,17 +3012,20 @@ window.addEventListener('paste', e => {
     img.src = URL.createObjectURL(file);
   } else if (currentRoute === 'form' && formData) {
     if (formData.type === 'direct') {
-      if (!formData.imageBefore) setDirectImage('before', file);
-      else if (!formData.imageAfter) setDirectImage('after', file);
-      else setDirectImage('after', file);
+      const attr = 'icon';  // direct 的 paste 仅默认填 icon 侧
+      if (!getDirectAsset(formData, 'before', attr)) setDirectImageAsset('before', attr, file);
+      else if (!getDirectAsset(formData, 'after', attr)) setDirectImageAsset('after', attr, file);
+      else setDirectImageAsset('after', attr, file);
       return;
     }
     const n = ratioToCount(formData.ratio);
+    const attr = variantPasteTargetAttr || 'icon';
     let target = variantPasteTargetIdx;
     if (target < 0 || target >= n) {
-      target = formData.variants.findIndex((v, idx) => idx < n && !v.img);
+      // 找第一个该 attr 空着的变体
+      target = formData.variants.findIndex((v, idx) => idx < n && !getAsset(v, attr));
     }
-    if (target >= 0) setVariantImage(target, file);
+    if (target >= 0) setVariantAsset(target, attr, file);
   }
 });
 

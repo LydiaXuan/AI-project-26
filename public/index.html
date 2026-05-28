@@ -1726,10 +1726,28 @@ function timelineCard(r) {
 function directCard(r) {
   const dateStr = r.updateDate || new Date(r.updatedAt || Date.now()).toISOString().slice(0,10);
   const attrChips = (r.attrs || []).map(a => `<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-semibold rounded">${escapeHTML(a)}</span>`).join('');
-  const _bImg = getDirectAsset(r, 'before', 'icon') || getDirectAsset(r, 'before', '五图') || getDirectAsset(r, 'before', '置顶');
-  const _aImg = getDirectAsset(r, 'after',  'icon') || getDirectAsset(r, 'after',  '五图') || getDirectAsset(r, 'after',  '置顶');
-  const beforeStyle = _bImg ? `background-image:url('${_bImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
-  const afterStyle  = _aImg ? `background-image:url('${_aImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
+  // 按 icon → 五图 → 置顶 顺序，跳过空的（其他自动补到前面、不留空）
+  const IMG_ATTRS = ['icon', '五图', '置顶'];
+  const beforeItems = IMG_ATTRS.map(a => ({ attr: a, img: getDirectAsset(r, 'before', a) })).filter(x => x.img);
+  const afterItems  = IMG_ATTRS.map(a => ({ attr: a, img: getDirectAsset(r, 'after',  a) })).filter(x => x.img);
+  // 视频 URL（若有）作为链接挂在末尾
+  const beforeVideo = getDirectAsset(r, 'before', '视频');
+  const afterVideo  = getDirectAsset(r, 'after',  '视频');
+  const rowHTML = (label, labelCls, borderCls, items, videoUrl) => `
+    <div class="flex items-center gap-3 flex-wrap">
+      <span class="text-[11px] font-semibold ${labelCls} w-12 shrink-0">${label}</span>
+      ${items.length || videoUrl ? items.map(it => `
+        <div class="flex flex-col items-center gap-0.5">
+          <div class="w-20 h-20 rounded-lg border ${borderCls} cursor-zoom-in" style="background-image:url('${it.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;" onclick="event.stopPropagation();showLightbox('${it.img}')"></div>
+          <span class="text-[10px] text-slate-400">${escapeHTML(it.attr)}</span>
+        </div>
+      `).join('') + (videoUrl ? `<a href="${escapeHTML(videoUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="flex flex-col items-center gap-0.5">
+        <div class="w-20 h-20 rounded-lg border ${borderCls} flex items-center justify-center bg-slate-50 hover:bg-slate-100">
+          <span class="text-2xl">▶</span>
+        </div>
+        <span class="text-[10px] text-indigo-500 hover:underline">视频</span>
+      </a>` : '') : '<span class="text-[11px] text-slate-300">（无）</span>'}
+    </div>`;
   const wrap = document.createElement('div');
   wrap.className = 'relative pl-8 mb-6 group';
   wrap.innerHTML = `
@@ -1752,16 +1770,9 @@ function directCard(r) {
           <button type="button" onclick="event.stopPropagation(); editRecord('${r.id}')" class="text-xs px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded">编辑</button>
         </div>
       </div>
-      <div class="flex items-center gap-4 justify-start">
-        <div class="flex flex-col items-center">
-          <span class="text-[11px] font-semibold text-slate-400 mb-1.5">原始</span>
-          <div class="w-24 h-24 rounded-lg border border-slate-200" style="${beforeStyle}"></div>
-        </div>
-        <svg class="w-6 h-6 text-slate-300 mt-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-        <div class="flex flex-col items-center">
-          <span class="text-[11px] font-semibold text-sky-600 mb-1.5">更新后</span>
-          <div class="w-24 h-24 rounded-lg border border-sky-200 shadow-sm" style="${afterStyle}"></div>
-        </div>
+      <div class="space-y-2.5">
+        ${rowHTML('原始', 'text-slate-500', 'border-slate-200', beforeItems, beforeVideo)}
+        ${rowHTML('更新后', 'text-sky-600', 'border-sky-200 shadow-sm', afterItems, afterVideo)}
       </div>
     </div>`;
   return wrap;

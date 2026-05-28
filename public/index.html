@@ -1741,12 +1741,7 @@ function directCard(r) {
           <div class="w-20 h-20 rounded-lg border ${borderCls} cursor-zoom-in" style="background-image:url('${it.img}'); background-size:contain; background-position:center; background-repeat:no-repeat;" onclick="event.stopPropagation();showLightbox('${it.img}')"></div>
           <span class="text-[10px] text-slate-400">${escapeHTML(it.attr)}</span>
         </div>
-      `).join('') + (videoUrl ? `<a href="${escapeHTML(videoUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="flex flex-col items-center gap-0.5">
-        <div class="w-20 h-20 rounded-lg border ${borderCls} flex items-center justify-center bg-slate-50 hover:bg-slate-100">
-          <span class="text-2xl">▶</span>
-        </div>
-        <span class="text-[10px] text-indigo-500 hover:underline">视频</span>
-      </a>` : '') : '<span class="text-[11px] text-slate-300">（无）</span>'}
+      `).join('') + (videoUrl ? `<a href="${escapeHTML(videoUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-[12px] text-indigo-500 hover:underline ml-1">▶ 视频链接</a>` : '') : '<span class="text-[11px] text-slate-300">（无）</span>'}
     </div>`;
   const wrap = document.createElement('div');
   wrap.className = 'relative pl-8 mb-6 group';

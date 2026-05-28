@@ -496,9 +496,9 @@ function computeEffect(v, control) {
     const width = hi - lo;
     const mid = (lo + hi) / 2;
     if (width > 20) {
-      // 区间太散：mid 偏负 (≤-5%) **且** hi 不高（<10%，说明上限也没显著正向空间）
-      // → 方向明确偏负 → 很差。否则交给 install 量决经验决策
-      if (mid <= -5 && hi < 10) return 'bad';
+      // 区间太散：只看中间值（mid 已经综合了 lo 和 hi 的平衡）
+      // mid ≤ -10% → 真偏负 → 很差；否则交给 install 量决经验决策
+      if (mid <= -10) return 'bad';
       if (!isNaN(inst) && !isNaN(cInst)) return inst > cInst ? 'exp_p' : 'exp_n';
       return 'exp_n';
     }

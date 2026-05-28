@@ -1103,20 +1103,29 @@ function activeAttrs(formAttrs) {
   const sel = (Array.isArray(formAttrs) && formAttrs.length) ? formAttrs : ['icon'];
   return ATTR_LIST.filter(a => sel.includes(a));
 }
-function getAsset(v, attr) {
+function getAsset(v, attr, recordAttrs) {
   if (!v) return '';
   if (v.assets && v.assets[attr] != null && v.assets[attr] !== '') return v.assets[attr];
-  if (attr === 'icon' && v.img) return v.img;  // 老数据兼容：v.img 视作 icon
+  // 老数据兼容：v.img 没分 attr，回退给「记录里第一个非视频 attr」（用户当时上传的主属性 slot）
+  if (v.img) {
+    const primary = activeAttrs(recordAttrs).find(a => a !== '视频') || 'icon';
+    if (attr === primary) return v.img;
+  }
   return '';
 }
 function setAsset(v, attr, value) { v.assets = v.assets || {}; v.assets[attr] = value; }
-function variantDisplayImage(v) {
-  return getAsset(v, 'icon') || getAsset(v, '五图') || getAsset(v, '置顶') || '';
+function variantDisplayImage(v, recordAttrs) {
+  return getAsset(v, 'icon', recordAttrs) || getAsset(v, '五图', recordAttrs) || getAsset(v, '置顶', recordAttrs) || '';
 }
 function getDirectAsset(r, slot, attr) {
   const map = slot === 'before' ? r.assetsBefore : r.assetsAfter;
   if (map && map[attr] != null && map[attr] !== '') return map[attr];
-  if (attr === 'icon') return slot === 'before' ? (r.imageBefore || '') : (r.imageAfter || '');
+  // 老数据兼容：imageBefore/After 回退给「记录里第一个非视频 attr」
+  const legacy = slot === 'before' ? r.imageBefore : r.imageAfter;
+  if (legacy) {
+    const primary = activeAttrs(r?.attrs).find(a => a !== '视频') || 'icon';
+    if (attr === primary) return legacy;
+  }
   return '';
 }
 function setDirectAsset(r, slot, attr, value) {
@@ -1160,7 +1169,7 @@ function renderVariants() {
     card.className = `bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col relative overflow-hidden ${borders[i]} transition-shadow`;
     const slotsHTML = attrs.map(a => assetSlotHTML(
       { dataAttrs: `data-i="${i}"`, clearFn: `clearVariantAsset(${i},'${a}')` },
-      a, getAsset(v, a)
+      a, getAsset(v, a, formData.attrs)
     )).join('');
     card.innerHTML = `
       <div class="absolute top-0 left-0 right-0 h-1 ${bars[i]}"></div>
@@ -1271,9 +1280,9 @@ function getLatestApplied(attr, excludeId, beforeTime, projectFilter) {
       push(getDirectAsset(r, 'after', attr), r.updateDate);
     } else {
       const adopted = (r.variants || []).find(v => v.adopted);
-      if (adopted) push(getAsset(adopted, attr), r.endDate || r.startDate);
+      if (adopted) push(getAsset(adopted, attr, r.attrs), r.endDate || r.startDate);
       const ctrl = (r.variants || [])[0];
-      if (ctrl) push(getAsset(ctrl, attr), r.startDate);
+      if (ctrl) push(getAsset(ctrl, attr, r.attrs), r.startDate);
     }
   }
   events.sort((a, b) => b.time - a.time);
@@ -1289,7 +1298,7 @@ function applyAutoControlImage() {
   const startMs = formData.startDate ? new Date(formData.startDate).getTime() : Date.now();
   const beforeT = isNaN(startMs) ? Date.now() : startMs;
   for (const attr of attrs) {
-    const cur = getAsset(v0, attr);
+    const cur = getAsset(v0, attr, formData.attrs);
     if (cur && !v0._autoByAttr[attr]) continue;  // 用户手动改过 → 不覆盖
     const val = getLatestApplied(attr, formData.id, beforeT, formData.project);
     if (val) { setAsset(v0, attr, val); if (attr === 'icon') v0.img = val; v0._autoByAttr[attr] = true; }
@@ -1708,7 +1717,7 @@ function timelineCard(r) {
         </div>
       </div>
       <div class="variant-grid grid grid-cols-1 xl:grid-cols-4 gap-4">
-        ${variants.map((v, i) => variantRowHTML(v, i, ctrl, r.id)).join('')}
+        ${variants.map((v, i) => variantRowHTML(v, i, ctrl, r.id, r.attrs)).join('')}
       </div>
     </div>`;
   wrap.querySelector('.test-card').onclick = () => openDetail(r.id, wrap.querySelector('.test-card'));
@@ -1757,7 +1766,7 @@ function directCard(r) {
     </div>`;
   return wrap;
 }
-function variantRowHTML(v, i, ctrl, recordId) {
+function variantRowHTML(v, i, ctrl, recordId, recordAttrs) {
   const isControl = v.role === 'control';
   const eff = !isControl ? computeEffect(v, ctrl) : null;
   const cInst = parseFloat(ctrl?.installs), inst = parseFloat(v.installs);
@@ -1796,7 +1805,7 @@ function variantRowHTML(v, i, ctrl, recordId) {
        <span class="px-1 rounded">${formatPctColored(v.ciHigh)}</span>
        <span class="text-slate-400 font-normal">】</span>
      </div>` : `<span class="font-bold text-slate-400">-</span>`;
-  const _dispImg = variantDisplayImage(v);
+  const _dispImg = variantDisplayImage(v, recordAttrs);
   const imgStyle = _dispImg ? `background-image:url('${_dispImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
   return `
     <div class="variant-card flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative overflow-hidden">
@@ -1875,7 +1884,7 @@ function detailSpotlightHTML(r) {
     : (eff === 'superb' ? '<span class="px-2 py-0.5 rounded text-[12px] font-bold bg-emerald-100 text-emerald-700">🏆 显著胜出</span>'
      : eff === 'bad'    ? '<span class="px-2 py-0.5 rounded text-[12px] font-bold bg-rose-100 text-rose-700">❌ 显著负向</span>'
      : `<span class="px-2 py-0.5 rounded text-[12px] font-bold bg-slate-100 text-slate-600">${EFFECT_META[eff]?.icon||''} ${EFFECT_META[eff]?.label||'观察'}</span>`);
-  const _selImg = variantDisplayImage(selV);
+  const _selImg = variantDisplayImage(selV, r.attrs);
   const imgStyle = _selImg
     ? `background-image:url('${_selImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;`
     : 'background:#F1F5F9;';
@@ -3023,7 +3032,7 @@ window.addEventListener('paste', e => {
     let target = variantPasteTargetIdx;
     if (target < 0 || target >= n) {
       // 找第一个该 attr 空着的变体
-      target = formData.variants.findIndex((v, idx) => idx < n && !getAsset(v, attr));
+      target = formData.variants.findIndex((v, idx) => idx < n && !getAsset(v, attr, formData.attrs));
     }
     if (target >= 0) setVariantAsset(target, attr, file);
   }

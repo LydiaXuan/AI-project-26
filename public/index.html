@@ -2482,35 +2482,65 @@ window.restoreLocalBackup = async (id, ts) => {
   toast(ok ? '已从本地备份恢复' : '恢复写入失败，已入待同步队列', ok ? 'success' : 'error');
   runHealthCheck();
 };
+const _expandedMetaSections = new Set();
 function chipsSection(label, key) {
   const items = state.meta[key] || [];
-  return `<div>
-    <div class="flex justify-between items-center mb-2"><h4 class="text-sm font-bold text-slate-700">${label} <span class="text-xs text-slate-400 font-normal">(${items.length})</span></h4>
-      <button onclick="addMetaInput('${key}','${label}')" class="text-xs text-indigo-600 hover:underline">+ 批量添加</button></div>
-    <div class="flex flex-wrap gap-1.5">${items.map(x => `<span class="chip chip-grey" data-key="${escapeHTML(key)}" data-val="${escapeHTML(x)}">${escapeHTML(x)} <button title="重命名" onclick="renameMetaChip(this.parentElement)" class="hover:text-indigo-600">✎</button><button title="删除" onclick="removeMetaChip(this.parentElement)" class="hover:text-rose-600 ml-0.5">✕</button></span>`).join('') || '<span class="text-xs text-slate-400">空</span>'}</div>
+  const isOpen = _expandedMetaSections.has(key);
+  return `<div class="bg-slate-50 rounded-lg border border-slate-200" data-meta-section="${escapeHTML(key)}">
+    <button type="button" class="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100/60 rounded-lg transition" onclick="toggleMetaSection('${escapeHTML(key)}')">
+      <span class="text-[13px] font-bold text-slate-700">${escapeHTML(label)} <span class="text-xs text-slate-400 font-normal ml-1">(${items.length})</span></span>
+      <svg class="meta-chev w-4 h-4 text-slate-400 transition-transform" style="${isOpen?'transform:rotate(180deg)':''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div class="meta-body ${isOpen?'':'hidden'} px-4 pb-3">
+      <div class="flex justify-end mb-2">
+        <button type="button" onclick="addMetaInput('${escapeHTML(key)}','${escapeHTML(label)}')" class="text-xs text-indigo-600 hover:underline">+ 批量添加</button>
+      </div>
+      <div class="space-y-1.5">
+        ${items.length ? items.map(x => `
+          <div class="flex items-center gap-2 px-3 py-1.5 bg-white rounded-md border border-slate-200 hover:border-slate-300" data-key="${escapeHTML(key)}" data-val="${escapeHTML(x)}">
+            <svg class="w-3.5 h-3.5 text-slate-300 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M10 6h2v2h-2zM10 11h2v2h-2zM10 16h2v2h-2zM14 6h2v2h-2zM14 11h2v2h-2zM14 16h2v2h-2z"/></svg>
+            <input type="text" value="${escapeHTML(x)}" class="meta-input flex-1 text-[13px] bg-transparent outline-none focus:bg-slate-50 rounded px-1.5 py-0.5"
+              onfocus="this._oldVal=this.value"
+              onkeydown="if(event.key==='Enter')this.blur();else if(event.key==='Escape'){this.value=this._oldVal||this.value;this.blur();}"
+              onblur="metaInputBlur(this)">
+            <button type="button" onclick="removeMetaChip(this.parentElement)" title="删除" class="text-slate-400 hover:text-rose-600 shrink-0 w-5 h-5 flex items-center justify-center">✕</button>
+          </div>
+        `).join('') : '<div class="text-xs text-slate-400 text-center py-3">空，点右上「+ 批量添加」</div>'}
+      </div>
+    </div>
   </div>`;
 }
-window.removeMeta = async (key, val) => {
-  state.meta[key] = state.meta[key].filter(x => x !== val);
-  await saveMeta(); renderSettings();
+window.toggleMetaSection = (key) => {
+  if (_expandedMetaSections.has(key)) _expandedMetaSections.delete(key);
+  else _expandedMetaSections.add(key);
+  const sec = document.querySelector(`[data-meta-section="${CSS.escape(key)}"]`);
+  if (!sec) return;
+  const body = sec.querySelector('.meta-body');
+  const chev = sec.querySelector('.meta-chev');
+  const open = _expandedMetaSections.has(key);
+  body.classList.toggle('hidden', !open);
+  if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
 };
-window.removeMetaChip = chip => window.removeMeta(chip.dataset.key, chip.dataset.val);
-// 改名：同步更新所有引用此值的记录文件，避免老记录指向已不存在的名字
-window.renameMetaChip = async chip => {
-  const key = chip.dataset.key, oldVal = chip.dataset.val;
-  const newRaw = prompt(`重命名「${oldVal}」为：`, oldVal);
-  if (newRaw === null) return;
-  const newVal = newRaw.trim();
-  if (!newVal || newVal === oldVal) return;
+window.metaInputBlur = async (inp) => {
+  const oldVal = inp._oldVal;
+  const newVal = inp.value.trim();
+  if (!oldVal || newVal === oldVal) { inp.value = oldVal || newVal; return; }
+  if (!newVal) { inp.value = oldVal; return; }
+  const row = inp.closest('[data-key]');
+  if (!row) return;
+  await _renameMetaInline(row.dataset.key, oldVal, newVal);
+};
+// 提取出来供 inline 改名复用（不弹 prompt，直接传值）
+async function _renameMetaInline(key, oldVal, newVal) {
   const fieldMap = { projects: 'project', owners: 'owner', ratios: 'ratio', components: 'component' };
   const field = fieldMap[key];
   const willMerge = state.meta[key].includes(newVal);
-  if (willMerge && !confirm(`「${newVal}」已存在。继续会把所有「${oldVal}」的记录合并进「${newVal}」，确认？`)) return;
-  // 更新 meta 列表
+  if (willMerge && !confirm(`「${newVal}」已存在。继续会把所有「${oldVal}」的记录合并进「${newVal}」，确认？`)) {
+    renderSettings(); return;
+  }
   state.meta[key] = willMerge
     ? state.meta[key].filter(x => x !== oldVal)
     : state.meta[key].map(x => x === oldVal ? newVal : x);
-  // 同步更新所有 records / recycle 中引用此值的记录
   let changedRec = 0;
   if (field) {
     for (const r of state.records) {
@@ -2529,8 +2559,13 @@ window.renameMetaChip = async chip => {
   }
   await saveMeta();
   renderSettings();
-  toast(`已重命名为「${newVal}」，更新 ${changedRec} 条记录${willMerge ? '（合并）' : ''}`, 'success');
+  toast(`已改为「${newVal}」，更新 ${changedRec} 条记录${willMerge ? '（合并）' : ''}`, 'success');
+}
+window.removeMeta = async (key, val) => {
+  state.meta[key] = state.meta[key].filter(x => x !== val);
+  await saveMeta(); renderSettings();
 };
+window.removeMetaChip = chip => window.removeMeta(chip.dataset.key, chip.dataset.val);
 window.onRestore = async (id) => { await restoreRec(id); toast('已还原','success'); renderSettings(); };
 window.onPurge = async (id) => { if (!confirm('永久删除？不可恢复。')) return; await purgeRec(id); toast('已永久删除','success'); renderSettings(); };
 

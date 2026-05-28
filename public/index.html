@@ -1753,9 +1753,10 @@ function directCard(r) {
     </div>`;
   const wrap = document.createElement('div');
   wrap.className = 'relative pl-8 mb-6 group';
+  const cardId = r.id;
   wrap.innerHTML = `
     <div class="absolute left-0 top-6 w-[23px] h-[23px] rounded-full bg-sky-500 border-[4px] border-white shadow-sm z-10"></div>
-    <div class="relative bg-sky-50/40 rounded-xl border border-sky-300 p-5 hover:border-sky-400 shadow-sm overflow-hidden">
+    <div class="test-card relative bg-sky-50/40 rounded-xl border border-sky-300 p-5 hover:border-sky-400 shadow-sm overflow-hidden cursor-pointer" data-id="${r.id}">
       <div class="absolute top-0 left-0 right-0 h-1 bg-sky-500"></div>
       <div class="flex justify-between items-start mb-4">
         <div class="min-w-0">
@@ -1778,6 +1779,7 @@ function directCard(r) {
         ${rowHTML('更新后', 'text-sky-600', 'border-sky-200 shadow-sm', afterItems, afterVideo)}
       </div>
     </div>`;
+  wrap.querySelector('.test-card').onclick = () => openDetail(cardId, wrap.querySelector('.test-card'));
   return wrap;
 }
 function variantRowHTML(v, i, ctrl, recordId, recordAttrs) {
@@ -1924,17 +1926,58 @@ function detailSpotlightHTML(r) {
     </div>
   </div>`;
 }
+// 直接更新记录的详情大图区：tab 切 attr，下方左右并排 原始 + 更新后 大图
+function directDetailSpotlightHTML(r) {
+  const attrs = activeAttrs(r.attrs);
+  // 选默认 attr：上次选过且仍在 attrs 里就保留；否则首个有内容的；再否则首个 attr
+  const haveContent = a => !!(getDirectAsset(r, 'before', a) || getDirectAsset(r, 'after', a));
+  const sel = (detailSelectedAttr && attrs.includes(detailSelectedAttr))
+    ? detailSelectedAttr
+    : (attrs.find(haveContent) || attrs[0] || 'icon');
+  const tabs = attrs.map(a => `
+    <button type="button" onclick="selectDetailDirectAttr('${a}')" class="px-3 py-1.5 text-[12px] font-semibold rounded-md transition ${a===sel?'bg-white text-slate-800 shadow-sm':'text-slate-500 hover:text-slate-700'}">${escapeHTML(a)}</button>
+  `).join('');
+  const bVal = getDirectAsset(r, 'before', sel);
+  const aVal = getDirectAsset(r, 'after',  sel);
+  let body;
+  if (sel === '视频') {
+    const linkBlock = (val, label, cls) => val
+      ? `<div><div class="text-[11px] font-semibold ${cls} mb-1">${label}</div><a href="${escapeHTML(val)}" target="_blank" rel="noopener" class="text-[13px] text-indigo-500 hover:underline break-all">▶ ${escapeHTML(val)}</a></div>`
+      : `<div><div class="text-[11px] font-semibold ${cls} mb-1">${label}</div><span class="text-sm text-slate-400">未填</span></div>`;
+    body = `<div class="space-y-3">${linkBlock(bVal, '原始', 'text-slate-500')}${linkBlock(aVal, '更新后', 'text-sky-600')}</div>`;
+  } else {
+    const box = (img, accent) => img
+      ? `<div class="w-full h-[300px] rounded border ${accent} bg-slate-50/40 cursor-zoom-in" style="background-image:url('${img}'); background-size:contain; background-position:center; background-repeat:no-repeat;" onclick="showLightbox('${img}')"></div>`
+      : `<div class="w-full h-[300px] rounded border border-slate-200 bg-slate-50/40 flex items-center justify-center text-slate-300 text-sm">未填</div>`;
+    body = `<div class="grid grid-cols-2 gap-3">
+      <div><div class="text-[11px] font-semibold text-slate-500 mb-1.5">原始</div>${box(bVal, 'border-slate-200')}</div>
+      <div><div class="text-[11px] font-semibold text-sky-600 mb-1.5">更新后</div>${box(aVal, 'border-sky-200 shadow-sm')}</div>
+    </div>`;
+  }
+  return `<div id="detail-spotlight" class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+    <div class="flex p-1 gap-1 bg-slate-50 border-b border-slate-200">${tabs}</div>
+    <div class="p-4">${body}</div>
+  </div>`;
+}
+window.selectDetailDirectAttr = attr => {
+  detailSelectedAttr = attr;
+  const r = state.records.find(x => x.id === detailCurrentId);
+  if (!r) return;
+  const spot = $('#detail-spotlight');
+  if (spot) spot.outerHTML = directDetailSpotlightHTML(r);
+};
 function detailHTML(r) {
+  const isDirect = r.type === 'direct';
+  const headerMeta = isDirect
+    ? `<span>ID: ${r.displayId || r.id}</span><span>负责人: ${escapeHTML(r.owner||'-')}</span><span>更新日期: ${r.updateDate||'-'}</span><span>截图类型: ${(r.attrs||[]).join('、')||'-'}</span>`
+    : `<span>ID: ${r.displayId || r.id}</span><span>负责人: ${escapeHTML(r.owner||'-')}</span><span>置信度: ${r.confidence}%</span><span>周期: ${r.startDate||'-'} ~ ${r.endDate||'-'}</span>`;
   return `
     <div class="p-6 border-b border-slate-100 bg-white shrink-0">
       <h2 class="text-lg font-bold text-slate-800 mb-2 pr-8">${escapeHTML(r.project || '-')} — ${escapeHTML(r.noteChange || r.notePurpose || r.component || '-')}</h2>
-      <div class="flex flex-wrap gap-4 text-[12px] text-slate-500 font-semibold">
-        <span>ID: ${r.displayId || r.id}</span><span>负责人: ${escapeHTML(r.owner||'-')}</span><span>置信度: ${r.confidence}%</span>
-        <span>周期: ${r.startDate||'-'} ~ ${r.endDate||'-'}</span>
-      </div>
+      <div class="flex flex-wrap gap-4 text-[12px] text-slate-500 font-semibold">${headerMeta}</div>
     </div>
     <div class="flex-1 overflow-y-auto p-6 bg-slate-50/50 space-y-6">
-      ${detailSpotlightHTML(r)}
+      ${isDirect ? directDetailSpotlightHTML(r) : detailSpotlightHTML(r)}
       <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-5">
         <div class="flex items-center gap-2 mb-3"><span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span><h3 class="text-[13px] font-bold">团队复盘总结</h3></div>
         <textarea id="detail-summary" rows="4" placeholder="在此输入结论..." class="w-full text-[13px] text-slate-700 bg-slate-50 border border-transparent rounded-lg p-3 resize-none placeholder-slate-400 hover:border-slate-300">${escapeHTML(r.summary||'')}</textarea>

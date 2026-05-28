@@ -1726,13 +1726,14 @@ function timelineCard(r) {
 function directCard(r) {
   const dateStr = r.updateDate || new Date(r.updatedAt || Date.now()).toISOString().slice(0,10);
   const attrChips = (r.attrs || []).map(a => `<span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-semibold rounded">${escapeHTML(a)}</span>`).join('');
-  // 按 icon → 五图 → 置顶 顺序，跳过空的（其他自动补到前面、不留空）
-  const IMG_ATTRS = ['icon', '五图', '置顶'];
+  // 只看记录实际选中的图属性（按 icon → 五图 → 置顶 顺序），跳过空的（自动前补）
+  const IMG_ATTRS = activeAttrs(r.attrs).filter(a => a !== '视频');
   const beforeItems = IMG_ATTRS.map(a => ({ attr: a, img: getDirectAsset(r, 'before', a) })).filter(x => x.img);
   const afterItems  = IMG_ATTRS.map(a => ({ attr: a, img: getDirectAsset(r, 'after',  a) })).filter(x => x.img);
-  // 视频 URL（若有）作为链接挂在末尾
-  const beforeVideo = getDirectAsset(r, 'before', '视频');
-  const afterVideo  = getDirectAsset(r, 'after',  '视频');
+  // 视频 URL（仅当 attrs 选了视频 + 有值才展示）
+  const _showVideo = Array.isArray(r.attrs) && r.attrs.includes('视频');
+  const beforeVideo = _showVideo ? getDirectAsset(r, 'before', '视频') : '';
+  const afterVideo  = _showVideo ? getDirectAsset(r, 'after',  '视频') : '';
   const rowHTML = (label, labelCls, borderCls, items, videoUrl) => `
     <div class="flex items-center gap-3 flex-wrap">
       <span class="text-[11px] font-semibold ${labelCls} w-12 shrink-0">${label}</span>

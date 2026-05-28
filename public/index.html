@@ -1115,7 +1115,14 @@ function getAsset(v, attr, recordAttrs) {
 }
 function setAsset(v, attr, value) { v.assets = v.assets || {}; v.assets[attr] = value; }
 function variantDisplayImage(v, recordAttrs) {
-  return getAsset(v, 'icon', recordAttrs) || getAsset(v, '五图', recordAttrs) || getAsset(v, '置顶', recordAttrs) || '';
+  // 只在 record 实际选中的图属性里按优先级找；不在 attrs 里的属性即使有残留图也不显示
+  const attrs = activeAttrs(recordAttrs);
+  for (const a of ['icon', '五图', '置顶']) {
+    if (!attrs.includes(a)) continue;
+    const img = getAsset(v, a, recordAttrs);
+    if (img) return img;
+  }
+  return '';
 }
 function getDirectAsset(r, slot, attr) {
   const map = slot === 'before' ? r.assetsBefore : r.assetsAfter;
@@ -1845,10 +1852,12 @@ function formatPctColored(x) {
 
 let detailSelectedIdx = 0;
 let detailCurrentId = null;
+let detailSelectedAttr = null;
 function openDetail(id, cardEl) {
   const r = state.records.find(x => x.id === id); if (!r) return;
   detailCurrentId = id;
   detailSelectedIdx = 0;
+  detailSelectedAttr = null;
   $('#timeline-container').classList.remove('w-full');
   $('#timeline-container').classList.add('w-[38%]', 'is-compact');
   const p = $('#detail-panel');
@@ -2435,12 +2444,49 @@ function chipsSection(label, key) {
   return `<div>
     <div class="flex justify-between items-center mb-2"><h4 class="text-sm font-bold text-slate-700">${label} <span class="text-xs text-slate-400 font-normal">(${items.length})</span></h4>
       <button onclick="addMetaInput('${key}','${label}')" class="text-xs text-indigo-600 hover:underline">+ 批量添加</button></div>
-    <div class="flex flex-wrap gap-1.5">${items.map(x => `<span class="chip chip-grey">${escapeHTML(x)} <button onclick="removeMeta('${key}', this.previousSibling.textContent.trim())">✕</button></span>`).join('') || '<span class="text-xs text-slate-400">空</span>'}</div>
+    <div class="flex flex-wrap gap-1.5">${items.map(x => `<span class="chip chip-grey" data-key="${escapeHTML(key)}" data-val="${escapeHTML(x)}">${escapeHTML(x)} <button title="重命名" onclick="renameMetaChip(this.parentElement)" class="hover:text-indigo-600">✎</button><button title="删除" onclick="removeMetaChip(this.parentElement)" class="hover:text-rose-600 ml-0.5">✕</button></span>`).join('') || '<span class="text-xs text-slate-400">空</span>'}</div>
   </div>`;
 }
 window.removeMeta = async (key, val) => {
   state.meta[key] = state.meta[key].filter(x => x !== val);
   await saveMeta(); renderSettings();
+};
+window.removeMetaChip = chip => window.removeMeta(chip.dataset.key, chip.dataset.val);
+// 改名：同步更新所有引用此值的记录文件，避免老记录指向已不存在的名字
+window.renameMetaChip = async chip => {
+  const key = chip.dataset.key, oldVal = chip.dataset.val;
+  const newRaw = prompt(`重命名「${oldVal}」为：`, oldVal);
+  if (newRaw === null) return;
+  const newVal = newRaw.trim();
+  if (!newVal || newVal === oldVal) return;
+  const fieldMap = { projects: 'project', owners: 'owner', ratios: 'ratio', components: 'component' };
+  const field = fieldMap[key];
+  const willMerge = state.meta[key].includes(newVal);
+  if (willMerge && !confirm(`「${newVal}」已存在。继续会把所有「${oldVal}」的记录合并进「${newVal}」，确认？`)) return;
+  // 更新 meta 列表
+  state.meta[key] = willMerge
+    ? state.meta[key].filter(x => x !== oldVal)
+    : state.meta[key].map(x => x === oldVal ? newVal : x);
+  // 同步更新所有 records / recycle 中引用此值的记录
+  let changedRec = 0;
+  if (field) {
+    for (const r of state.records) {
+      if (r[field] === oldVal) {
+        r[field] = newVal;
+        r.updatedAt = Date.now();
+        const ok = await writeRecordFile(r);
+        if (ok) changedRec++;
+      }
+    }
+    let recycleChanged = false;
+    for (const r of state.recycle) {
+      if (r[field] === oldVal) { r[field] = newVal; recycleChanged = true; }
+    }
+    if (recycleChanged) await saveRecycle();
+  }
+  await saveMeta();
+  renderSettings();
+  toast(`已重命名为「${newVal}」，更新 ${changedRec} 条记录${willMerge ? '（合并）' : ''}`, 'success');
 };
 window.onRestore = async (id) => { await restoreRec(id); toast('已还原','success'); renderSettings(); };
 window.onPurge = async (id) => { if (!confirm('永久删除？不可恢复。')) return; await purgeRec(id); toast('已永久删除','success'); renderSettings(); };

@@ -2580,6 +2580,7 @@ window.removeMeta = async (key, val) => {
   state.meta[key] = state.meta[key].filter(x => x !== val);
   // 删除：同样不能并集，否则磁盘版本会把刚删的值带回来
   await saveMeta(false); renderSettings();
+  toast(`已删除「${val}」`, 'success');
 };
 window.removeMetaChip = chip => window.removeMeta(chip.dataset.key, chip.dataset.val);
 window.onRestore = async (id) => { await restoreRec(id); toast('已还原','success'); renderSettings(); };

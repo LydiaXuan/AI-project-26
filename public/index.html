@@ -31,8 +31,8 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
 .chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:9999px; font-size:11px; font-weight:600; background:#EEF2FF; color:#4F46E5; border:1px solid #C7D2FE; }
 .chip button { color:#818CF8; font-weight:700; }
 .chip-grey { background:#F1F5F9; color:#475569; border-color:#E2E8F0; }
-.toast { animation: slideIn .25s ease-out; }
-@keyframes slideIn { from { transform: translateX(20px); opacity:0; } to { transform: translateX(0); opacity:1; } }
+.toast { animation: slideDown .22s ease-out; pointer-events:auto; }
+@keyframes slideDown { from { transform: translateY(-12px); opacity:0; } to { transform: translateY(0); opacity:1; } }
 .nav-item { display:flex; align-items:center; gap:.75rem; padding:.5rem .75rem; font-size:.875rem; font-weight:500; color:#475569; border-radius:.375rem; cursor:pointer; transition:background .15s; }
 .nav-item:hover { background:#F8FAFC; }
 .nav-item.active { background:#EEF2FF; color:#3730A3; font-weight:600; }
@@ -481,7 +481,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
   <img id="lightbox-img" src="" class="max-w-[92vw] max-h-[92vh] rounded shadow-2xl">
 </div>
 
-<div id="toast-host" class="fixed top-4 right-4 z-[110] space-y-2"></div>
+<div id="toast-host" class="fixed top-6 left-1/2 -translate-x-1/2 z-[110] space-y-2 flex flex-col items-center pointer-events-none"></div>
 
 <script>
 // ============ effects ============
@@ -881,7 +881,7 @@ const $$ = sel => document.querySelectorAll(sel);
 function toast(msg, type='info') {
   const colors = { success:'bg-emerald-600', error:'bg-rose-600', info:'bg-slate-800' };
   const el = document.createElement('div');
-  el.className = `toast ${colors[type]||colors.info} text-white text-sm px-4 py-2 rounded-lg shadow-lg`;
+  el.className = `toast ${colors[type]||colors.info} text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-xl ring-1 ring-black/5`;
   el.textContent = msg;
   $('#toast-host').appendChild(el);
   setTimeout(() => el.remove(), 2800);

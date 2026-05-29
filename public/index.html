@@ -11,9 +11,19 @@
 body { font-family: 'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif; background:#F8FAFC; }
 select { -webkit-appearance:none; -moz-appearance:none; appearance:none;
   background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat:no-repeat; background-position:right .5rem center; background-size:1em; padding-right:2.25rem !important; }
-/* trigger 右对齐时，弹出选项保持左对齐 + 左侧留白；trigger 文字右侧也跟箭头留 gap */
-select option { text-align: left; direction: ltr; padding-left: .5rem; padding-right: .5rem; }
+  background-repeat:no-repeat; background-position:right .5rem center; background-size:1em; padding-right:1.5rem !important; }
+/* 自定义下拉（form 里用 mountCustomSelect 渲染）：trigger 紧凑右对齐、列表左对齐有内边距 */
+.cs-trigger { display:inline-flex; align-items:center; gap:.375rem; font-size:13px; font-weight:600; color:#1E293B; cursor:pointer; outline:none; }
+.cs-trigger:hover { color:#4F46E5; }
+.cs-trigger .cs-chev { width:.75rem; height:.75rem; color:#94A3B8; transition:transform .15s; }
+.cs-trigger.cs-open .cs-chev { transform: rotate(180deg); color:#4F46E5; }
+.cs-popup { position:absolute; right:0; top:100%; margin-top:.25rem; min-width:160px; max-height:18rem; overflow-y:auto;
+  background:#fff; border:1px solid #E2E8F0; border-radius:.5rem; box-shadow:0 10px 25px -5px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+  padding:.25rem 0; z-index:60; }
+.cs-popup.hidden { display:none; }
+.cs-option { padding:.375rem .875rem; font-size:13px; color:#334155; cursor:pointer; white-space:nowrap; }
+.cs-option:hover { background:#EEF2FF; color:#3730A3; }
+.cs-option.cs-selected { background:#EEF2FF; color:#4F46E5; font-weight:600; }
 .segmented-btn input:checked + div { background:#EEF2FF; color:#4F46E5; box-shadow:0 1px 2px rgba(0,0,0,.05); border-color:#C7D2FE; }
 .hide-scrollbar::-webkit-scrollbar { display:none; } .hide-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
 .smooth-transition { transition: all .4s cubic-bezier(.25,1,.5,1); }
@@ -130,7 +140,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1 py-2">
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">归属项目</label>
-                <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
+                <div class="flex items-center gap-2"><div id="cs-f-project" class="relative"></div><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">测试周期</label>
@@ -142,7 +152,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">实验类型</label>
-                <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','类型')">+</button></div>
+                <div class="flex items-center gap-2"><div id="cs-f-component" class="relative"></div><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','类型')">+</button></div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">目标置信度</label>
@@ -155,7 +165,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">测试人</label>
-                <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
+                <div class="flex items-center gap-2"><div id="cs-f-owner" class="relative"></div><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">测试属性 <span class="text-[10px] text-slate-400">(可多选)</span></label>
@@ -168,7 +178,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
-                <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
+                <div class="flex items-center gap-2"><div id="cs-f-ratio" class="relative"></div><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
               </div>
               <div class="flex items-center justify-between pb-3 invisible" aria-hidden="true">
                 <label class="text-[13px] font-medium">占位</label>
@@ -202,11 +212,11 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                 <div class="flex flex-col justify-center gap-y-5 py-2">
                   <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <label class="text-[13px] font-medium text-slate-500">项目</label>
-                    <div class="flex items-center gap-2"><select id="d-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
+                    <div class="flex items-center gap-2"><div id="cs-d-project" class="relative"></div><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
                   </div>
                   <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <label class="text-[13px] font-medium text-slate-500">负责人</label>
-                    <div class="flex items-center gap-2"><select id="d-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
+                    <div class="flex items-center gap-2"><div id="cs-d-owner" class="relative"></div><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
                   </div>
                 </div>
                 <div class="flex flex-col justify-center gap-y-5 py-2">
@@ -972,14 +982,10 @@ function renderForm() {
   $('#form-ab-body').classList.toggle('hidden', isDirect);
   $('#form-direct-body').classList.toggle('hidden', !isDirect);
   if (isDirect) { renderDirectForm(); return; }
-  fillSelect('#f-project', state.meta.projects, formData.project);
-  fillSelect('#f-owner', state.meta.owners, formData.owner);
-  fillSelect('#f-ratio', state.meta.ratios, formData.ratio);
-  fillSelect('#f-component', state.meta.components, formData.component);
-  $('#f-project').onchange = e => { formData.project = e.target.value; applyAutoControlImage(); renderVariants(); };
-  $('#f-owner').onchange = e => formData.owner = e.target.value;
-  $('#f-ratio').onchange = e => { formData.ratio = e.target.value; renderVariants(); };
-  $('#f-component').onchange = e => formData.component = e.target.value;
+  mountCustomSelect('#cs-f-project', state.meta.projects, formData.project, v => { formData.project = v; applyAutoControlImage(); renderVariants(); });
+  mountCustomSelect('#cs-f-owner', state.meta.owners, formData.owner, v => { formData.owner = v; });
+  mountCustomSelect('#cs-f-ratio', state.meta.ratios, formData.ratio, v => { formData.ratio = v; renderVariants(); });
+  mountCustomSelect('#cs-f-component', state.meta.components, formData.component, v => { formData.component = v; });
   $('#f-start').value = formData.startDate || ''; $('#f-end').value = formData.endDate || '';
   $('#f-start').onchange = e => { formData.startDate = e.target.value; applyAutoControlImage(); renderVariants(); };
   $('#f-end').onchange = e => formData.endDate = e.target.value;
@@ -1014,10 +1020,8 @@ function renderForm() {
 }
 
 function renderDirectForm() {
-  fillSelect('#d-project', state.meta.projects, formData.project);
-  fillSelect('#d-owner', state.meta.owners, formData.owner);
-  $('#d-project').onchange = e => { formData.project = e.target.value; applyAutoDirectBeforeImage(); paintDirectSlot('before'); };
-  $('#d-owner').onchange = e => formData.owner = e.target.value;
+  mountCustomSelect('#cs-d-project', state.meta.projects, formData.project, v => { formData.project = v; applyAutoDirectBeforeImage(); paintDirectSlot('before'); });
+  mountCustomSelect('#cs-d-owner', state.meta.owners, formData.owner, v => { formData.owner = v; });
   $('#d-date').value = formData.updateDate || '';
   $('#d-date').onchange = e => { formData.updateDate = e.target.value; applyAutoDirectBeforeImage(); paintDirectSlot('before'); };
   if (!Array.isArray(formData.attrs)) formData.attrs = [];
@@ -1102,6 +1106,50 @@ function fillSelect(sel, items, value) {
   const el = $(sel);
   el.innerHTML = items.map(x => `<option ${x===value?'selected':''}>${escapeHTML(x)}</option>`).join('');
   if (!items.includes(value) && items.length) el.value = items[0];
+}
+// 自定义下拉：替代原生 select，trigger 紧凑右对齐 / 列表左对齐有内边距
+// host 必须是 position:relative 的容器；options 是字符串数组
+function mountCustomSelect(hostSel, items, value, onChange) {
+  const host = $(hostSel); if (!host) return;
+  const safeVal = items.includes(value) ? value : (items[0] || '');
+  host.innerHTML = `
+    <button type="button" class="cs-trigger">
+      <span class="cs-text">${escapeHTML(safeVal)}</span>
+      <svg class="cs-chev" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+    <div class="cs-popup hidden">
+      ${items.map(x => `<div class="cs-option ${x===safeVal?'cs-selected':''}" data-val="${escapeHTML(x)}">${escapeHTML(x)}</div>`).join('') || '<div class="cs-option text-slate-400" style="cursor:default">（空，点右侧 + 添加）</div>'}
+    </div>`;
+  const trig = host.querySelector('.cs-trigger');
+  const popup = host.querySelector('.cs-popup');
+  trig.onclick = (e) => {
+    e.stopPropagation();
+    const open = !popup.classList.contains('hidden');
+    document.querySelectorAll('.cs-popup').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.cs-trigger.cs-open').forEach(t => t.classList.remove('cs-open'));
+    if (!open) { popup.classList.remove('hidden'); trig.classList.add('cs-open'); }
+  };
+  popup.querySelectorAll('.cs-option[data-val]').forEach(opt => {
+    opt.onclick = (e) => {
+      e.stopPropagation();
+      const val = opt.dataset.val;
+      host.querySelector('.cs-text').textContent = val;
+      popup.classList.add('hidden'); trig.classList.remove('cs-open');
+      popup.querySelectorAll('.cs-option').forEach(o => o.classList.remove('cs-selected'));
+      opt.classList.add('cs-selected');
+      onChange && onChange(val);
+    };
+  });
+  // safeVal 跟传入的 value 不一致时（候选不含 value），主动触发一次回调对齐外部 state
+  if (safeVal !== value && onChange) onChange(safeVal);
+}
+// 全局点外面关闭
+if (!window._csOutsideBound) {
+  window._csOutsideBound = true;
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.cs-popup').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.cs-trigger.cs-open').forEach(t => t.classList.remove('cs-open'));
+  });
 }
 
 // ===== 多属性资产 helpers =====

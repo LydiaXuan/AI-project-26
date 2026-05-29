@@ -803,13 +803,18 @@ function ensureDefaults() {
   if (!m.owners) m.owners = [];
 }
 // meta.json 仍是共享单文件：保存前 read-merge，多人新增下拉项取并集，避免互相覆盖
-async function saveMeta() {
+// mergeLists=true（默认）: 写盘前先 read-merge 磁盘上的列表（并集），保护多人并发「新增」
+// mergeLists=false: 直接写当前 state.meta（删除 / 改名时用，否则磁盘上的老项会被并集加回来）
+// lastId 不管哪种情况都 max 合并（防止多人新建撞 id）
+async function saveMeta(mergeLists = true) {
   if (_folder) {
     const disk = await readJSON('meta.json', null);
     if (disk) {
-      ['projects','owners','ratios','components'].forEach(k => {
-        state.meta[k] = Array.from(new Set([...(disk[k]||[]), ...(state.meta[k]||[])]));
-      });
+      if (mergeLists) {
+        ['projects','owners','ratios','components'].forEach(k => {
+          state.meta[k] = Array.from(new Set([...(disk[k]||[]), ...(state.meta[k]||[])]));
+        });
+      }
       const lid = { ...(disk.lastId||{}) };
       Object.keys(state.meta.lastId||{}).forEach(y => { lid[y] = Math.max(lid[y]||0, state.meta.lastId[y]||0); });
       state.meta.lastId = lid;
@@ -1107,7 +1112,10 @@ function getAsset(v, attr, recordAttrs) {
   if (!v) return '';
   if (v.assets && v.assets[attr] != null && v.assets[attr] !== '') return v.assets[attr];
   // 老数据兼容：v.img 没分 attr，回退给「记录里第一个非视频 attr」（用户当时上传的主属性 slot）
-  if (v.img) {
+  // 注意：仅当 v.assets 整体未初始化（没有任何非空 attr 条目）才回退，避免老 v.img
+  // 在用户切换 attrs 后污染新 slot（例：之前 icon 写过 v.img，后来切 五图）
+  const hasAnyAsset = v.assets && Object.values(v.assets).some(x => x);
+  if (v.img && !hasAnyAsset) {
     const primary = activeAttrs(recordAttrs).find(a => a !== '视频') || 'icon';
     if (attr === primary) return v.img;
   }
@@ -1128,8 +1136,10 @@ function getDirectAsset(r, slot, attr) {
   const map = slot === 'before' ? r.assetsBefore : r.assetsAfter;
   if (map && map[attr] != null && map[attr] !== '') return map[attr];
   // 老数据兼容：imageBefore/After 回退给「记录里第一个非视频 attr」
+  // 仅当对应 assets map 没有任何非空 attr 条目时才回退，避免 attr 切换后老图污染新 slot
+  const hasAny = map && Object.values(map).some(x => x);
   const legacy = slot === 'before' ? r.imageBefore : r.imageAfter;
-  if (legacy) {
+  if (legacy && !hasAny) {
     const primary = activeAttrs(r?.attrs).find(a => a !== '视频') || 'icon';
     if (attr === primary) return legacy;
   }
@@ -1275,7 +1285,9 @@ function getLatestApplied(attr, excludeId, beforeTime, projectFilter) {
   for (const r of state.records) {
     if (excludeId && r.id === excludeId) continue;
     if (projectFilter && r.project !== projectFilter) continue;
-    if (!Array.isArray(r.attrs) || !r.attrs.includes(attr)) continue;
+    // 老数据 / 默认空 attrs 视为 ['icon']（与 activeAttrs 同语义），否则查询 icon 时会漏算
+    const recAttrs = (Array.isArray(r.attrs) && r.attrs.length) ? r.attrs : ['icon'];
+    if (!recAttrs.includes(attr)) continue;
     const push = (img, ts) => {
       if (!img) return;
       const t = ts ? new Date(ts).getTime() : (r.updatedAt || 0);
@@ -2557,13 +2569,15 @@ async function _renameMetaInline(key, oldVal, newVal) {
     }
     if (recycleChanged) await saveRecycle();
   }
-  await saveMeta();
+  // 改名/合并：不能跟磁盘做并集，否则旧名会被磁盘版本捞回来
+  await saveMeta(false);
   renderSettings();
   toast(`已改为「${newVal}」，更新 ${changedRec} 条记录${willMerge ? '（合并）' : ''}`, 'success');
 }
 window.removeMeta = async (key, val) => {
   state.meta[key] = state.meta[key].filter(x => x !== val);
-  await saveMeta(); renderSettings();
+  // 删除：同样不能并集，否则磁盘版本会把刚删的值带回来
+  await saveMeta(false); renderSettings();
 };
 window.removeMetaChip = chip => window.removeMeta(chip.dataset.key, chip.dataset.val);
 window.onRestore = async (id) => { await restoreRec(id); toast('已还原','success'); renderSettings(); };

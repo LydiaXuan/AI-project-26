@@ -12,6 +12,8 @@ body { font-family: 'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif
 select { -webkit-appearance:none; -moz-appearance:none; appearance:none;
   background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat:no-repeat; background-position:right .5rem center; background-size:1em; padding-right:1.5rem !important; }
+/* trigger 右对齐时，弹出选项保持左对齐（避免 Chrome 把 text-align: right 透到 option 列表） */
+select option { text-align: left; direction: ltr; }
 .segmented-btn input:checked + div { background:#EEF2FF; color:#4F46E5; box-shadow:0 1px 2px rgba(0,0,0,.05); border-color:#C7D2FE; }
 .hide-scrollbar::-webkit-scrollbar { display:none; } .hide-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
 .smooth-transition { transition: all .4s cubic-bezier(.25,1,.5,1); }
@@ -128,7 +130,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-1 py-2">
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">归属项目</label>
-                <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
+                <div class="flex items-center gap-2"><select id="f-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">测试周期</label>
@@ -140,7 +142,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">实验类型</label>
-                <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','类型')">+</button></div>
+                <div class="flex items-center gap-2"><select id="f-component" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('components','类型')">+</button></div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">目标置信度</label>
@@ -153,7 +155,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">测试人</label>
-                <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
+                <div class="flex items-center gap-2"><select id="f-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">测试属性 <span class="text-[10px] text-slate-400">(可多选)</span></label>
@@ -166,7 +168,7 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
-                <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
+                <div class="flex items-center gap-2"><select id="f-ratio" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
               </div>
               <div class="flex items-center justify-between pb-3 invisible" aria-hidden="true">
                 <label class="text-[13px] font-medium">占位</label>
@@ -200,11 +202,11 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                 <div class="flex flex-col justify-center gap-y-5 py-2">
                   <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <label class="text-[13px] font-medium text-slate-500">项目</label>
-                    <div class="flex items-center gap-2"><select id="d-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
+                    <div class="flex items-center gap-2"><select id="d-project" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('projects','项目')">+</button></div>
                   </div>
                   <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                     <label class="text-[13px] font-medium text-slate-500">负责人</label>
-                    <div class="flex items-center gap-2"><select id="d-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-left cursor-pointer pl-2"></select><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
+                    <div class="flex items-center gap-2"><select id="d-owner" class="text-[13px] font-semibold text-slate-800 bg-transparent outline-none text-right pr-2 cursor-pointer"></select><button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('owners','负责人')">+</button></div>
                   </div>
                 </div>
                 <div class="flex flex-col justify-center gap-y-5 py-2">

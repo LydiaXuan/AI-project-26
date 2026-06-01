@@ -1129,16 +1129,37 @@ function mountCustomSelect(hostSel, items, value, onChange) {
     document.querySelectorAll('.cs-trigger.cs-open').forEach(t => t.classList.remove('cs-open'));
     if (!open) { popup.classList.remove('hidden'); trig.classList.add('cs-open'); }
   };
+  const pickVal = (val) => {
+    host.querySelector('.cs-text').textContent = val;
+    popup.querySelectorAll('.cs-option').forEach(o => o.classList.toggle('cs-selected', o.dataset.val === val));
+    onChange && onChange(val);
+  };
   popup.querySelectorAll('.cs-option[data-val]').forEach(opt => {
     opt.onclick = (e) => {
       e.stopPropagation();
-      const val = opt.dataset.val;
-      host.querySelector('.cs-text').textContent = val;
+      pickVal(opt.dataset.val);
       popup.classList.add('hidden'); trig.classList.remove('cs-open');
-      popup.querySelectorAll('.cs-option').forEach(o => o.classList.remove('cs-selected'));
-      opt.classList.add('cs-selected');
-      onChange && onChange(val);
     };
+  });
+  // 还原老 <select> 的「敲首字母跳选」：trigger 聚焦时键入累积 800ms 内的字符，
+  // startsWith 优先、否则 includes，命中即选中并展开列表滚到该项
+  trig.addEventListener('keydown', (e) => {
+    if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    clearTimeout(trig._typeTimer);
+    trig._typeBuf = (trig._typeBuf || '') + e.key.toLowerCase();
+    trig._typeTimer = setTimeout(() => { trig._typeBuf = ''; }, 800);
+    const buf = trig._typeBuf;
+    let idx = items.findIndex(x => String(x).toLowerCase().startsWith(buf));
+    if (idx < 0) idx = items.findIndex(x => String(x).toLowerCase().includes(buf));
+    if (idx < 0) return;
+    const val = items[idx];
+    pickVal(val);
+    document.querySelectorAll('.cs-popup').forEach(p => { if (p !== popup) p.classList.add('hidden'); });
+    document.querySelectorAll('.cs-trigger.cs-open').forEach(t => { if (t !== trig) t.classList.remove('cs-open'); });
+    popup.classList.remove('hidden'); trig.classList.add('cs-open');
+    const hit = popup.querySelector(`.cs-option[data-val="${CSS.escape(val)}"]`);
+    if (hit) hit.scrollIntoView({ block: 'nearest' });
   });
   // safeVal 跟传入的 value 不一致时（候选不含 value），主动触发一次回调对齐外部 state
   if (safeVal !== value && onChange) onChange(safeVal);

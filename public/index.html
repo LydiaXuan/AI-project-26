@@ -2676,6 +2676,20 @@ function renderProfileMini() {
 
 window.onPickFolder = async () => {
   try {
+    // 优先复用上次保存的 handle：只要用户在小弹窗里点「允许」，就不必再走目录选择器
+    const saved = await kvGet('folderHandle');
+    if (saved) {
+      try {
+        const perm = await saved.requestPermission({ mode:'readwrite' });
+        if (perm === 'granted') {
+          _folder = saved;
+          $('#folder-gate').classList.add('hidden'); $('#folder-gate').classList.remove('flex');
+          $('#splash').classList.remove('hidden');
+          await bootApp();
+          return;
+        }
+      } catch {}
+    }
     await pickFolder();
     $('#folder-gate').classList.add('hidden'); $('#folder-gate').classList.remove('flex');
     $('#splash').classList.remove('hidden');

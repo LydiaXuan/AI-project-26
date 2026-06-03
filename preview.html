@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码预览沙盒</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: 'SF Pro Display','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  }
+  body {
+    display: flex; flex-direction: column;
+    background: #F0F2F7; color: #1E293B;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; background: #fff;
+    border-bottom: 1px solid #E2E8F0;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-size: 14px; font-weight: 600; color: #4F46E5;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .toolbar .hint { font-size: 11px; color: #64748B; margin-right: 4px; }
+  .toolbar button {
+    border: 1px solid #E2E8F0; background: #fff; color: #1E293B;
+    padding: 6px 12px; border-radius: 6px; font-size: 12px;
+    cursor: pointer; transition: all .15s;
+    font-family: inherit;
+  }
+  .toolbar button:hover {
+    background: #EEF2FF; border-color: #6366F1; color: #4F46E5;
+  }
+  .toolbar button.primary {
+    background: #4F46E5; color: #fff; border-color: #4F46E5;
+  }
+  .toolbar button.primary:hover {
+    background: #4338CA; border-color: #4338CA; color: #fff;
+  }
+  .toolbar button.danger:hover {
+    background: #FEF2F2; border-color: #F43F5E; color: #F43F5E;
+  }
+
+  .tabs {
+    display: flex; gap: 2px; padding: 0 12px;
+    background: #fff; border-bottom: 1px solid #E2E8F0;
+    flex-shrink: 0; overflow-x: auto;
+  }
+  .tab {
+    padding: 8px 14px; font-size: 12px; color: #64748B;
+    border: 0; background: transparent; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap; font-family: inherit;
+    transition: color .15s, border-color .15s;
+  }
+  .tab:hover { color: #4F46E5; }
+  .tab.active { color: #4F46E5; border-bottom-color: #4F46E5; font-weight: 500; }
+  .tab .close {
+    width: 16px; height: 16px; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; line-height: 1; color: #94A3B8;
+  }
+  .tab .close:hover { background: #FEF2F2; color: #F43F5E; }
+  .tab-add {
+    padding: 8px 12px; font-size: 14px; color: #94A3B8;
+    border: 0; background: transparent; cursor: pointer;
+    font-family: inherit;
+  }
+  .tab-add:hover { color: #4F46E5; }
+
+  main {
+    flex: 1; display: flex; min-height: 0;
+  }
+  .pane {
+    flex: 1; display: flex; flex-direction: column;
+    min-width: 0; min-height: 0;
+  }
+  .pane + .pane { border-left: 1px solid #E2E8F0; }
+  .pane-label {
+    padding: 6px 12px; font-size: 11px; color: #64748B;
+    background: #F8FAFC; border-bottom: 1px solid #F1F5F9;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+  }
+  .pane-label .meta { font-variant-numeric: tabular-nums; }
+  .pane-label .saved { color: #10B981; }
+  .pane-label .dirty { color: #F59E0B; }
+
+  textarea#code {
+    flex: 1; border: 0; outline: 0; resize: none;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono','Menlo','Consolas','Courier New',monospace;
+    font-size: 13px; line-height: 1.6; color: #1E293B;
+    background: #fff; tab-size: 2;
+  }
+
+  .preview-wrap { flex: 1; position: relative; background: #fff; }
+  iframe#preview { width: 100%; height: 100%; border: 0; background: #fff; }
+
+  footer {
+    padding: 6px 16px; font-size: 11px; color: #94A3B8;
+    background: #fff; border-top: 1px solid #F1F5F9;
+    display: flex; justify-content: space-between; gap: 12px;
+    flex-shrink: 0;
+  }
+  footer kbd {
+    display: inline-block; padding: 1px 5px;
+    font-family: inherit; font-size: 10px;
+    background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 3px;
+    color: #64748B; margin: 0 2px;
+  }
+
+  /* History modal */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, .4);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(2px);
+  }
+  .modal-mask.open { display: flex; }
+  .modal {
+    background: #fff; border-radius: 12px;
+    width: min(720px, calc(100vw - 32px));
+    max-height: calc(100vh - 64px);
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    overflow: hidden;
+  }
+  .modal-head {
+    padding: 14px 18px; border-bottom: 1px solid #E2E8F0;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .modal-head h2 {
+    font-size: 15px; font-weight: 600; color: #1E293B;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .modal-head .close {
+    background: transparent; border: 0; cursor: pointer;
+    font-size: 18px; color: #94A3B8; padding: 4px 8px;
+    border-radius: 6px; font-family: inherit;
+  }
+  .modal-head .close:hover { background: #F1F5F9; color: #1E293B; }
+  .modal-body {
+    flex: 1; overflow-y: auto; padding: 6px 0;
+    min-height: 200px;
+  }
+  .modal-foot {
+    padding: 10px 18px; background: #F8FAFC;
+    border-top: 1px solid #F1F5F9;
+    font-size: 11px; color: #64748B;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+  }
+
+  .history-empty {
+    padding: 40px 20px; text-align: center; color: #94A3B8; font-size: 13px;
+  }
+  .history-item {
+    padding: 10px 18px; border-bottom: 1px solid #F1F5F9;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: background .12s;
+  }
+  .history-item:hover { background: #F8FAFC; }
+  .history-item.current { background: #EEF2FF; }
+  .history-item:last-child { border-bottom: 0; }
+  .history-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #6366F1; margin-top: 6px; flex-shrink: 0;
+  }
+  .history-dot.paste { background: #10B981; }
+  .history-dot.manual { background: #F59E0B; }
+  .history-dot.refresh { background: #6366F1; }
+  .history-dot.init { background: #94A3B8; }
+  .history-info { flex: 1; min-width: 0; }
+  .history-meta {
+    display: flex; gap: 8px; align-items: center;
+    font-size: 12px; color: #1E293B;
+  }
+  .history-meta .label { font-weight: 500; }
+  .history-meta .time { color: #64748B; font-variant-numeric: tabular-nums; }
+  .history-meta .size { color: #94A3B8; font-size: 11px; }
+  .history-preview {
+    margin-top: 4px; font-size: 11px; color: #64748B;
+    font-family: 'JetBrains Mono','Menlo','Consolas',monospace;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .history-actions {
+    display: flex; gap: 4px; flex-shrink: 0;
+  }
+  .history-actions button {
+    border: 1px solid #E2E8F0; background: #fff; color: #64748B;
+    padding: 4px 10px; border-radius: 5px; font-size: 11px;
+    cursor: pointer; font-family: inherit;
+    transition: all .12s;
+  }
+  .history-actions button:hover {
+    background: #EEF2FF; border-color: #6366F1; color: #4F46E5;
+  }
+  .history-actions button.danger:hover {
+    background: #FEF2F2; border-color: #F43F5E; color: #F43F5E;
+  }
+
+  @media (max-width: 768px) {
+    main { flex-direction: column; }
+    .pane + .pane { border-left: 0; border-top: 1px solid #E2E8F0; }
+    .toolbar .hint { display: none; }
+    header h1 { font-size: 13px; }
+    .history-item { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧪 代码预览沙盒</h1>
+  <div class="toolbar">
+    <span class="hint">Ctrl+Enter 立即刷新</span>
+    <button id="btn-refresh" class="primary" title="立即刷新预览并存快照 (Ctrl+Enter)">▶ 刷新</button>
+    <button id="btn-snapshot" title="标记当前代码为一个历史快照">📌 标记</button>
+    <button id="btn-history" title="查看历史快照可回退">🕘 历史 <span id="history-count"></span></button>
+    <button id="btn-open" title="在新标签页打开当前代码">🔗 新窗口</button>
+    <button id="btn-download" title="导出为 .html 文件">💾 另存为</button>
+    <button id="btn-clear" class="danger" title="清空当前 tab">🗑️ 清空</button>
+  </div>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<main>
+  <div class="pane">
+    <div class="pane-label">
+      <span>📝 代码（粘贴 HTML / CSS / JS）</span>
+      <span id="status" class="meta saved">已保存</span>
+    </div>
+    <textarea id="code" spellcheck="false" placeholder="把 AI 给的代码粘贴到这里，右边自动渲染…"></textarea>
+  </div>
+  <div class="pane">
+    <div class="pane-label">
+      <span>👀 实时预览</span>
+      <span id="render-info" class="meta"></span>
+    </div>
+    <div class="preview-wrap">
+      <iframe id="preview" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin allow-downloads"></iframe>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>
+    快捷键：<kbd>Ctrl</kbd>+<kbd>Enter</kbd> 刷新+存快照 ·
+    <kbd>Tab</kbd> 缩进 ·
+    自动保存 + 粘贴自动存快照
+  </div>
+  <div>v1.1 · 单文件沙盒</div>
+</footer>
+
+<div class="modal-mask" id="history-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>🕘 历史快照 <span id="history-tab-name" style="color:#94A3B8;font-weight:normal;font-size:13px;"></span></h2>
+      <button class="close" id="history-close" title="关闭">✕</button>
+    </div>
+    <div class="modal-body" id="history-list"></div>
+    <div class="modal-foot">
+      <span>最多保留最近 30 个快照 · 粘贴 / 刷新 / 标记 时自动记录</span>
+      <button class="close" id="history-clear-all" title="清空所有快照" style="color:#F43F5E;">清空全部</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'preview-sandbox-v1';
+
+  const DEFAULT_CODE = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>示例</title>
+<style>
+  body {
+    font-family: 'PingFang SC','Microsoft YaHei',sans-serif;
+    padding: 60px; background: #F0F2F7; color: #1E293B;
+    text-align: center;
+  }
+  h1 { color: #4F46E5; margin-bottom: 12px; }
+  p { color: #64748B; margin-bottom: 24px; }
+  button {
+    background: #4F46E5; color: #fff; border: 0;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 14px; cursor: pointer;
+    transition: background .15s;
+  }
+  button:hover { background: #4338CA; }
+</style>
+</head>
+<body>
+  <h1>Hello 🎉</h1>
+  <p>把 AI 给的代码贴到左边，右边就能立刻看到效果。</p>
+  <button onclick="alert('点我！')">点我试试</button>
+</body>
+</html>`;
+
+  const textarea = document.getElementById('code');
+  const iframe = document.getElementById('preview');
+  const status = document.getElementById('status');
+  const renderInfo = document.getElementById('render-info');
+  const tabsEl = document.getElementById('tabs');
+
+  // --- State ---
+  let state = loadState();
+  let renderTimer = null;
+  let saveTimer = null;
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.tabs && parsed.tabs.length) {
+          // Migrate: ensure each tab has snapshots/groups/snapCounter
+          parsed.tabs.forEach(t => {
+            if (!Array.isArray(t.snapshots)) t.snapshots = [];
+            if (!Array.isArray(t.groups)) t.groups = [];
+            if (typeof t.snapCounter !== 'number') {
+              t.snapCounter = t.snapshots.length;
+            }
+          });
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return {
+      tabs: [{
+        id: Date.now(), name: '方案 1', code: DEFAULT_CODE,
+        snapshots: [], groups: [], snapCounter: 0
+      }],
+      activeId: null,
+    };
+  }
+  if (!state.activeId) state.activeId = state.tabs[0].id;
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      status.textContent = '已保存';
+      status.className = 'meta saved';
+    } catch (e) {
+      status.textContent = '保存失败：' + e.message;
+      status.className = 'meta dirty';
+    }
+  }
+
+  function activeTab() {
+    return state.tabs.find(t => t.id === state.activeId) || state.tabs[0];
+  }
+
+  // --- Render ---
+  function render() {
+    const t0 = performance.now();
+    iframe.srcdoc = textarea.value;
+    const elapsed = Math.round(performance.now() - t0);
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    renderInfo.textContent = `${hh}:${mm}:${ss} · ${elapsed}ms`;
+  }
+
+  // --- Tabs ---
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    state.tabs.forEach(tab => {
+      const btn = document.createElement('button');
+      btn.className = 'tab' + (tab.id === state.activeId ? ' active' : '');
+      btn.dataset.id = tab.id;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = tab.name;
+      nameSpan.title = '双击重命名';
+      btn.appendChild(nameSpan);
+
+      if (state.tabs.length > 1) {
+        const close = document.createElement('span');
+        close.className = 'close';
+        close.textContent = '×';
+        close.title = '关闭';
+        close.onclick = (e) => {
+          e.stopPropagation();
+          closeTab(tab.id);
+        };
+        btn.appendChild(close);
+      }
+
+      btn.onclick = () => switchTab(tab.id);
+      nameSpan.ondblclick = (e) => {
+        e.stopPropagation();
+        const newName = prompt('重命名 tab：', tab.name);
+        if (newName && newName.trim()) {
+          tab.name = newName.trim();
+          saveState();
+          renderTabs();
+        }
+      };
+      tabsEl.appendChild(btn);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'tab-add';
+    addBtn.textContent = '+ 新建';
+    addBtn.title = '新建一个空白 tab';
+    addBtn.onclick = addTab;
+    tabsEl.appendChild(addBtn);
+  }
+
+  function switchTab(id) {
+    // Save current first
+    const cur = activeTab();
+    if (cur) cur.code = textarea.value;
+    state.activeId = id;
+    const t = activeTab();
+    textarea.value = t.code || '';
+    saveState();
+    renderTabs();
+    render();
+    updateHistoryCount();
+  }
+
+  function addTab() {
+    const cur = activeTab();
+    if (cur) cur.code = textarea.value;
+    const n = state.tabs.length + 1;
+    const newTab = {
+      id: Date.now() + Math.random(),
+      name: `方案 ${n}`,
+      code: '',
+      snapshots: [], groups: [], snapCounter: 0
+    };
+    state.tabs.push(newTab);
+    state.activeId = newTab.id;
+    textarea.value = '';
+    saveState();
+    renderTabs();
+    render();
+    updateHistoryCount();
+  }
+
+  function closeTab(id) {
+    if (state.tabs.length <= 1) return;
+    const tab = state.tabs.find(t => t.id === id);
+    if (!confirm(`关闭「${tab.name}」？该 tab 的代码会被丢弃。`)) return;
+    const idx = state.tabs.findIndex(t => t.id === id);
+    state.tabs.splice(idx, 1);
+    if (state.activeId === id) {
+      state.activeId = state.tabs[Math.max(0, idx - 1)].id;
+      textarea.value = activeTab().code || '';
+    }
+    saveState();
+    renderTabs();
+    render();
+  }
+
+  // --- Snapshots & Groups ---
+  function snapshot(kind, label) {
+    const tab = activeTab();
+    if (!tab) return;
+    tab.code = textarea.value;
+    if (!Array.isArray(tab.snapshots)) tab.snapshots = [];
+    if (!Array.isArray(tab.groups)) tab.groups = [];
+    if (typeof tab.snapCounter !== 'number') tab.snapCounter = 0;
+
+    // Dedup: skip if last snapshot has identical code (but bump label if more specific)
+    const last = tab.snapshots[0];
+    if (last && last.code === tab.code) return;
+
+    tab.snapCounter += 1;
+    tab.snapshots.unshift({
+      id: 's-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
+      code: tab.code,
+      kind: kind || 'manual',
+      label: label || '',
+      autoName: '快照 #' + tab.snapCounter,
+      timestamp: Date.now(),
+      groupId: null,
+    });
+
+    // Cap ungrouped at 30 (keep grouped ones forever)
+    const ungrouped = tab.snapshots.filter(s => !s.groupId);
+    if (ungrouped.length > 30) {
+      const removeSet = new Set(ungrouped.slice(30).map(s => s.id));
+      tab.snapshots = tab.snapshots.filter(s => !removeSet.has(s.id));
+    }
+    saveState();
+    updateHistoryCount();
+  }
+
+  function updateHistoryCount() {
+    const tab = activeTab();
+    const n = (tab && tab.snapshots) ? tab.snapshots.length : 0;
+    const el = document.getElementById('history-count');
+    if (el) el.textContent = n ? ` ${n}` : '';
+  }
+
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dDate = new Date(ts); dDate.setHours(0,0,0,0);
+    const diff = Math.round((today - dDate) / 86400000);
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    if (diff === 0) return `今天 ${hh}:${mm}:${ss}`;
+    if (diff === 1) return `昨天 ${hh}:${mm}`;
+    if (diff < 7) return `${diff}天前 ${hh}:${mm}`;
+    return `${d.getMonth()+1}/${d.getDate()} ${hh}:${mm}`;
+  }
+  function fmtSize(n) {
+    if (n < 1024) return n + 'B';
+    return (n/1024).toFixed(1) + 'KB';
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function newGroupId() {
+    return 'g-' + Date.now() + '-' + Math.random().toString(36).slice(2,5);
+  }
+  function createGroup(name) {
+    const tab = activeTab();
+    if (!Array.isArray(tab.groups)) tab.groups = [];
+    const g = { id: newGroupId(), name: name.trim() };
+    tab.groups.push(g);
+    saveState();
+    return g;
+  }
+
+  // --- History modal ---
+  const historyModal = document.getElementById('history-modal');
+  const historyList = document.getElementById('history-list');
+
+  function openHistory() {
+    historyModal.classList.add('open');
+    renderHistory();
+  }
+  function closeHistory() {
+    historyModal.classList.remove('open');
+  }
+
+  function renderHistory() {
+    const tab = activeTab();
+    document.getElementById('history-tab-name').textContent = '· ' + tab.name;
+    historyList.innerHTML = '';
+
+    // "+ 新建组" bar at top
+    const topBar = document.createElement('div');
+    topBar.style.cssText = 'padding:10px 18px;border-bottom:1px solid #F1F5F9;display:flex;justify-content:space-between;align-items:center;gap:8px;';
+    const newGroupBtn = document.createElement('button');
+    newGroupBtn.textContent = '+ 新建组';
+    newGroupBtn.style.cssText = 'border:1px dashed #CBD5E1;background:transparent;color:#6366F1;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;';
+    newGroupBtn.onmouseover = () => { newGroupBtn.style.borderStyle='solid'; newGroupBtn.style.background='#EEF2FF'; };
+    newGroupBtn.onmouseout  = () => { newGroupBtn.style.borderStyle='dashed'; newGroupBtn.style.background='transparent'; };
+    newGroupBtn.onclick = () => {
+      const name = prompt('新组名：', '');
+      if (name && name.trim()) {
+        createGroup(name);
+        renderHistory();
+      }
+    };
+    const totalInfo = document.createElement('span');
+    totalInfo.style.cssText = 'font-size:11px;color:#94A3B8;';
+    totalInfo.textContent = `共 ${(tab.snapshots||[]).length} 个快照 · ${(tab.groups||[]).length} 个组`;
+    topBar.appendChild(newGroupBtn);
+    topBar.appendChild(totalInfo);
+    historyList.appendChild(topBar);
+
+    if (!tab.snapshots || tab.snapshots.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.innerHTML = '还没有快照<br/>粘贴代码 / Ctrl+Enter / 点 📌 标记 都会自动记一个';
+      historyList.appendChild(empty);
+      return;
+    }
+
+    // Sections: ungrouped first, then each group
+    const sections = [];
+    sections.push({
+      id: null, name: '未分组',
+      snaps: tab.snapshots.filter(s => !s.groupId),
+      isUngrouped: true,
+    });
+    (tab.groups || []).forEach(g => {
+      sections.push({
+        id: g.id, name: g.name,
+        snaps: tab.snapshots.filter(s => s.groupId === g.id),
+      });
+    });
+
+    sections.forEach(sec => {
+      if (sec.isUngrouped && sec.snaps.length === 0) return;
+      const head = document.createElement('div');
+      head.style.cssText = 'padding:8px 18px;background:#F8FAFC;font-size:12px;color:#64748B;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F1F5F9;border-top:1px solid #F1F5F9;';
+      const title = document.createElement('span');
+      title.innerHTML = `<strong style="color:#1E293B;">${sec.isUngrouped ? '📥' : '📁'} ${esc(sec.name)}</strong> <span style="color:#94A3B8;">(${sec.snaps.length})</span>`;
+      head.appendChild(title);
+
+      if (!sec.isUngrouped) {
+        const acts = document.createElement('span');
+        acts.style.cssText = 'display:flex;gap:6px;';
+        const rn = document.createElement('button');
+        rn.textContent = '重命名';
+        rn.style.cssText = 'background:transparent;border:0;color:#64748B;cursor:pointer;font-size:11px;font-family:inherit;padding:2px 6px;border-radius:4px;';
+        rn.onmouseover = () => rn.style.background = '#EEF2FF';
+        rn.onmouseout  = () => rn.style.background = 'transparent';
+        rn.onclick = () => {
+          const g = tab.groups.find(x => x.id === sec.id);
+          const n = prompt('重命名组：', g.name);
+          if (n && n.trim()) { g.name = n.trim(); saveState(); renderHistory(); }
+        };
+        const del = document.createElement('button');
+        del.textContent = '删除组';
+        del.style.cssText = 'background:transparent;border:0;color:#F43F5E;cursor:pointer;font-size:11px;font-family:inherit;padding:2px 6px;border-radius:4px;';
+        del.onmouseover = () => del.style.background = '#FEF2F2';
+        del.onmouseout  = () => del.style.background = 'transparent';
+        del.onclick = () => {
+          if (!confirm(`删除组「${sec.name}」？组内 ${sec.snaps.length} 个快照会变回「未分组」，快照本身不会删。`)) return;
+          tab.snapshots.forEach(s => { if (s.groupId === sec.id) s.groupId = null; });
+          tab.groups = tab.groups.filter(g => g.id !== sec.id);
+          saveState();
+          renderHistory();
+        };
+        acts.appendChild(rn); acts.appendChild(del);
+        head.appendChild(acts);
+      }
+      historyList.appendChild(head);
+
+      if (sec.snaps.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'padding:14px 18px;font-size:12px;color:#94A3B8;text-align:center;';
+        empty.textContent = '（空组 — 通过快照右侧的「移到…」可放入）';
+        historyList.appendChild(empty);
+      } else {
+        sec.snaps.forEach(s => historyList.appendChild(renderSnapItem(s, tab)));
+      }
+    });
+  }
+
+  function renderSnapItem(snap, tab) {
+    const row = document.createElement('div');
+    row.className = 'history-item';
+
+    const dot = document.createElement('div');
+    dot.className = 'history-dot ' + (snap.kind || 'manual');
+    row.appendChild(dot);
+
+    const info = document.createElement('div');
+    info.className = 'history-info';
+    const meta = document.createElement('div');
+    meta.className = 'history-meta';
+    const kindIcon = { paste:'📋', manual:'📌', refresh:'▶', init:'🌱', restore:'↩' }[snap.kind] || '•';
+    const kindName = { paste:'粘贴', manual:'标记', refresh:'刷新', init:'初始', restore:'恢复点' }[snap.kind] || '';
+    meta.innerHTML = `
+      <span class="label">${esc(snap.autoName)}</span>
+      <span>${kindIcon} ${esc(snap.label || kindName)}</span>
+      <span class="time">${fmtTime(snap.timestamp)}</span>
+      <span class="size">${fmtSize((snap.code||'').length)}</span>
+    `;
+    const prev = document.createElement('div');
+    prev.className = 'history-preview';
+    prev.textContent = (snap.code || '').slice(0, 140).replace(/\s+/g, ' ').trim() || '(空)';
+    info.appendChild(meta);
+    info.appendChild(prev);
+    row.appendChild(info);
+
+    const actions = document.createElement('div');
+    actions.className = 'history-actions';
+
+    // Move-to select
+    const sel = document.createElement('select');
+    sel.style.cssText = 'border:1px solid #E2E8F0;background:#fff;color:#64748B;padding:3px 6px;border-radius:5px;font-size:11px;font-family:inherit;cursor:pointer;';
+    const optHead = document.createElement('option');
+    optHead.value = ''; optHead.textContent = '📁 移到…'; optHead.disabled = true;
+    sel.appendChild(optHead);
+    const optNone = document.createElement('option');
+    optNone.value = '__none'; optNone.textContent = '📥 未分组';
+    if (!snap.groupId) optNone.selected = true;
+    sel.appendChild(optNone);
+    (tab.groups || []).forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id; opt.textContent = g.name;
+      if (snap.groupId === g.id) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    const optNew = document.createElement('option');
+    optNew.value = '__new'; optNew.textContent = '+ 新建组…';
+    sel.appendChild(optNew);
+
+    sel.onchange = () => {
+      const v = sel.value;
+      if (v === '__new') {
+        const name = prompt('新组名：', '');
+        if (name && name.trim()) {
+          const g = createGroup(name);
+          snap.groupId = g.id;
+          saveState(); renderHistory();
+        } else {
+          renderHistory();
+        }
+      } else if (v === '__none') {
+        snap.groupId = null;
+        saveState(); renderHistory();
+      } else {
+        snap.groupId = v;
+        saveState(); renderHistory();
+      }
+    };
+
+    const viewBtn = document.createElement('button');
+    viewBtn.textContent = '👁 查看';
+    viewBtn.title = '在新窗口预览此版本（不影响当前代码）';
+    viewBtn.onclick = () => {
+      const blob = new Blob([snap.code || ''], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    };
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.textContent = '↩ 恢复';
+    restoreBtn.title = '把这个版本恢复到编辑框（恢复前会先存一个备份快照）';
+    restoreBtn.onclick = () => {
+      if (!confirm(`恢复到「${snap.autoName}」？\n当前代码会先存一个备份快照。`)) return;
+      snapshot('restore', '恢复前备份');
+      textarea.value = snap.code || '';
+      tab.code = snap.code || '';
+      saveState();
+      render();
+      closeHistory();
+    };
+
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕';
+    delBtn.className = 'danger';
+    delBtn.title = '删除这个快照';
+    delBtn.onclick = () => {
+      if (!confirm(`删除「${snap.autoName}」？此操作不可撤销。`)) return;
+      tab.snapshots = tab.snapshots.filter(s => s.id !== snap.id);
+      saveState();
+      renderHistory();
+      updateHistoryCount();
+    };
+
+    actions.appendChild(sel);
+    actions.appendChild(viewBtn);
+    actions.appendChild(restoreBtn);
+    actions.appendChild(delBtn);
+    row.appendChild(actions);
+    return row;
+  }
+
+  // --- Events ---
+  textarea.addEventListener('input', (e) => {
+    status.textContent = '编辑中…';
+    status.className = 'meta dirty';
+
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(render, 400);
+
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const t = activeTab();
+      if (t) t.code = textarea.value;
+      saveState();
+    }, 500);
+
+    // Auto-snapshot on paste (input event fires after paste applies)
+    if (e && e.inputType === 'insertFromPaste') {
+      setTimeout(() => snapshot('paste', '粘贴'), 50);
+    }
+  });
+
+  textarea.addEventListener('keydown', (e) => {
+    // Ctrl/Cmd+Enter: force refresh + snapshot
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      snapshot('refresh', '刷新');
+      render();
+      return;
+    }
+    // Tab: insert 2 spaces (or indent selection)
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + 2;
+      textarea.dispatchEvent(new Event('input'));
+    }
+    // Ctrl/Cmd+S: save (prevent browser save dialog)
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      const t = activeTab();
+      if (t) t.code = textarea.value;
+      saveState();
+    }
+  });
+
+  document.getElementById('btn-refresh').addEventListener('click', () => {
+    snapshot('refresh', '刷新');
+    render();
+  });
+
+  document.getElementById('btn-snapshot').addEventListener('click', () => {
+    const label = prompt('给这个快照起个备注（可留空）：', '');
+    if (label === null) return; // cancelled
+    snapshot('manual', label.trim());
+  });
+
+  document.getElementById('btn-history').addEventListener('click', openHistory);
+  document.getElementById('history-close').addEventListener('click', closeHistory);
+  historyModal.addEventListener('click', (e) => {
+    if (e.target === historyModal) closeHistory();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && historyModal.classList.contains('open')) closeHistory();
+  });
+
+  document.getElementById('history-clear-all').addEventListener('click', () => {
+    const tab = activeTab();
+    if (!tab.snapshots || tab.snapshots.length === 0) return;
+    if (!confirm(`清空「${tab.name}」的所有 ${tab.snapshots.length} 个快照？组也会一并删除。此操作不可撤销。`)) return;
+    tab.snapshots = [];
+    tab.groups = [];
+    tab.snapCounter = 0;
+    saveState();
+    renderHistory();
+    updateHistoryCount();
+  });
+
+  document.getElementById('btn-download').addEventListener('click', () => {
+    const blob = new Blob([textarea.value], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    const safeName = (activeTab().name || 'preview').replace(/[\\/:*?"<>|]/g, '_');
+    a.download = `${safeName}-${stamp}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
+  document.getElementById('btn-open').addEventListener('click', () => {
+    const blob = new Blob([textarea.value], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  });
+
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    if (!confirm('清空当前 tab 的代码？')) return;
+    textarea.value = '';
+    const t = activeTab();
+    if (t) t.code = '';
+    saveState();
+    render();
+  });
+
+  // --- Init ---
+  textarea.value = activeTab().code || '';
+  renderTabs();
+  render();
+  updateHistoryCount();
+  // Take an initial snapshot if there are none yet
+  const at = activeTab();
+  if (at && (!at.snapshots || at.snapshots.length === 0) && textarea.value.trim()) {
+    snapshot('init', '初始内容');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2039 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>LiveOps 推广内容运营辅助</title>
+<style>
+/* ── Reset & Variables ─────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{max-width:100%;overflow-x:hidden}
+:root{
+  --primary:#4F46E5; --primary-dark:#4338CA; --primary-bg:#EEF2FF;
+  --success:#1B6E2E; --success-l:#2E9E4F; --success-bg:#DCFCE7;
+  --warning:#B45309; --warning-bg:#FEF3C7;
+  --danger:#B91C1C; --danger-bg:#FEE2E2;
+  --neutral:#6B7280; --neutral-bg:#F3F4F6;
+  --info:#1D4ED8; --info-bg:#DBEAFE;
+  --bg:#F0F2F7; --surface:#FFFFFF; --border:#E5E7EB;
+  --text:#111827; --text-2:#374151; --text-muted:#6B7280;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);
+  --shadow:0 4px 12px rgba(0,0,0,.10);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.14);
+  --radius:12px; --radius-sm:8px;
+}
+html,body{height:100%;font-family:'SF Pro Display','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+input,textarea,select{font-family:inherit;font-size:inherit;color:var(--text)}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── Layout ────────────────────────────────────────────────────────── */
+.app{display:flex;min-height:100vh}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;background:#fff;border-right:1px solid #EAECEF;display:flex;flex-direction:column;z-index:100;box-shadow:1px 0 0 rgba(0,0,0,.02)}
+.sidebar-brand{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #F1F5F9;font-size:14px;font-weight:700;color:#4F46E5;letter-spacing:-.2px}
+.sidebar-brand-dot{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.sidebar-add{margin:14px 12px 8px;padding:10px 12px;display:flex;align-items:center;justify-content:center;gap:8px;background:#4F46E5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgba(79,70,229,.18);transition:background .12s,transform .08s}
+.sidebar-add:hover{background:#4338CA;box-shadow:0 2px 6px rgba(79,70,229,.28)}
+.sidebar-add:active{transform:translateY(1px)}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:6px 8px;flex:1}
+.sidebar-nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;border:none;background:transparent;color:#475569;font-size:13px;width:100%;text-align:left;cursor:pointer;transition:background .12s,color .12s}
+.sidebar-nav-item:hover{background:#F8FAFC;color:#0F172A}
+.sidebar-nav-item.active{background:#EEF2FF;color:#4F46E5;font-weight:600}
+.sidebar-nav-icon{width:18px;height:18px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+.sidebar-footer{padding:12px;border-top:1px solid #F1F5F9;font-size:11px;color:#94A3B8;line-height:1.5}
+.sidebar-footer a{color:#4F46E5}
+
+.main{margin-left:240px;flex:1;min-width:0;padding:24px 28px 60px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.topbar h1{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.topbar .sub{color:var(--text-muted);font-size:12px;margin-top:2px}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+
+/* ── Buttons ───────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:500;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s;white-space:nowrap}
+.btn:hover{background:#F9FAFB;box-shadow:var(--shadow-sm)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:#4F46E5;color:#fff;border-color:#4F46E5}
+.btn-primary:hover{background:#4338CA;border-color:#4338CA}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text-2)}
+.btn-ghost:hover{background:#F1F5F9}
+.btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn-danger:hover{background:#991B1B;border-color:#991B1B}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{padding:6px;width:30px;height:30px;justify-content:center}
+
+/* ── Cards ─────────────────────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-h h3{font-size:14px;font-weight:700;color:var(--text)}
+.card-h .hint{font-size:11px;color:var(--text-muted)}
+.card-tight{padding:14px 16px}
+
+/* ── Forms ─────────────────────────────────────────────────────────── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+.field .hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+.field input[type=text],.field input[type=password],.field input[type=number],.field input[type=url],.field textarea,.field select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;transition:border-color .12s,box-shadow .12s;outline:none}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.field textarea{resize:vertical;min-height:80px;line-height:1.5}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row > *{flex:1;min-width:0}
+.col-sm{flex:0 0 auto;min-width:120px}
+
+/* ── Tabs / Mode Switch ────────────────────────────────────────────── */
+.tabs{display:inline-flex;gap:4px;padding:3px;background:#F1F5F9;border-radius:9px}
+.tab{padding:6px 14px;border:none;background:transparent;border-radius:7px;font-size:12px;font-weight:600;color:#64748B;cursor:pointer;transition:background .12s,color .12s}
+.tab.active{background:#fff;color:#0F172A;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+/* ── Wizard Steps ──────────────────────────────────────────────────── */
+.steps{display:flex;align-items:center;gap:0;margin-bottom:20px;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
+.step{display:flex;align-items:center;gap:8px;color:#94A3B8;font-size:12px;white-space:nowrap}
+.step-num{width:22px;height:22px;border-radius:50%;background:#F1F5F9;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#64748B;border:1px solid #E2E8F0}
+.step.active{color:#4F46E5;font-weight:600}
+.step.active .step-num{background:#4F46E5;color:#fff;border-color:#4F46E5}
+.step.done{color:#10B981}
+.step.done .step-num{background:#10B981;color:#fff;border-color:#10B981}
+.step-sep{flex:1;height:1px;background:#E5E7EB;margin:0 10px;min-width:18px}
+
+/* ── Upload Zone ───────────────────────────────────────────────────── */
+.dropzone{border:2px dashed #CBD5E1;border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;background:#FAFBFC;transition:background .12s,border-color .12s}
+.dropzone:hover,.dropzone.drag{border-color:#4F46E5;background:#EEF2FF}
+.dropzone-icon{font-size:30px;margin-bottom:8px;color:#94A3B8}
+.dropzone-text{font-size:13px;color:var(--text-2)}
+.dropzone-hint{font-size:11px;color:var(--text-muted);margin-top:4px}
+.preview-wrap{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+.preview{position:relative;width:140px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}
+.preview img{display:block;width:100%;height:90px;object-fit:cover}
+.preview .meta{padding:6px 8px;font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center}
+.preview .remove{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1}
+
+/* ── Counter Bar ───────────────────────────────────────────────────── */
+.counter{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted);margin-top:6px}
+.counter-bar{flex:1;height:5px;background:#F1F5F9;border-radius:3px;overflow:hidden;max-width:200px}
+.counter-bar-fill{height:100%;background:#10B981;transition:width .15s,background .15s}
+.counter.warn .counter-bar-fill{background:#F59E0B}
+.counter.danger .counter-bar-fill{background:#EF4444}
+.counter.warn{color:#B45309}
+.counter.danger{color:#B91C1C;font-weight:600}
+
+/* ── Risk badges ───────────────────────────────────────────────────── */
+.risk-list{display:flex;flex-direction:column;gap:8px}
+.risk-item{display:flex;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:12px}
+.risk-item.high{background:#FEF2F2;border-color:#FECACA}
+.risk-item.med{background:#FFFBEB;border-color:#FDE68A}
+.risk-item.low{background:#F0F9FF;border-color:#BAE6FD}
+.risk-item.ok{background:#F0FDF4;border-color:#BBF7D0;color:#166534}
+.risk-badge{flex-shrink:0;font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;letter-spacing:.3px;height:fit-content}
+.risk-badge.high{background:#FEE2E2;color:#991B1B}
+.risk-badge.med{background:#FEF3C7;color:#92400E}
+.risk-badge.low{background:#DBEAFE;color:#1E40AF}
+.risk-badge.ok{background:#D1FAE5;color:#065F46}
+.risk-body{flex:1;line-height:1.5}
+.risk-body strong{display:block;margin-bottom:2px;color:var(--text)}
+.risk-body .quote{display:inline-block;background:rgba(0,0,0,.06);padding:1px 6px;border-radius:4px;margin:0 2px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px}
+
+/* ── Language chips ────────────────────────────────────────────────── */
+.lang-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.lang-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;color:var(--text-2);transition:all .12s}
+.lang-chip:hover{border-color:#A5B4FC;background:#F5F7FF}
+.lang-chip.selected{background:#EEF2FF;border-color:#4F46E5;color:#3730A3;font-weight:600}
+.lang-chip input{margin:0}
+
+/* ── Tables ────────────────────────────────────────────────────────── */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+.tbl th,.tbl td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{background:#F8FAFC;font-size:11px;font-weight:700;color:#64748B;letter-spacing:.3px;text-transform:uppercase;position:sticky;top:0;z-index:1}
+.tbl tr:hover td{background:#FAFBFC}
+.tbl .tag{display:inline-block;padding:2px 7px;border-radius:5px;background:#EEF2FF;color:#4F46E5;font-size:11px;font-weight:600}
+.tbl-empty{padding:40px;text-align:center;color:var(--text-muted);font-size:13px}
+.tbl-wrap{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm)}
+.tbl-toolbar{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#FAFBFC}
+.tbl-toolbar input[type=text]{padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;width:200px;outline:none}
+.tbl-toolbar input:focus{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.tbl-scroll{max-height:560px;overflow:auto}
+
+/* ── Toast / Modal / Lightbox ──────────────────────────────────────── */
+.toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 14px;background:var(--text);color:#fff;border-radius:8px;font-size:12px;box-shadow:var(--shadow-lg);max-width:340px;line-height:1.4;animation:toast-in .2s}
+@keyframes toast-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.toast-success{background:#065F46}
+.toast-error{background:#991B1B}
+.toast-warn{background:#92400E}
+
+.modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:9000;padding:20px}
+.modal{background:#fff;border-radius:var(--radius);max-width:640px;width:100%;max-height:88vh;overflow:auto;box-shadow:var(--shadow-lg)}
+.modal-h{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-h h3{font-size:15px;font-weight:700}
+.modal-b{padding:18px 20px}
+.modal-f{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:#FAFBFC}
+
+/* ── KPI cards ─────────────────────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.kpi-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm)}
+.kpi-card .lab{font-size:11px;color:var(--text-muted);font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+.kpi-card .val{font-size:24px;font-weight:700;color:var(--text);margin-top:4px;letter-spacing:-.5px}
+.kpi-card .sub{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+/* ── Output / Preview pane ─────────────────────────────────────────── */
+.lang-section{border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:#fff;overflow:hidden}
+.lang-section-h{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#F8FAFC;border-bottom:1px solid var(--border)}
+.lang-section-h .l{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text)}
+.lang-flag{font-size:14px}
+.lang-section-b{padding:12px 14px}
+.lang-section-b .field:last-child{margin-bottom:0}
+
+/* ── Misc ──────────────────────────────────────────────────────────── */
+.empty{padding:60px 20px;text-align:center;color:var(--text-muted)}
+.empty .ic{font-size:42px;margin-bottom:10px;opacity:.6}
+.empty .t{font-size:14px;font-weight:600;color:var(--text-2);margin-bottom:4px}
+.empty .d{font-size:12px;line-height:1.6;max-width:380px;margin:0 auto}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.kbd{display:inline-block;padding:1px 6px;font-size:11px;background:#F1F5F9;border:1px solid #E2E8F0;border-bottom-width:2px;border-radius:4px;font-family:'SF Mono',Menlo,Consolas,monospace}
+.muted{color:var(--text-muted)}
+.tiny{font-size:11px}
+.mono{font-family:'SF Mono',Menlo,Consolas,monospace}
+.tag-pill{display:inline-block;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;font-size:11px;font-weight:600}
+.tag-pill.gray{background:#F1F5F9;color:#475569}
+.tag-pill.green{background:#DCFCE7;color:#166534}
+.tag-pill.red{background:#FEE2E2;color:#991B1B}
+.tag-pill.amber{background:#FEF3C7;color:#92400E}
+
+.flex{display:flex;gap:10px;align-items:center}
+.flex-between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.gap-sm{gap:6px}
+.mt-sm{margin-top:8px}
+.mt{margin-top:14px}
+.mb-sm{margin-bottom:8px}
+.mb{margin-bottom:14px}
+.hidden{display:none !important}
+
+/* glossary table inline edit */
+.gloss-row input{width:100%;padding:5px 8px;border:1px solid transparent;border-radius:6px;background:transparent}
+.gloss-row input:hover{background:#F8FAFC}
+.gloss-row input:focus{background:#fff;border-color:#4F46E5;box-shadow:0 0 0 2px rgba(79,70,229,.12);outline:none}
+
+/* spinner */
+.spin{width:14px;height:14px;border:2px solid #E5E7EB;border-top-color:#4F46E5;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:880px){
+  .sidebar{transform:translateX(-240px);transition:transform .2s}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0;padding:16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-brand-dot">L</span>
+      <span>LiveOps 推广内容</span>
+    </div>
+    <button class="sidebar-add" data-go="new">＋ 新建活动</button>
+    <nav class="sidebar-nav">
+      <button class="sidebar-nav-item" data-go="new"><span class="sidebar-nav-icon">📝</span>新建活动</button>
+      <button class="sidebar-nav-item" data-go="list"><span class="sidebar-nav-icon">📋</span>活动记录</button>
+      <button class="sidebar-nav-item" data-go="dashboard"><span class="sidebar-nav-icon">📊</span>数据看板</button>
+      <button class="sidebar-nav-item" data-go="glossary"><span class="sidebar-nav-icon">📖</span>术语库</button>
+      <button class="sidebar-nav-item" data-go="settings"><span class="sidebar-nav-icon">⚙️</span>设置</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div><strong>官方文档</strong></div>
+      <div><a href="https://support.google.com/googleplay/android-developer/answer/12929029?hl=zh-Hans" target="_blank">推广内容介绍</a></div>
+      <div><a href="https://support.google.com/googleplay/android-developer/answer/12929944?hl=zh-Hans" target="_blank">内容质量指南</a></div>
+      <div><a href="https://support.google.com/googleplay/android-developer/answer/12932541?hl=zh-Hans" target="_blank">创建推广内容</a></div>
+      <div><a href="https://support.google.com/googleplay/android-developer/answer/12932123?hl=zh-Hans" target="_blank">驳回与修正</a></div>
+    </div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════
+// 0. CONSTANTS — Google Play LiveOps standards & rules
+// ════════════════════════════════════════════════════════════════════
+
+// 谷歌官方支持的语言代码（推广内容常用 25 种）
+const LANG_LIST = [
+  { code: 'en-US', flag: '🇺🇸', name: 'English (US)',     short: 'EN-US', latin: true },
+  { code: 'en-GB', flag: '🇬🇧', name: 'English (UK)',     short: 'EN-GB', latin: true },
+  { code: 'zh-CN', flag: '🇨🇳', name: '简体中文',           short: '简中',  latin: false },
+  { code: 'zh-TW', flag: '🇹🇼', name: '繁体中文（台湾）',   short: '繁中',  latin: false },
+  { code: 'zh-HK', flag: '🇭🇰', name: '繁体中文（香港）',   short: '繁港',  latin: false },
+  { code: 'ja-JP', flag: '🇯🇵', name: '日本語',             short: 'JP',    latin: false },
+  { code: 'ko-KR', flag: '🇰🇷', name: '한국어',              short: 'KR',    latin: false },
+  { code: 'de-DE', flag: '🇩🇪', name: 'Deutsch',            short: 'DE',    latin: true },
+  { code: 'fr-FR', flag: '🇫🇷', name: 'Français',           short: 'FR',    latin: true },
+  { code: 'es-ES', flag: '🇪🇸', name: 'Español (ES)',       short: 'ES',    latin: true },
+  { code: 'es-419',flag: '🌎', name: 'Español (Latam)',    short: 'ES-LA', latin: true },
+  { code: 'pt-BR', flag: '🇧🇷', name: 'Português (Brasil)',short: 'PT-BR', latin: true },
+  { code: 'pt-PT', flag: '🇵🇹', name: 'Português (PT)',    short: 'PT-PT', latin: true },
+  { code: 'ru-RU', flag: '🇷🇺', name: 'Русский',            short: 'RU',    latin: false },
+  { code: 'it-IT', flag: '🇮🇹', name: 'Italiano',           short: 'IT',    latin: true },
+  { code: 'nl-NL', flag: '🇳🇱', name: 'Nederlands',         short: 'NL',    latin: true },
+  { code: 'pl-PL', flag: '🇵🇱', name: 'Polski',             short: 'PL',    latin: true },
+  { code: 'tr-TR', flag: '🇹🇷', name: 'Türkçe',             short: 'TR',    latin: true },
+  { code: 'ar',    flag: '🇸🇦', name: 'العربية',            short: 'AR',    latin: false },
+  { code: 'hi-IN', flag: '🇮🇳', name: 'हिन्दी',              short: 'HI',    latin: false },
+  { code: 'id',    flag: '🇮🇩', name: 'Bahasa Indonesia',   short: 'ID',    latin: true },
+  { code: 'th',    flag: '🇹🇭', name: 'ภาษาไทย',            short: 'TH',    latin: false },
+  { code: 'vi',    flag: '🇻🇳', name: 'Tiếng Việt',         short: 'VI',    latin: true },
+  { code: 'ms',    flag: '🇲🇾', name: 'Bahasa Melayu',      short: 'MS',    latin: true },
+  { code: 'fil',   flag: '🇵🇭', name: 'Filipino',           short: 'FIL',   latin: true },
+];
+const LANG_BY_CODE = Object.fromEntries(LANG_LIST.map(l => [l.code, l]));
+
+// Google Play LiveOps 字数硬限
+const LIMIT = { tagline: 80, description: 500 };
+
+// 政策红线规则（中英文双语词典，区分高/中/低风险）
+// 来源：Google Play 推广内容内容质量指南 + 应用元数据政策
+const RED_LINE_RULES = [
+  // === 高风险（提审高概率驳回）===
+  { id: 'cta-download',  level: 'high', tag: '强制 CTA',
+    patterns: [/\b(?:click|tap|press)\s+(?:here|now|to\s+download|to\s+install)\b/gi,
+               /\b(?:download|install)\s+now\b/gi,
+               /点击下载|立即下载|马上下载|点击安装|立即安装|马上安装|点此下载|点这里下载/g,
+               /今すぐダウンロード|今すぐインストール|タップしてダウンロード/g,
+               /지금\s*다운로드|지금\s*설치/g],
+    why: '谷歌禁止在推广文案中使用"点击下载/立即下载"等强制行动号召（CTA），会被视为虚假按钮/误导。' },
+  { id: 'price-promo',   level: 'high', tag: '价格促销',
+    patterns: [/\$\s?\d+(?:\.\d+)?/g, /€\s?\d+/g, /¥\s?\d+/g, /₩\s?\d+/g,
+               /\b\d+\s*%\s*off\b/gi, /\bsave\s+\d+/gi,
+               /\d+\s*折|立减\s*\d+|省\s*\d+|限时\s*\d+\s*元/g,
+               /無料(?:配信|提供)|半額/g],
+    why: '推广文案中禁止出现具体价格、折扣百分比、节省金额——商店会单独渲染价格，文案重复会驳回。' },
+  { id: 'superlative',   level: 'high', tag: '虚假最高级',
+    patterns: [/\b(?:#1|number\s+one|the\s+best|top[-\s]?rated|world['']?s?\s+best)\b/gi,
+               /\bguaranteed\b/gi, /\b100\s*%\s*(?:free|guaranteed|safe)\b/gi,
+               /全球第一|全网最佳|业内第一|最强|绝对|百分百安全|100\s*%\s*免费/g,
+               /世界一|業界一|最強|絶対/g],
+    why: '"第一/最佳/保证/100%"等绝对化用语属于谷歌不允许的夸大宣传，需用更具体的描述替代。' },
+  { id: 'fake-button',   level: 'high', tag: '虚假按钮',
+    patterns: [/\b(?:install|open|play|update)\s+button\b/gi,
+               /虚假按钮|假按钮|播放按钮|安装按钮/g],
+    why: '推广图与文案中不得出现仿系统按钮元素，含误导用户嫌疑。' },
+
+  // === 中风险（影响精选推荐位 / 部分国家驳回）===
+  { id: 'soft-cta',      level: 'med',  tag: '弱 CTA',
+    patterns: [/\b(?:get\s+(?:it\s+)?now|try\s+(?:it\s+)?now|join\s+now|play\s+now)\b/gi,
+               /快来|赶快|马上加入|立即体验|抢先体验|快下载/g],
+    why: '"快来/立即体验/Join now"等弱 CTA 不一定驳回，但会降低精选推荐位入选概率，建议改为活动卖点描述。' },
+  { id: 'all-caps',      level: 'med',  tag: '过度大写',
+    patterns: [/\b[A-Z]{6,}\b/g],
+    why: '连续 6 个以上大写字母会被视为"喊叫式"营销，影响内容质量评分。' },
+  { id: 'excess-excl',   level: 'med',  tag: '感叹号过多',
+    patterns: [/!{2,}/g, /！{2,}/g],
+    why: '连续感叹号属于煽动性表达，谷歌内容质量指南建议每段不超过 1 个。' },
+  { id: 'fake-urgency',  level: 'med',  tag: '虚假紧迫感',
+    patterns: [/\b(?:hurry|last\s+chance|limited\s+time\s+only|don['']?t\s+miss)\b/gi,
+               /最后机会|错过不再|仅此一次|限时秒杀|手慢无/g],
+    why: '"最后机会/Last chance"类紧迫感语言被谷歌限制，活动本身是限时无需文案重复强调。' },
+  { id: 'review-claim',  level: 'med',  tag: '评分/排名声明',
+    patterns: [/\b\d(?:\.\d)?\s*\/\s*5(?:\s+star)?s?\b/gi,
+               /\b\d+\s*million\s+(?:downloads|users|players)\b/gi,
+               /\d+\s*星好评|\d+\s*亿用户|\d+\s*万下载/g],
+    why: '商店页已展示评分与下载量，文案中重复声明会被识别为虚假/无依据数据。' },
+
+  // === 低风险（建议优化但通常不驳回）===
+  { id: 'emoji-tagline', level: 'low',  tag: '宣传口号含 emoji',
+    patterns: [/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu],
+    why: '宣传口号位通常字号小、空间紧，emoji 在部分设备上会渲染异常，建议放到长说明。',
+    scope: 'tagline' },
+  { id: 'long-numbers',  level: 'low',  tag: '冗长数字',
+    patterns: [/\b\d{7,}\b/g],
+    why: '长串数字（如"100000000"）在小屏不易阅读，建议改成"1 亿"等概数表达。' },
+];
+
+// Google Play CSV 模板列（推广内容批量导入）
+const CSV_HEADERS = [
+  'language_code',
+  'tagline',
+  'description',
+];
+
+// 默认游戏术语库（首次启动时种子）
+const DEFAULT_GLOSSARY = [
+  { source: '抽卡',    'en-US':'Gacha',           'ja-JP':'ガチャ',         'ko-KR':'뽑기',       'de-DE':'Gacha',          'fr-FR':'Gacha',         'es-ES':'Gacha',          'pt-BR':'Gacha' },
+  { source: '赛季',    'en-US':'Season',          'ja-JP':'シーズン',       'ko-KR':'시즌',       'de-DE':'Saison',         'fr-FR':'Saison',        'es-ES':'Temporada',      'pt-BR':'Temporada' },
+  { source: '礼包',    'en-US':'Bundle',          'ja-JP':'パック',         'ko-KR':'패키지',     'de-DE':'Paket',          'fr-FR':'Pack',          'es-ES':'Pack',           'pt-BR':'Pacote' },
+  { source: '通行证',  'en-US':'Pass',            'ja-JP':'パス',           'ko-KR':'패스',       'de-DE':'Pass',           'fr-FR':'Pass',          'es-ES':'Pase',           'pt-BR':'Passe' },
+  { source: '皮肤',    'en-US':'Skin',            'ja-JP':'スキン',         'ko-KR':'스킨',       'de-DE':'Skin',           'fr-FR':'Skin',          'es-ES':'Skin',           'pt-BR':'Skin' },
+  { source: '副本',    'en-US':'Dungeon',         'ja-JP':'ダンジョン',     'ko-KR':'던전',       'de-DE':'Dungeon',        'fr-FR':'Donjon',        'es-ES':'Mazmorra',       'pt-BR':'Masmorra' },
+  { source: '装备',    'en-US':'Gear',            'ja-JP':'装備',           'ko-KR':'장비',       'de-DE':'Ausrüstung',     'fr-FR':'Équipement',    'es-ES':'Equipo',         'pt-BR':'Equipamento' },
+  { source: '公会',    'en-US':'Guild',           'ja-JP':'ギルド',         'ko-KR':'길드',       'de-DE':'Gilde',          'fr-FR':'Guilde',        'es-ES':'Gremio',         'pt-BR':'Guilda' },
+  { source: '关卡',    'en-US':'Level',           'ja-JP':'ステージ',       'ko-KR':'스테이지',   'de-DE':'Level',          'fr-FR':'Niveau',        'es-ES':'Nivel',          'pt-BR':'Nível' },
+  { source: '排行榜',  'en-US':'Leaderboard',     'ja-JP':'ランキング',     'ko-KR':'리더보드',   'de-DE':'Bestenliste',    'fr-FR':'Classement',    'es-ES':'Clasificación',  'pt-BR':'Classificação' },
+];
+
+// 推广内容类型（对应 LiveOps 后台）
+const PROMO_TYPES = [
+  { id: 'event',         name: '限时活动',     desc: '促销、节日、联动等限时主题' },
+  { id: 'major_update',  name: '版本更新',     desc: '大版本新功能、新内容上线' },
+  { id: 'offer',         name: '优惠/福利',    desc: '礼包、折扣、首充、限免' },
+  { id: 'pre_register',  name: '预注册',       desc: '游戏首发预约' },
+  { id: 'beta',          name: '公测',         desc: '测试服开启或内测扩容' },
+];
+
+const GEMINI_MODELS = [
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash（推荐）', desc: '快、便宜、多模态、JSON 输出稳定' },
+  { id: 'gemini-2.5-pro',   name: 'Gemini 2.5 Pro',          desc: '更强的创意与翻译质量，较慢' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash',        desc: '兼容老 Key 的备选' },
+];
+
+// ════════════════════════════════════════════════════════════════════
+// 1. IndexedDB — 活动 / 设置 / 词库 / 历史
+// ════════════════════════════════════════════════════════════════════
+const IDB_NAME = 'liveops';
+const IDB_VER  = 1;
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VER);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('activities')) db.createObjectStore('activities', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('settings'))   db.createObjectStore('settings');
+      if (!db.objectStoreNames.contains('glossary'))   db.createObjectStore('glossary', { keyPath: 'id', autoIncrement: true });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+async function idbAll(store) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly').objectStore(store).getAll();
+    tx.onsuccess = () => res(tx.result || []);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(store, key) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readonly').objectStore(store).get(key);
+    tx.onsuccess = () => res(tx.result);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbPut(store, value, key) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const s = db.transaction(store, 'readwrite').objectStore(store);
+    const tx = key === undefined ? s.put(value) : s.put(value, key);
+    tx.onsuccess = () => res(tx.result);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbDel(store, key) {
+  const db = await openIDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite').objectStore(store).delete(key);
+    tx.onsuccess = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 2. Settings / Glossary 仓储
+// ════════════════════════════════════════════════════════════════════
+const DEFAULT_SETTINGS = {
+  apiKey: '',
+  model: 'gemini-2.5-flash',
+  defaultLangs: ['en-US','zh-TW','ja-JP','ko-KR','de-DE','fr-FR','es-419','pt-BR'],
+  brand: '',
+  tone: '简洁、亲切、有节奏感',
+};
+async function getSettings() {
+  const s = await idbGet('settings', 'config');
+  return { ...DEFAULT_SETTINGS, ...(s || {}) };
+}
+async function saveSettings(patch) {
+  const cur = await getSettings();
+  const next = { ...cur, ...patch };
+  await idbPut('settings', next, 'config');
+  return next;
+}
+
+async function seedGlossaryIfEmpty() {
+  const all = await idbAll('glossary');
+  if (all.length > 0) return;
+  for (const g of DEFAULT_GLOSSARY) await idbPut('glossary', g);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 3. Char counting — 谷歌字符规则（按 grapheme，emoji=1）
+// ════════════════════════════════════════════════════════════════════
+const SEG = (typeof Intl !== 'undefined' && Intl.Segmenter)
+  ? new Intl.Segmenter('und', { granularity: 'grapheme' })
+  : null;
+function charCount(str) {
+  if (!str) return 0;
+  if (SEG) {
+    let n = 0;
+    for (const _ of SEG.segment(str)) n++;
+    return n;
+  }
+  return [...str].length;
+}
+function trimToLimit(str, limit) {
+  if (charCount(str) <= limit) return str;
+  if (SEG) {
+    let n = 0, last = 0;
+    for (const seg of SEG.segment(str)) {
+      if (n + 1 > limit) break;
+      n++; last = seg.index + seg.segment.length;
+    }
+    return str.slice(0, last);
+  }
+  return [...str].slice(0, limit).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 4. Red-line scanner — 规则扫描，返回结构化报告
+// ════════════════════════════════════════════════════════════════════
+function scanRedLines(text, scope) {
+  if (!text) return [];
+  const hits = [];
+  for (const rule of RED_LINE_RULES) {
+    if (rule.scope && rule.scope !== scope) continue;
+    const matches = new Set();
+    for (const p of rule.patterns) {
+      const re = new RegExp(p.source, p.flags.includes('g') ? p.flags : p.flags + 'g');
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        matches.add(m[0]);
+        if (!re.global) break;
+      }
+    }
+    if (matches.size) {
+      hits.push({ id: rule.id, level: rule.level, tag: rule.tag, why: rule.why, samples: [...matches].slice(0, 5) });
+    }
+  }
+  return hits;
+}
+function maxRiskLevel(hits) {
+  if (hits.some(h => h.level === 'high')) return 'high';
+  if (hits.some(h => h.level === 'med'))  return 'med';
+  if (hits.some(h => h.level === 'low'))  return 'low';
+  return 'ok';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 5. Gemini API client
+// ════════════════════════════════════════════════════════════════════
+async function geminiCall({ apiKey, model, prompt, image, schema, temperature = 0.7 }) {
+  if (!apiKey) throw new Error('未设置 Gemini API Key，请先到「设置」页填入');
+  const parts = [];
+  if (image && image.data) {
+    parts.push({ inline_data: { mime_type: image.mime || 'image/jpeg', data: image.data } });
+  }
+  parts.push({ text: prompt });
+  const body = {
+    contents: [{ role: 'user', parts }],
+    generationConfig: {
+      temperature,
+      ...(schema ? { responseMimeType: 'application/json', responseSchema: schema } : {})
+    }
+  };
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new Error('网络错误：' + e.message);
+  }
+  if (!resp.ok) {
+    let detail = '';
+    try { detail = (await resp.json()).error?.message || ''; } catch {}
+    throw new Error(`Gemini API ${resp.status}：${detail || resp.statusText}`);
+  }
+  const json = await resp.json();
+  const text = json.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+  if (!text) {
+    const reason = json.candidates?.[0]?.finishReason || json.promptFeedback?.blockReason || '空响应';
+    throw new Error('Gemini 没有返回有效内容（' + reason + '）');
+  }
+  if (schema) {
+    try { return JSON.parse(text); }
+    catch (e) {
+      // 容错：模型偶尔包 ```json``` fence
+      const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      try { return JSON.parse(stripped); }
+      catch { throw new Error('Gemini 返回了非 JSON：' + text.slice(0, 200)); }
+    }
+  }
+  return text;
+}
+
+// 步骤 2：图片审计 + 文案生成（同一次多模态调用）
+async function aiGenerateAndAudit({ settings, theme, sellingPoints, promoType, image }) {
+  const promoTypeName = PROMO_TYPES.find(t => t.id === promoType)?.name || promoType;
+  const brand = settings.brand ? `品牌/产品：${settings.brand}\n` : '';
+  const tone = settings.tone || '简洁、亲切、有节奏感';
+  const audit = image ? `
+图片审计要求（结合所附图片）：
+- 检查是否包含违反 Google Play 推广内容指南的元素：仿系统按钮（"DOWNLOAD"、"INSTALL"等假按钮）、二维码、价格/折扣文字、虚假评分、虚假紧迫感（"LIMITED!!!"）；
+- 评估文字占比，是否超过画面 1/3（影响精选推荐位）；
+- 评估是否符合 Google Play 精选推荐位标准（高质量、清晰、无促销性 UI 元素、无平台冲突信息）；
+- 给出风险等级 high/med/low/ok 与修改建议。` : '';
+  const prompt = `你是 Google Play LiveOps（推广内容）出海运营专家。请根据下面的输入，产出可直接上传到 Google Play Console 的推广内容初稿，**严格遵守 Google Play 内容质量指南**。
+
+${brand}活动类型：${promoTypeName}
+活动主题：${theme}
+核心卖点：${sellingPoints || '（未提供，由你结合主题归纳）'}
+写作语气：${tone}
+
+要求：
+1. tagline（宣传口号）：不超过 80 字符，中文，吸引点击，**绝不**包含"点击下载/立即下载/Click here/Download now"等 CTA、价格、折扣、"第一/最佳/100%"等绝对化用语。
+2. description（长说明）：不超过 500 字符，中文，3 行内分点描述核心玩法/福利/限时性，避免感叹号连用、避免全大写、避免重复标题信息。
+3. 同步给出英文备选（供本地化前对照）：en_tagline、en_description。${audit}
+
+只输出 JSON，结构按 schema 严格执行。`;
+
+  const schema = {
+    type: 'object',
+    properties: {
+      tagline:        { type: 'string' },
+      description:    { type: 'string' },
+      en_tagline:     { type: 'string' },
+      en_description: { type: 'string' },
+      image_audit: {
+        type: 'object',
+        properties: {
+          level:      { type: 'string', enum: ['high','med','low','ok','none'] },
+          issues:     { type: 'array', items: { type: 'string' } },
+          suggestions:{ type: 'array', items: { type: 'string' } },
+          featured_ready: { type: 'boolean' },
+        }
+      }
+    },
+    required: ['tagline','description','en_tagline','en_description']
+  };
+  return geminiCall({ apiKey: settings.apiKey, model: settings.model, prompt, image, schema, temperature: 0.85 });
+}
+
+// 步骤 3：自动精简（仅在超字数时调用）
+async function aiTrim({ settings, text, limit, kind, lang }) {
+  const langName = LANG_BY_CODE[lang]?.name || lang;
+  const kindName = kind === 'tagline' ? '宣传口号' : '长说明';
+  const prompt = `下面这段 Google Play ${kindName}（${langName}）超过了 ${limit} 字符上限（当前 ${charCount(text)} 字符）。请在保留全部关键信息与卖点的前提下精简到 ${limit} 字符以内，**严禁**新增 CTA、价格、绝对化用语。只返回精简后的纯文本，不要解释。
+
+原文：${text}`;
+  const out = await geminiCall({ apiKey: settings.apiKey, model: settings.model, prompt, temperature: 0.5 });
+  return out.trim().replace(/^["「『]|["」』]$/g, '');
+}
+
+// 步骤 4：本地化翻译（一次调用翻译所有目标语言，挂载术语库）
+async function aiLocalize({ settings, sourceLang, tagline, description, targets, glossary }) {
+  const glossLines = glossary.length
+    ? '\n术语库（必须严格遵守，如目标语言列存在）：\n' + glossary.map(g => {
+        const cells = ['源词: ' + g.source];
+        for (const code of targets) if (g[code]) cells.push(`${code}=${g[code]}`);
+        return '- ' + cells.join(' | ');
+      }).join('\n')
+    : '';
+  const targetList = targets.map(c => `- ${c} (${LANG_BY_CODE[c]?.name || c})`).join('\n');
+  const prompt = `你是出海游戏/应用 Google Play 推广内容本地化专家。请把下面的 ${sourceLang} 文案，本地化（**不是机械机翻**）成下列目标语言。要做到：
+1. 符合目标语言市场的营销习惯（不是逐字直译，可调整句式）。
+2. **严格不超过字符上限**：tagline ≤ 80，description ≤ 500（grapheme 计数；德/俄/西通常较长，必要时缩减）。
+3. 严禁出现 CTA（Click here/Download now/立即下载等）、具体价格、绝对化用语（best/#1/100%）、连续感叹号、全大写串。
+4. 阿拉伯语等 RTL 语言保持自然书写顺序。
+5. 严格遵守术语库映射。
+
+源 tagline：${tagline}
+源 description：${description}
+${glossLines}
+
+目标语言：
+${targetList}
+
+只输出 JSON，按 schema：每个目标语言一个对象，含 code/tagline/description。`;
+
+  const schema = {
+    type: 'object',
+    properties: {
+      results: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            code:        { type: 'string' },
+            tagline:     { type: 'string' },
+            description: { type: 'string' },
+          },
+          required: ['code','tagline','description']
+        }
+      }
+    },
+    required: ['results']
+  };
+  return geminiCall({ apiKey: settings.apiKey, model: settings.model, prompt, schema, temperature: 0.6 });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 6. CSV 导出（Google Play LiveOps 模板）
+// ════════════════════════════════════════════════════════════════════
+function csvEscape(v) {
+  if (v == null) return '';
+  const s = String(v);
+  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function buildCSV(rows) {
+  const out = [CSV_HEADERS.join(',')];
+  for (const r of rows) out.push(CSV_HEADERS.map(h => csvEscape(r[h])).join(','));
+  return '﻿' + out.join('\r\n'); // 加 BOM 让 Excel 识别 UTF-8
+}
+function downloadFile(name, content, mime = 'text/csv;charset=utf-8') {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 200);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 7. UI helpers
+// ════════════════════════════════════════════════════════════════════
+function $(sel, root = document) { return root.querySelector(sel); }
+function $$(sel, root = document) { return [...root.querySelectorAll(sel)]; }
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'class') e.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === 'html') e.innerHTML = v;
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const c of children) {
+    if (c == null || c === false) continue;
+    e.append(c.nodeType ? c : document.createTextNode(c));
+  }
+  return e;
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function uuid() { return 'a' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
+function fmtTime(ts) { if (!ts) return '—'; const d = new Date(ts); const p = n => String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+function toast(msg, type = 'info') {
+  let c = $('#toast-container');
+  if (!c) { c = el('div', { id: 'toast-container', class: 'toast-container' }); document.body.appendChild(c); }
+  const t = el('div', { class: `toast toast-${type}` }, msg);
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3800);
+}
+
+function confirmModal({ title, body, okText = '确认', okClass = 'btn-primary' }) {
+  return new Promise(resolve => {
+    const mask = el('div', { class: 'modal-mask', onclick: e => { if (e.target === mask) { mask.remove(); resolve(false); } } });
+    const modal = el('div', { class: 'modal' });
+    modal.appendChild(el('div', { class: 'modal-h' }, el('h3', {}, title), el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { mask.remove(); resolve(false); } }, '✕')));
+    modal.appendChild(el('div', { class: 'modal-b', html: body }));
+    const f = el('div', { class: 'modal-f' });
+    f.append(
+      el('button', { class: 'btn', onclick: () => { mask.remove(); resolve(false); } }, '取消'),
+      el('button', { class: `btn ${okClass}`, onclick: () => { mask.remove(); resolve(true); } }, okText),
+    );
+    modal.appendChild(f);
+    mask.appendChild(modal);
+    document.body.appendChild(mask);
+  });
+}
+
+// 压缩图片为 base64（用于发给 Gemini 节省带宽）
+function fileToCompressedBase64(file, maxPx = 1280, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const ratio = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      const data = canvas.toDataURL('image/jpeg', quality);
+      resolve({ mime: 'image/jpeg', dataUrl: data, data: data.split(',')[1] });
+    };
+    img.onerror = e => { URL.revokeObjectURL(url); reject(new Error('图片加载失败')); };
+    img.src = url;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 8. State / Router
+// ════════════════════════════════════════════════════════════════════
+const state = {
+  view: 'new',
+  settings: null,
+  glossary: [],
+  activities: [],
+
+  // 新建活动 wizard 状态
+  wiz: null, // see resetWizard()
+};
+function resetWizard() {
+  state.wiz = {
+    step: 1,
+    mode: 'single',           // single / batch
+    promoType: 'event',
+    theme: '',
+    sellingPoints: '',
+    image: null,              // {mime, dataUrl, data}
+    sourceLang: 'zh-CN',
+    // 生成结果
+    tagline: '', description: '',
+    enTagline: '', enDescription: '',
+    imageAudit: null,
+    // 风控
+    risks: { tagline: [], description: [] },
+    // 本地化
+    selectedLangs: [],
+    localized: {},            // { 'en-US': { tagline, description, risks } }
+    // 元
+    id: null,
+    saved: false,
+  };
+}
+
+async function bootstrap() {
+  state.settings = await getSettings();
+  await seedGlossaryIfEmpty();
+  state.glossary = await idbAll('glossary');
+  state.activities = await idbAll('activities');
+  state.wiz || resetWizard();
+  state.wiz.selectedLangs = [...state.settings.defaultLangs];
+  bindNav();
+  go(location.hash.replace('#', '') || 'new');
+}
+
+function bindNav() {
+  $$('.sidebar-nav-item, .sidebar-add').forEach(b => {
+    b.addEventListener('click', () => go(b.dataset.go));
+  });
+}
+function go(view) {
+  state.view = view;
+  $$('.sidebar-nav-item').forEach(b => b.classList.toggle('active', b.dataset.go === view));
+  location.hash = view;
+  render();
+}
+
+function render() {
+  const main = $('#main');
+  main.innerHTML = '';
+  if (state.view === 'new')       renderNew(main);
+  else if (state.view === 'list') renderList(main);
+  else if (state.view === 'dashboard') renderDashboard(main);
+  else if (state.view === 'glossary')  renderGlossary(main);
+  else if (state.view === 'settings')  renderSettings(main);
+  else { state.view = 'new'; renderNew(main); }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 9. View — 新建活动（七步向导）
+// ════════════════════════════════════════════════════════════════════
+function renderNew(root) {
+  if (!state.wiz) resetWizard();
+  const w = state.wiz;
+
+  root.append(el('div', { class: 'topbar' },
+    el('div', {},
+      el('h1', {}, '新建推广内容活动'),
+      el('div', { class: 'sub' }, '输入素材 → AI 生成 + 图片审计 → 字数与红线校验 → 本地化 → CSV 导出'),
+    ),
+    el('div', { class: 'topbar-actions' },
+      el('button', { class: 'btn btn-ghost', onclick: async () => {
+        if (await confirmModal({ title: '清空当前向导？', body: '将丢失未保存的输入与生成结果。', okText: '清空', okClass: 'btn-danger' })) {
+          resetWizard(); state.wiz.selectedLangs = [...state.settings.defaultLangs]; render();
+        }
+      }}, '↺ 重新开始'),
+    ),
+  ));
+
+  // Step indicator
+  const stepsBar = el('div', { class: 'steps' });
+  const stepDefs = [
+    { n: 1, t: '素材输入' },
+    { n: 2, t: 'AI 生成 + 图片审计' },
+    { n: 3, t: '字数 & 红线校验' },
+    { n: 4, t: '多语种本地化' },
+    { n: 5, t: 'CSV 导出 & 入库' },
+  ];
+  stepDefs.forEach((s, i) => {
+    const cls = w.step === s.n ? 'active' : (w.step > s.n ? 'done' : '');
+    stepsBar.append(el('div', { class: `step ${cls}` },
+      el('div', { class: 'step-num' }, w.step > s.n ? '✓' : String(s.n)),
+      el('span', {}, s.t)
+    ));
+    if (i < stepDefs.length - 1) stepsBar.append(el('div', { class: 'step-sep' }));
+  });
+  root.append(stepsBar);
+
+  if (w.step === 1) renderStep1(root);
+  else if (w.step === 2) renderStep2(root);
+  else if (w.step === 3) renderStep3(root);
+  else if (w.step === 4) renderStep4(root);
+  else if (w.step === 5) renderStep5(root);
+}
+
+function renderStep1(root) {
+  const w = state.wiz;
+
+  const card = el('div', { class: 'card' });
+  card.append(el('div', { class: 'card-h' },
+    el('h3', {}, '步骤 1 · 素材输入'),
+    el('div', { class: 'tabs' },
+      el('button', { class: `tab ${w.mode==='single'?'active':''}`, onclick: () => { w.mode='single'; render(); } }, '单品上架'),
+      el('button', { class: `tab ${w.mode==='batch'?'active':''}`, onclick: () => { w.mode='batch'; render(); } }, '多活动综合（实验）'),
+    ),
+  ));
+
+  // 活动类型
+  const typeField = el('div', { class: 'field' });
+  typeField.append(el('label', {}, '活动类型'));
+  const typeSel = el('select', { onchange: e => { w.promoType = e.target.value; } });
+  PROMO_TYPES.forEach(t => {
+    typeSel.append(el('option', { value: t.id, selected: w.promoType===t.id ? 'selected' : false }, `${t.name} — ${t.desc}`));
+  });
+  typeField.append(typeSel);
+  card.append(typeField);
+
+  // 主题
+  const themeField = el('div', { class: 'field' });
+  themeField.append(el('label', {}, '活动主题（必填）'));
+  themeField.append(el('input', { type: 'text', value: w.theme, placeholder: '例：3D 螺丝解谜 · 圣诞限定关卡', oninput: e => { w.theme = e.target.value; } }));
+  card.append(themeField);
+
+  // 卖点
+  const spField = el('div', { class: 'field' });
+  spField.append(el('label', {}, '核心卖点（可选，多个用换行分隔）'));
+  spField.append(el('textarea', { rows: 4, placeholder: '新关卡 12 个\n限定主题皮肤\n登录 7 天送通行证', oninput: e => { w.sellingPoints = e.target.value; } }, w.sellingPoints));
+  card.append(spField);
+
+  // 源语言
+  const langField = el('div', { class: 'field' });
+  langField.append(el('label', {}, '母语（用于风控关卡的"原稿"语言）'));
+  const langSel = el('select', { onchange: e => { w.sourceLang = e.target.value; } });
+  LANG_LIST.forEach(l => langSel.append(el('option', { value: l.code, selected: w.sourceLang===l.code?'selected':false }, `${l.flag} ${l.name}`)));
+  langField.append(langSel);
+  card.append(langField);
+
+  // 图片
+  const imgField = el('div', { class: 'field' });
+  imgField.append(el('label', {}, '活动海报/草图（可选，AI 会同步做合规审计）'));
+  const dz = el('div', { class: 'dropzone' });
+  if (w.image) {
+    dz.innerHTML = `<img src="${w.image.dataUrl}" style="max-height:200px;border-radius:8px" /><div class="dropzone-hint mt-sm">点击或拖入替换</div>`;
+  } else {
+    dz.innerHTML = `<div class="dropzone-icon">🖼️</div><div class="dropzone-text">点击上传，或拖入图片，或粘贴（Ctrl+V）</div><div class="dropzone-hint">JPG / PNG / WebP，自动压缩到 1280px</div>`;
+  }
+  const fileInput = el('input', { type: 'file', accept: 'image/*', style: { display: 'none' } });
+  dz.onclick = () => fileInput.click();
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag'); };
+  dz.ondragleave = () => dz.classList.remove('drag');
+  dz.ondrop = async e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    const f = e.dataTransfer.files?.[0]; if (!f) return;
+    w.image = await fileToCompressedBase64(f); render();
+  };
+  fileInput.onchange = async e => {
+    const f = e.target.files?.[0]; if (!f) return;
+    w.image = await fileToCompressedBase64(f); render();
+  };
+  imgField.append(dz, fileInput);
+  if (w.image) {
+    const rm = el('button', { class: 'btn btn-sm mt-sm', onclick: () => { w.image = null; render(); } }, '✕ 移除图片');
+    imgField.append(rm);
+  }
+  card.append(imgField);
+
+  // 提交
+  const actions = el('div', { class: 'flex-between mt' });
+  actions.append(
+    el('div', { class: 'tiny muted' }, '提示：图片不是必填，但提供后 AI 会同时输出图片合规审计与精选推荐位评估。'),
+    el('button', { class: 'btn btn-primary', onclick: async () => {
+      if (!w.theme.trim()) { toast('请填写活动主题', 'error'); return; }
+      w.step = 2; render();
+      await runStep2();
+    }}, 'AI 生成文案 →'),
+  );
+  card.append(actions);
+  root.append(card);
+}
+
+async function runStep2() {
+  const w = state.wiz;
+  const root = $('#main');
+  // 替换当前 step card 为 loading
+  const loading = el('div', { class: 'card' });
+  loading.append(el('div', { class: 'card-h' },
+    el('h3', {}, '步骤 2 · AI 正在生成 & 审计图片'),
+    el('div', { class: 'tiny muted' }, state.settings.apiKey ? '调用 ' + state.settings.model : 'API Key 未填，将用本地模板生成')
+  ));
+  loading.append(el('div', { class: 'flex', style: { padding: '40px 0', justifyContent: 'center' } },
+    el('span', { class: 'spin' }), el('span', {}, '正在调用 Gemini 多模态…')
+  ));
+  root.append(loading);
+
+  try {
+    let result;
+    if (state.settings.apiKey) {
+      result = await aiGenerateAndAudit({
+        settings: state.settings,
+        theme: w.theme,
+        sellingPoints: w.sellingPoints,
+        promoType: w.promoType,
+        image: w.image,
+      });
+    } else {
+      // 降级：本地模板（让无 Key 用户也能看到流程）
+      const promoName = PROMO_TYPES.find(t => t.id===w.promoType)?.name || '活动';
+      result = {
+        tagline: `${w.theme} 限时${promoName}上线`,
+        description: `${w.theme}\n${w.sellingPoints || '全新内容已就绪'}\n\n参与活动，开启全新体验。`,
+        en_tagline: `${w.theme} — ${promoName} Live`,
+        en_description: `Brand new ${promoName.toLowerCase()} is here.\nDive in and explore.`,
+        image_audit: w.image ? { level: 'none', issues: ['未配置 AI，无法做图片审计'], suggestions: [], featured_ready: false } : null,
+      };
+    }
+    w.tagline = result.tagline || '';
+    w.description = result.description || '';
+    w.enTagline = result.en_tagline || '';
+    w.enDescription = result.en_description || '';
+    w.imageAudit = result.image_audit || null;
+    render();
+  } catch (e) {
+    toast('生成失败：' + e.message, 'error');
+    w.step = 1; render();
+  }
+}
+
+function renderStep2(root) {
+  const w = state.wiz;
+  // 文案编辑区
+  const card = el('div', { class: 'card' });
+  card.append(el('div', { class: 'card-h' },
+    el('h3', {}, '步骤 2 · 文案初稿（可编辑）'),
+    el('div', { class: 'hint' }, '编辑后实时计字；超限会在下一步自动精简')
+  ));
+
+  const tagField = el('div', { class: 'field' });
+  tagField.append(el('label', {}, `宣传口号（Tagline，${LANG_BY_CODE[w.sourceLang].name}） · 上限 ${LIMIT.tagline}`));
+  const tagInput = el('textarea', { rows: 2, oninput: e => { w.tagline = e.target.value; refreshCounter('tag', e.target.value, LIMIT.tagline); } }, w.tagline);
+  tagField.append(tagInput);
+  const tagCounter = el('div', { class: 'counter', id: 'cnt-tag' });
+  tagCounter.append(el('div', { class: 'counter-bar' }, el('div', { class: 'counter-bar-fill', id: 'cnt-tag-fill' })), el('span', { id: 'cnt-tag-num' }));
+  tagField.append(tagCounter);
+  card.append(tagField);
+
+  const dField = el('div', { class: 'field' });
+  dField.append(el('label', {}, `长说明（Description，${LANG_BY_CODE[w.sourceLang].name}） · 上限 ${LIMIT.description}`));
+  const dInput = el('textarea', { rows: 6, oninput: e => { w.description = e.target.value; refreshCounter('d', e.target.value, LIMIT.description); } }, w.description);
+  dField.append(dInput);
+  const dCounter = el('div', { class: 'counter', id: 'cnt-d' });
+  dCounter.append(el('div', { class: 'counter-bar' }, el('div', { class: 'counter-bar-fill', id: 'cnt-d-fill' })), el('span', { id: 'cnt-d-num' }));
+  dField.append(dCounter);
+  card.append(dField);
+
+  // 英文备选展示
+  if (w.enTagline || w.enDescription) {
+    card.append(el('div', { class: 'divider' }));
+    card.append(el('div', { class: 'tiny muted mb-sm' }, '英文备选（供本地化前对照）'));
+    card.append(el('div', { class: 'row' },
+      el('div', {},
+        el('div', { class: 'tiny muted mb-sm' }, 'Tagline'),
+        el('div', { class: 'mono tiny', style: { padding: '8px 10px', background: '#F8FAFC', borderRadius: '6px' } }, w.enTagline),
+      ),
+      el('div', {},
+        el('div', { class: 'tiny muted mb-sm' }, 'Description'),
+        el('div', { class: 'mono tiny', style: { padding: '8px 10px', background: '#F8FAFC', borderRadius: '6px', whiteSpace: 'pre-wrap' } }, w.enDescription),
+      ),
+    ));
+  }
+  root.append(card);
+
+  // 图片审计结果
+  if (w.image) {
+    const ic = el('div', { class: 'card' });
+    ic.append(el('div', { class: 'card-h' }, el('h3', {}, '图片智能审计'), el('div', { class: 'hint' }, '基于 Google Play 精选推荐位标准')));
+    const row = el('div', { class: 'row' });
+    row.append(el('div', { style: { flex: '0 0 200px' } }, el('img', { src: w.image.dataUrl, style: { width: '100%', borderRadius: '8px', border: '1px solid var(--border)' } })));
+    const a = w.imageAudit;
+    const body = el('div', { style: { flex: '1' } });
+    if (a) {
+      const levelMap = { high:['high','高风险'], med:['med','中风险'], low:['low','低风险'], ok:['ok','通过'], none:['low','未审计'] };
+      const [lvCls, lvName] = levelMap[a.level] || levelMap.ok;
+      body.append(el('div', { class: 'mb-sm' },
+        el('span', { class: `risk-badge ${lvCls}` }, lvName),
+        ' ',
+        a.featured_ready ? el('span', { class: 'tag-pill green' }, '精选推荐位 ✓') : el('span', { class: 'tag-pill amber' }, '精选推荐位待优化'),
+      ));
+      if (a.issues?.length) {
+        body.append(el('div', { class: 'tiny muted mb-sm' }, '检测到的问题：'));
+        const ul = el('ul', { style: { paddingLeft: '18px', fontSize: '12px', lineHeight: '1.7' } });
+        a.issues.forEach(i => ul.append(el('li', {}, i)));
+        body.append(ul);
+      }
+      if (a.suggestions?.length) {
+        body.append(el('div', { class: 'tiny muted mb-sm mt' }, '修改建议：'));
+        const ul = el('ul', { style: { paddingLeft: '18px', fontSize: '12px', lineHeight: '1.7' } });
+        a.suggestions.forEach(i => ul.append(el('li', {}, i)));
+        body.append(ul);
+      }
+    } else {
+      body.append(el('div', { class: 'muted tiny' }, '未生成审计结果'));
+    }
+    row.append(body);
+    ic.append(row);
+    root.append(ic);
+  }
+
+  // 导航
+  const nav = el('div', { class: 'flex-between' });
+  nav.append(
+    el('button', { class: 'btn', onclick: () => { state.wiz.step = 1; render(); } }, '← 返回'),
+    el('div', { class: 'flex gap-sm' },
+      el('button', { class: 'btn', onclick: async () => {
+        // 重新生成
+        state.wiz.step = 2; render(); await runStep2();
+      }}, '↻ 重新生成'),
+      el('button', { class: 'btn btn-primary', onclick: () => { state.wiz.step = 3; runStep3Scan(); } }, '进入风控校验 →'),
+    ),
+  );
+  root.append(nav);
+
+  setTimeout(() => {
+    refreshCounter('tag', w.tagline, LIMIT.tagline);
+    refreshCounter('d', w.description, LIMIT.description);
+  }, 0);
+}
+function refreshCounter(prefix, text, limit) {
+  const n = charCount(text);
+  const fill = $('#cnt-' + prefix + '-fill');
+  const num = $('#cnt-' + prefix + '-num');
+  const wrap = $('#cnt-' + prefix);
+  if (!fill || !num || !wrap) return;
+  const pct = Math.min(100, Math.round(n / limit * 100));
+  fill.style.width = pct + '%';
+  num.textContent = `${n} / ${limit}`;
+  wrap.classList.remove('warn','danger');
+  if (n > limit) wrap.classList.add('danger');
+  else if (n > limit * 0.9) wrap.classList.add('warn');
+}
+
+// ── 步骤 3：字数 + 红线 ────────────────────────────────────────────
+async function runStep3Scan() {
+  const w = state.wiz;
+  // 字数过限 → 自动精简
+  const overTag = charCount(w.tagline) > LIMIT.tagline;
+  const overDesc = charCount(w.description) > LIMIT.description;
+
+  render();
+
+  if ((overTag || overDesc) && state.settings.apiKey) {
+    const root = $('#main');
+    const trimCard = el('div', { class: 'card' });
+    trimCard.append(el('div', { class: 'card-h' }, el('h3', {}, '字数超限 — AI 自动精简中'), el('div', { class: 'tiny muted' }, '调用 ' + state.settings.model)));
+    trimCard.append(el('div', { class: 'flex', style: { padding: '12px 0' } }, el('span', { class: 'spin' }), el('span', {}, '正在精简，请稍候…')));
+    root.append(trimCard);
+    try {
+      if (overTag)  w.tagline     = await aiTrim({ settings: state.settings, text: w.tagline,     limit: LIMIT.tagline,     kind: 'tagline',     lang: w.sourceLang });
+      if (overDesc) w.description = await aiTrim({ settings: state.settings, text: w.description, limit: LIMIT.description, kind: 'description', lang: w.sourceLang });
+    } catch (e) {
+      toast('精简失败：' + e.message + '，请手动调整', 'error');
+    }
+    render();
+  } else if (overTag || overDesc) {
+    toast('字数超限：已截断（无 API Key 模式）', 'warn');
+    if (overTag) w.tagline = trimToLimit(w.tagline, LIMIT.tagline);
+    if (overDesc) w.description = trimToLimit(w.description, LIMIT.description);
+    render();
+  }
+
+  // 红线扫描
+  w.risks.tagline     = scanRedLines(w.tagline,     'tagline');
+  w.risks.description = scanRedLines(w.description, 'description');
+  render();
+}
+function renderStep3(root) {
+  const w = state.wiz;
+
+  // 字数复检
+  const tagN = charCount(w.tagline), dN = charCount(w.description);
+  const tagOK = tagN <= LIMIT.tagline, dOK = dN <= LIMIT.description;
+
+  const counts = el('div', { class: 'card card-tight' });
+  counts.append(el('div', { class: 'card-h' }, el('h3', {}, '① 字数硬限检查'), el('div', { class: 'hint' }, '按 grapheme 计数（emoji=1）')));
+  counts.append(el('div', { class: 'row' },
+    el('div', {},
+      el('div', { class: 'tiny muted mb-sm' }, 'Tagline'),
+      el('div', { class: `flex gap-sm` },
+        el('span', { class: tagOK ? 'tag-pill green' : 'tag-pill red' }, tagOK ? '✓ 通过' : '✗ 超限'),
+        el('span', { class: 'mono tiny' }, `${tagN} / ${LIMIT.tagline}`),
+      ),
+    ),
+    el('div', {},
+      el('div', { class: 'tiny muted mb-sm' }, 'Description'),
+      el('div', { class: 'flex gap-sm' },
+        el('span', { class: dOK ? 'tag-pill green' : 'tag-pill red' }, dOK ? '✓ 通过' : '✗ 超限'),
+        el('span', { class: 'mono tiny' }, `${dN} / ${LIMIT.description}`),
+      ),
+    ),
+  ));
+  root.append(counts);
+
+  // 红线扫描结果
+  const all = [
+    ...w.risks.tagline.map(r => ({ ...r, scope: 'Tagline' })),
+    ...w.risks.description.map(r => ({ ...r, scope: 'Description' })),
+  ];
+  const lvMax = maxRiskLevel(all);
+
+  const riskCard = el('div', { class: 'card' });
+  const lvLabel = { high:['high','高风险 — 建议必改'], med:['med','中风险 — 建议优化'], low:['low','低风险 — 可选优化'], ok:['ok','✓ 全部通过'] }[lvMax];
+  riskCard.append(el('div', { class: 'card-h' },
+    el('h3', {}, '② 政策红线扫描'),
+    el('div', {}, el('span', { class: `risk-badge ${lvLabel[0]}` }, lvLabel[1])),
+  ));
+
+  if (!all.length) {
+    riskCard.append(el('div', { class: 'risk-item ok' },
+      el('span', { class: 'risk-badge ok' }, '通过'),
+      el('div', { class: 'risk-body' }, '未检测到违反 Google Play 推广内容指南的元素，可继续本地化。'),
+    ));
+  } else {
+    const list = el('div', { class: 'risk-list' });
+    all.forEach(r => {
+      const item = el('div', { class: `risk-item ${r.level}` });
+      item.append(el('span', { class: `risk-badge ${r.level}` }, { high:'高', med:'中', low:'低' }[r.level]));
+      const body = el('div', { class: 'risk-body' });
+      body.append(el('strong', {}, `${r.scope} · ${r.tag}`));
+      body.append(el('div', {}, r.why));
+      if (r.samples?.length) {
+        const sm = el('div', { class: 'mt-sm tiny' }, '命中片段：');
+        r.samples.forEach(s => sm.append(' ', el('span', { class: 'quote' }, s)));
+        body.append(sm);
+      }
+      item.append(body);
+      list.append(item);
+    });
+    riskCard.append(list);
+  }
+  root.append(riskCard);
+
+  // 编辑回路
+  const editCard = el('div', { class: 'card' });
+  editCard.append(el('div', { class: 'card-h' }, el('h3', {}, '③ 手动微调（可选）'), el('div', { class: 'hint' }, '修改后会重新扫描')));
+  const t = el('textarea', { rows: 2, oninput: e => { w.tagline = e.target.value; refreshCounter('tag2', e.target.value, LIMIT.tagline); rescanLive(); } }, w.tagline);
+  const d = el('textarea', { rows: 5, oninput: e => { w.description = e.target.value; refreshCounter('d2', e.target.value, LIMIT.description); rescanLive(); } }, w.description);
+  editCard.append(el('div', { class: 'field' }, el('label', {}, 'Tagline'), t,
+    el('div', { class: 'counter', id: 'cnt-tag2' }, el('div', { class: 'counter-bar' }, el('div', { class: 'counter-bar-fill', id: 'cnt-tag2-fill' })), el('span', { id: 'cnt-tag2-num' }))
+  ));
+  editCard.append(el('div', { class: 'field' }, el('label', {}, 'Description'), d,
+    el('div', { class: 'counter', id: 'cnt-d2' }, el('div', { class: 'counter-bar' }, el('div', { class: 'counter-bar-fill', id: 'cnt-d2-fill' })), el('span', { id: 'cnt-d2-num' }))
+  ));
+  root.append(editCard);
+
+  setTimeout(() => { refreshCounter('tag2', w.tagline, LIMIT.tagline); refreshCounter('d2', w.description, LIMIT.description); }, 0);
+
+  // 导航
+  const blockHigh = all.some(r => r.level === 'high');
+  const nav = el('div', { class: 'flex-between' });
+  nav.append(
+    el('button', { class: 'btn', onclick: () => { state.wiz.step = 2; render(); } }, '← 返回编辑'),
+    el('div', { class: 'flex gap-sm' },
+      blockHigh ? el('span', { class: 'tiny', style: { color: 'var(--danger)', fontWeight: 600 } }, '⚠ 存在高风险项，建议先修正') : null,
+      el('button', { class: 'btn', onclick: () => { state.wiz.step = 3; runStep3Scan(); } }, '↻ 重新扫描'),
+      el('button', { class: 'btn btn-primary', disabled: !tagOK || !dOK || null, onclick: () => { state.wiz.step = 4; render(); } }, '进入本地化 →'),
+    ),
+  );
+  root.append(nav);
+}
+function rescanLive() {
+  const w = state.wiz;
+  w.risks.tagline     = scanRedLines(w.tagline,     'tagline');
+  w.risks.description = scanRedLines(w.description, 'description');
+  // 局部更新风险卡片
+  // 简化处理：避免重新渲染整页打断输入，做最小重绘
+}
+
+// ── 步骤 4：本地化 ────────────────────────────────────────────────
+function renderStep4(root) {
+  const w = state.wiz;
+
+  // 语言选择
+  const langCard = el('div', { class: 'card' });
+  langCard.append(el('div', { class: 'card-h' },
+    el('h3', {}, '步骤 4 · 选择目标语言'),
+    el('div', { class: 'hint' }, `已选 ${w.selectedLangs.length} / ${LANG_LIST.length}`)
+  ));
+
+  const quickRow = el('div', { class: 'flex gap-sm mb', style: { flexWrap: 'wrap' } });
+  const presets = [
+    { name: '英语全集', codes: ['en-US','en-GB'] },
+    { name: '东亚', codes: ['zh-TW','zh-HK','ja-JP','ko-KR'] },
+    { name: '西欧', codes: ['en-GB','de-DE','fr-FR','es-ES','it-IT','nl-NL','pt-PT'] },
+    { name: '拉美', codes: ['es-419','pt-BR'] },
+    { name: '东南亚', codes: ['id','th','vi','ms','fil'] },
+    { name: '中东', codes: ['ar','tr-TR'] },
+    { name: '我的默认', codes: state.settings.defaultLangs },
+  ];
+  presets.forEach(p => {
+    quickRow.append(el('button', { class: 'btn btn-sm', onclick: () => {
+      const set = new Set(w.selectedLangs);
+      p.codes.forEach(c => set.add(c));
+      w.selectedLangs = [...set];
+      render();
+    }}, '+ ' + p.name));
+  });
+  quickRow.append(el('button', { class: 'btn btn-sm btn-ghost', onclick: () => { w.selectedLangs = []; render(); } }, '清空'));
+  langCard.append(quickRow);
+
+  const grid = el('div', { class: 'lang-grid' });
+  LANG_LIST.forEach(l => {
+    if (l.code === w.sourceLang) return; // 源语言不翻译
+    const sel = w.selectedLangs.includes(l.code);
+    const chip = el('label', { class: `lang-chip ${sel?'selected':''}` },
+      el('input', { type: 'checkbox', checked: sel?'checked':false, onchange: e => {
+        if (e.target.checked) w.selectedLangs = [...new Set([...w.selectedLangs, l.code])];
+        else w.selectedLangs = w.selectedLangs.filter(c => c !== l.code);
+        chip.classList.toggle('selected', e.target.checked);
+      }}),
+      el('span', { class: 'lang-flag' }, l.flag),
+      el('span', {}, l.short || l.code),
+    );
+    grid.append(chip);
+  });
+  langCard.append(grid);
+  root.append(langCard);
+
+  // 翻译触发 / 结果
+  const resultCard = el('div', { class: 'card' });
+  resultCard.append(el('div', { class: 'card-h' },
+    el('h3', {}, '本地化结果（含术语库 + 字数二次校验）'),
+    el('div', { class: 'flex gap-sm' },
+      el('button', { class: 'btn btn-primary btn-sm', onclick: () => runLocalize() }, '▶ 一键翻译'),
+    ),
+  ));
+  if (!Object.keys(w.localized).length) {
+    resultCard.append(el('div', { class: 'empty' },
+      el('div', { class: 'ic' }, '🌐'),
+      el('div', { class: 't' }, '尚未翻译'),
+      el('div', { class: 'd' }, '选好语言后点击「一键翻译」。AI 会基于「术语库」做行业级本地化，避免逐字直译，并自动按每种语言的硬限做二次缩减。'),
+    ));
+  } else {
+    const codes = Object.keys(w.localized);
+    codes.forEach(code => {
+      const l = LANG_BY_CODE[code] || { code, name: code, flag: '🌐' };
+      const rec = w.localized[code];
+      const sec = el('div', { class: 'lang-section' });
+      const lvMax = maxRiskLevel([...(rec.risks?.tagline||[]), ...(rec.risks?.description||[])]);
+      const lvCls = { high:'red', med:'amber', low:'gray', ok:'green' }[lvMax];
+      const tagN = charCount(rec.tagline||''); const dN = charCount(rec.description||'');
+      sec.append(el('div', { class: 'lang-section-h' },
+        el('div', { class: 'l' }, el('span', { class: 'lang-flag' }, l.flag), el('span', {}, `${l.code} · ${l.name}`)),
+        el('div', { class: 'flex gap-sm tiny' },
+          el('span', { class: `tag-pill ${tagN>LIMIT.tagline?'red':'gray'}` }, `T ${tagN}/${LIMIT.tagline}`),
+          el('span', { class: `tag-pill ${dN>LIMIT.description?'red':'gray'}` }, `D ${dN}/${LIMIT.description}`),
+          el('span', { class: `tag-pill ${lvCls}` }, `风控 ${ {high:'高',med:'中',low:'低',ok:'通过'}[lvMax] }`),
+          el('button', { class: 'btn btn-ghost btn-sm', onclick: () => { delete w.localized[code]; render(); } }, '✕'),
+        ),
+      ));
+      const body = el('div', { class: 'lang-section-b' });
+      body.append(el('div', { class: 'field' }, el('label', {}, 'Tagline'),
+        el('textarea', { rows: 2, oninput: e => { rec.tagline = e.target.value; rec.risks = recomputeRisks(rec); render(); } }, rec.tagline || '')));
+      body.append(el('div', { class: 'field' }, el('label', {}, 'Description'),
+        el('textarea', { rows: 4, oninput: e => { rec.description = e.target.value; rec.risks = recomputeRisks(rec); render(); } }, rec.description || '')));
+      // 局部风险摘要
+      const allHits = [...(rec.risks?.tagline||[]).map(r=>({...r,scope:'T'})), ...(rec.risks?.description||[]).map(r=>({...r,scope:'D'}))];
+      if (allHits.length) {
+        const wrap = el('div', { class: 'tiny' }, el('span', { class: 'muted' }, '命中：'));
+        allHits.forEach(h => wrap.append(' ', el('span', { class: `tag-pill ${ {high:'red',med:'amber',low:'gray'}[h.level] }` }, `${h.scope}·${h.tag}`)));
+        body.append(wrap);
+      }
+      sec.append(body);
+      resultCard.append(sec);
+    });
+  }
+  root.append(resultCard);
+
+  // 导航
+  const allRisks = Object.values(w.localized).flatMap(r => [...(r.risks?.tagline||[]), ...(r.risks?.description||[])]);
+  const anyOver = Object.values(w.localized).some(r => charCount(r.tagline||'') > LIMIT.tagline || charCount(r.description||'') > LIMIT.description);
+  const anyHigh = allRisks.some(r => r.level === 'high');
+  const nav = el('div', { class: 'flex-between' });
+  nav.append(
+    el('button', { class: 'btn', onclick: () => { state.wiz.step = 3; render(); } }, '← 返回风控'),
+    el('div', { class: 'flex gap-sm' },
+      anyOver ? el('span', { class: 'tiny', style: { color: 'var(--danger)', fontWeight: 600 } }, '⚠ 部分语言超字数') : null,
+      anyHigh ? el('span', { class: 'tiny', style: { color: 'var(--danger)', fontWeight: 600 } }, '⚠ 部分语言有高风险') : null,
+      el('button', { class: 'btn btn-primary', disabled: !Object.keys(w.localized).length || null, onclick: () => { state.wiz.step = 5; render(); } }, '生成 CSV →'),
+    ),
+  );
+  root.append(nav);
+}
+function recomputeRisks(rec) {
+  return {
+    tagline: scanRedLines(rec.tagline || '', 'tagline'),
+    description: scanRedLines(rec.description || '', 'description'),
+  };
+}
+async function runLocalize() {
+  const w = state.wiz;
+  if (!w.selectedLangs.length) { toast('请先选择目标语言', 'error'); return; }
+  if (!w.tagline || !w.description) { toast('请确保 Tagline / Description 已填', 'error'); return; }
+
+  const root = $('#main');
+  const loading = el('div', { class: 'card' });
+  loading.append(el('div', { class: 'card-h' }, el('h3', {}, '本地化中…'), el('div', { class: 'tiny muted' }, state.settings.apiKey ? state.settings.model : '无 API Key — 跳过翻译')));
+  loading.append(el('div', { class: 'flex', style: { padding: '14px 0' } }, el('span', { class: 'spin' }), el('span', {}, `共 ${w.selectedLangs.length} 种语言`)));
+  root.append(loading);
+
+  try {
+    let results;
+    if (state.settings.apiKey) {
+      const r = await aiLocalize({
+        settings: state.settings,
+        sourceLang: w.sourceLang,
+        tagline: w.tagline,
+        description: w.description,
+        targets: w.selectedLangs,
+        glossary: state.glossary,
+      });
+      results = r.results || [];
+    } else {
+      results = w.selectedLangs.map(code => ({ code, tagline: `[${code}] ${w.tagline}`, description: `[${code}] ${w.description}` }));
+    }
+    // 兜底字符限：模型偶尔不守限，本地截
+    const localized = {};
+    for (const r of results) {
+      let tg = r.tagline || ''; let ds = r.description || '';
+      if (charCount(tg) > LIMIT.tagline && state.settings.apiKey) {
+        try { tg = await aiTrim({ settings: state.settings, text: tg, limit: LIMIT.tagline, kind: 'tagline', lang: r.code }); } catch {}
+      }
+      if (charCount(tg) > LIMIT.tagline) tg = trimToLimit(tg, LIMIT.tagline);
+      if (charCount(ds) > LIMIT.description && state.settings.apiKey) {
+        try { ds = await aiTrim({ settings: state.settings, text: ds, limit: LIMIT.description, kind: 'description', lang: r.code }); } catch {}
+      }
+      if (charCount(ds) > LIMIT.description) ds = trimToLimit(ds, LIMIT.description);
+      localized[r.code] = { tagline: tg, description: ds, risks: recomputeRisks({ tagline: tg, description: ds }) };
+    }
+    w.localized = localized;
+    render();
+  } catch (e) {
+    toast('翻译失败：' + e.message, 'error');
+    render();
+  }
+}
+
+// ── 步骤 5：CSV 导出 + 入库 ────────────────────────────────────────
+function renderStep5(root) {
+  const w = state.wiz;
+  // 含母语 + 各目标语言
+  const rows = [
+    { language_code: w.sourceLang, tagline: w.tagline, description: w.description },
+    ...Object.entries(w.localized).map(([code, v]) => ({ language_code: code, tagline: v.tagline, description: v.description })),
+  ];
+
+  const card = el('div', { class: 'card' });
+  card.append(el('div', { class: 'card-h' },
+    el('h3', {}, '步骤 5 · CSV 预览（Google Play Console 推广内容批量导入）'),
+    el('div', { class: 'hint' }, '列：' + CSV_HEADERS.join(' / ')),
+  ));
+
+  const wrap = el('div', { class: 'tbl-wrap' });
+  const scroll = el('div', { class: 'tbl-scroll' });
+  const tbl = el('table', { class: 'tbl' });
+  const thead = el('thead', {}, el('tr', {},
+    el('th', {}, '语言'),
+    el('th', {}, 'Code'),
+    el('th', {}, 'Tagline'),
+    el('th', { style: { width: '40px' } }, 'T 计数'),
+    el('th', {}, 'Description'),
+    el('th', { style: { width: '40px' } }, 'D 计数'),
+    el('th', { style: { width: '60px' } }, '风控'),
+  ));
+  const tbody = el('tbody');
+  rows.forEach(r => {
+    const l = LANG_BY_CODE[r.language_code] || { name: r.language_code, flag: '🌐' };
+    const risks = [...scanRedLines(r.tagline, 'tagline'), ...scanRedLines(r.description, 'description')];
+    const lvMax = maxRiskLevel(risks);
+    const lvCls = { high:'red', med:'amber', low:'gray', ok:'green' }[lvMax];
+    const lvN = { high:'高', med:'中', low:'低', ok:'✓' }[lvMax];
+    const tagN = charCount(r.tagline); const dN = charCount(r.description);
+    tbody.append(el('tr', {},
+      el('td', {}, el('span', {}, `${l.flag} ${l.name}`)),
+      el('td', { class: 'mono tiny' }, r.language_code),
+      el('td', { style: { maxWidth: '180px' } }, r.tagline),
+      el('td', { class: 'mono tiny', style: { color: tagN > LIMIT.tagline ? 'var(--danger)' : 'inherit' } }, String(tagN)),
+      el('td', { style: { maxWidth: '280px', whiteSpace: 'pre-wrap' } }, r.description),
+      el('td', { class: 'mono tiny', style: { color: dN > LIMIT.description ? 'var(--danger)' : 'inherit' } }, String(dN)),
+      el('td', {}, el('span', { class: `tag-pill ${lvCls}` }, lvN)),
+    ));
+  });
+  tbl.append(thead, tbody);
+  scroll.append(tbl);
+  wrap.append(scroll);
+  card.append(wrap);
+
+  const actions = el('div', { class: 'flex-between mt' });
+  const name = (w.theme || 'liveops').replace(/[^\w一-龥-]/g, '_').slice(0, 40);
+  actions.append(
+    el('div', { class: 'tiny muted' }, '提示：下载后，Google Play Console → 推广内容 → 上传 CSV → 选择该文件。'),
+    el('div', { class: 'flex gap-sm' },
+      el('button', { class: 'btn', onclick: () => downloadFile(`${name}.json`, JSON.stringify(rows, null, 2), 'application/json') }, '⬇ 备份 JSON'),
+      el('button', { class: 'btn btn-primary', onclick: () => downloadFile(`${name}.csv`, buildCSV(rows)) }, '⬇ 下载 CSV'),
+    ),
+  );
+  card.append(actions);
+  root.append(card);
+
+  // 配置入库 + 埋点字段
+  const saveCard = el('div', { class: 'card' });
+  saveCard.append(el('div', { class: 'card-h' }, el('h3', {}, '配置记录与跨岗位埋点'), el('div', { class: 'hint' }, '保存后可在「活动记录」「数据看板」追踪')));
+  const versionField = el('div', { class: 'field' });
+  versionField.append(el('label', {}, '素材版本号（便于复盘）'));
+  versionField.append(el('input', { type: 'text', id: 'wiz-version', value: w.version || 'v1.0', placeholder: '例：Rebel Glam v1.2' }));
+  saveCard.append(versionField);
+
+  const launchField = el('div', { class: 'field' });
+  launchField.append(el('label', {}, '计划上线日期（可选）'));
+  launchField.append(el('input', { type: 'date', id: 'wiz-launch', value: w.launchDate || '' }));
+  saveCard.append(launchField);
+
+  // 埋点字段（自动生成）
+  const trackId = `liveops_${(w.theme || 'event').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().slice(0, 24)}_${Date.now().toString(36).slice(-4)}`;
+  saveCard.append(el('div', { class: 'field' },
+    el('label', {}, '自动生成的埋点字段（运营/研发/设计共用）'),
+    el('div', { class: 'mono tiny', style: { padding: '10px 12px', background: '#F8FAFC', borderRadius: '8px', lineHeight: '1.7' } },
+      el('div', {}, `tracking_id    : ${trackId}`),
+      el('div', {}, `promo_type     : ${PROMO_TYPES.find(t=>t.id===w.promoType)?.name || w.promoType}`),
+      el('div', {}, `languages      : ${[w.sourceLang, ...Object.keys(w.localized)].join(', ')}`),
+      el('div', {}, `expected_event : impression / store_view / install / d1_retain / d7_retain`),
+    )
+  ));
+
+  const saveActions = el('div', { class: 'flex-between' });
+  saveActions.append(
+    el('button', { class: 'btn', onclick: () => { state.wiz.step = 4; render(); } }, '← 返回本地化'),
+    el('button', { class: 'btn btn-primary', onclick: async () => {
+      w.version = $('#wiz-version').value || 'v1.0';
+      w.launchDate = $('#wiz-launch').value || '';
+      await saveCurrentActivity(trackId);
+      toast('已保存到活动记录', 'success');
+      resetWizard();
+      state.wiz.selectedLangs = [...state.settings.defaultLangs];
+      go('list');
+    }}, '💾 保存活动并进入记录'),
+  );
+  saveCard.append(saveActions);
+  root.append(saveCard);
+}
+
+async function saveCurrentActivity(trackId) {
+  const w = state.wiz;
+  const id = w.id || uuid();
+  const record = {
+    id,
+    createdAt: w.createdAt || Date.now(),
+    updatedAt: Date.now(),
+    trackingId: trackId,
+    version: w.version || 'v1.0',
+    launchDate: w.launchDate || '',
+    promoType: w.promoType,
+    theme: w.theme,
+    sellingPoints: w.sellingPoints,
+    sourceLang: w.sourceLang,
+    tagline: w.tagline,
+    description: w.description,
+    imageThumb: w.image?.dataUrl || '',
+    imageAudit: w.imageAudit,
+    localized: w.localized,
+    selectedLangs: w.selectedLangs,
+    risks: w.risks,
+    // KPI 占位
+    kpi: w.kpi || { impressions: '', storeCvr: '', installs: '', d1: '', d7: '', revenue: '', notes: '' },
+  };
+  await idbPut('activities', record);
+  state.activities = await idbAll('activities');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 10. View — 活动记录
+// ════════════════════════════════════════════════════════════════════
+function renderList(root) {
+  root.append(el('div', { class: 'topbar' },
+    el('div', {},
+      el('h1', {}, '活动记录'),
+      el('div', { class: 'sub' }, `共 ${state.activities.length} 个活动 · 含多语种文案备份与配置历史`)
+    ),
+    el('div', { class: 'topbar-actions' },
+      el('button', { class: 'btn', onclick: () => exportAllActivities() }, '⬇ 导出全部'),
+      el('button', { class: 'btn btn-primary', onclick: () => { resetWizard(); state.wiz.selectedLangs = [...state.settings.defaultLangs]; go('new'); } }, '＋ 新建'),
+    ),
+  ));
+
+  if (!state.activities.length) {
+    root.append(el('div', { class: 'card empty' },
+      el('div', { class: 'ic' }, '📭'),
+      el('div', { class: 't' }, '还没有活动记录'),
+      el('div', { class: 'd' }, '点击右上角「＋ 新建」开始创建你的第一个 LiveOps 推广内容活动。每次保存的活动都会自动归档版本、多语种文案、风控报告与埋点字段，便于后续复盘与跨岗位对接。'),
+    ));
+    return;
+  }
+
+  const wrap = el('div', { class: 'tbl-wrap' });
+  const toolbar = el('div', { class: 'tbl-toolbar' });
+  const search = el('input', { type: 'text', placeholder: '搜索主题 / 版本 / 埋点 ID', oninput: e => {
+    const q = e.target.value.toLowerCase();
+    $$('#act-tbl tr[data-id]').forEach(tr => {
+      tr.style.display = tr.dataset.search.includes(q) ? '' : 'none';
+    });
+  }});
+  toolbar.append(search);
+  toolbar.append(el('span', { class: 'tiny muted', style: { marginLeft: 'auto' } }, `${state.activities.length} 个`));
+  wrap.append(toolbar);
+
+  const scroll = el('div', { class: 'tbl-scroll' });
+  const tbl = el('table', { class: 'tbl', id: 'act-tbl' });
+  tbl.append(el('thead', {}, el('tr', {},
+    el('th', {}, '主题 / 版本'),
+    el('th', {}, '类型'),
+    el('th', {}, '语言数'),
+    el('th', {}, '风控'),
+    el('th', {}, '上线日'),
+    el('th', {}, '埋点 ID'),
+    el('th', {}, '更新时间'),
+    el('th', { style: { width: '210px' } }, '操作'),
+  )));
+  const tbody = el('tbody');
+  const sorted = [...state.activities].sort((a, b) => b.updatedAt - a.updatedAt);
+  sorted.forEach(a => {
+    const pt = PROMO_TYPES.find(t => t.id === a.promoType)?.name || a.promoType;
+    const langCount = 1 + Object.keys(a.localized || {}).length;
+    const allRisks = [...(a.risks?.tagline||[]), ...(a.risks?.description||[])];
+    const lvMax = maxRiskLevel(allRisks);
+    const lvCls = { high:'red', med:'amber', low:'gray', ok:'green' }[lvMax];
+    const lvN = { high:'高', med:'中', low:'低', ok:'✓' }[lvMax];
+    const search = `${a.theme} ${a.version} ${a.trackingId}`.toLowerCase();
+    const tr = el('tr', { 'data-id': a.id, 'data-search': search });
+    tr.append(
+      el('td', {},
+        el('div', { style: { fontWeight: 600 } }, a.theme || '（未命名）'),
+        el('div', { class: 'tiny muted' }, a.version || '—'),
+      ),
+      el('td', {}, el('span', { class: 'tag-pill gray' }, pt)),
+      el('td', {}, el('span', { class: 'tag-pill' }, `${langCount}`)),
+      el('td', {}, el('span', { class: `tag-pill ${lvCls}` }, lvN)),
+      el('td', { class: 'tiny' }, a.launchDate || '—'),
+      el('td', { class: 'mono tiny muted' }, a.trackingId || '—'),
+      el('td', { class: 'tiny' }, fmtTime(a.updatedAt)),
+      el('td', {},
+        el('div', { class: 'flex gap-sm' },
+          el('button', { class: 'btn btn-sm', onclick: () => openActivityDetail(a.id) }, '查看'),
+          el('button', { class: 'btn btn-sm', onclick: () => downloadActivityCSV(a) }, 'CSV'),
+          el('button', { class: 'btn btn-sm', onclick: () => editActivity(a.id) }, '编辑'),
+          el('button', { class: 'btn btn-sm btn-ghost', onclick: () => removeActivity(a.id) }, '✕'),
+        )
+      ),
+    );
+    tbody.append(tr);
+  });
+  tbl.append(tbody);
+  scroll.append(tbl);
+  wrap.append(scroll);
+  root.append(wrap);
+}
+
+function downloadActivityCSV(a) {
+  const rows = [{ language_code: a.sourceLang, tagline: a.tagline, description: a.description }];
+  for (const [code, v] of Object.entries(a.localized || {})) rows.push({ language_code: code, tagline: v.tagline, description: v.description });
+  const name = (a.theme || 'liveops').replace(/[^\w一-龥-]/g, '_').slice(0, 40);
+  downloadFile(`${name}_${a.version || 'v1'}.csv`, buildCSV(rows));
+}
+function exportAllActivities() {
+  if (!state.activities.length) { toast('暂无活动', 'warn'); return; }
+  downloadFile('liveops_all_' + Date.now() + '.json', JSON.stringify(state.activities, null, 2), 'application/json');
+}
+async function removeActivity(id) {
+  const a = state.activities.find(x => x.id === id);
+  if (!a) return;
+  const ok = await confirmModal({ title: '删除活动？', body: `「${esc(a.theme || '未命名')}」将被永久删除，无法恢复。`, okText: '删除', okClass: 'btn-danger' });
+  if (!ok) return;
+  await idbDel('activities', id);
+  state.activities = await idbAll('activities');
+  render();
+}
+function editActivity(id) {
+  const a = state.activities.find(x => x.id === id);
+  if (!a) return;
+  resetWizard();
+  Object.assign(state.wiz, {
+    id: a.id, createdAt: a.createdAt,
+    mode: 'single',
+    promoType: a.promoType, theme: a.theme, sellingPoints: a.sellingPoints,
+    sourceLang: a.sourceLang,
+    tagline: a.tagline, description: a.description,
+    enTagline: '', enDescription: '',
+    image: a.imageThumb ? { dataUrl: a.imageThumb, data: a.imageThumb.split(',')[1], mime: 'image/jpeg' } : null,
+    imageAudit: a.imageAudit,
+    risks: a.risks || { tagline: [], description: [] },
+    selectedLangs: a.selectedLangs || Object.keys(a.localized || {}),
+    localized: a.localized || {},
+    version: a.version, launchDate: a.launchDate, kpi: a.kpi,
+    step: 3,
+  });
+  go('new');
+}
+function openActivityDetail(id) {
+  const a = state.activities.find(x => x.id === id);
+  if (!a) return;
+  const body = `
+<div class="row mb">
+  <div><strong>${esc(a.theme||'未命名')}</strong> <span class="tag-pill gray">${esc(a.version||'v1')}</span></div>
+  <div class="tiny muted">${fmtTime(a.updatedAt)}</div>
+</div>
+<div class="mb-sm tiny muted">埋点 ID</div>
+<div class="mono tiny mb">${esc(a.trackingId||'—')}</div>
+<div class="mb-sm tiny muted">Tagline（${esc(a.sourceLang)}）</div>
+<div class="mb">${esc(a.tagline)}</div>
+<div class="mb-sm tiny muted">Description</div>
+<div class="mb" style="white-space:pre-wrap;background:#F8FAFC;padding:10px 12px;border-radius:8px;font-size:12px">${esc(a.description)}</div>
+<div class="mb-sm tiny muted">本地化语言（${Object.keys(a.localized||{}).length}）</div>
+<div>${Object.keys(a.localized||{}).map(c=>{const l=LANG_BY_CODE[c]||{};return `<span class="tag-pill" style="margin:2px">${l.flag||'🌐'} ${c}</span>`}).join('') || '<span class="muted tiny">无</span>'}</div>
+`;
+  confirmModal({ title: '活动详情', body, okText: '关闭', okClass: '' });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 11. View — 数据看板（KPI 录入 + 简单汇总）
+// ════════════════════════════════════════════════════════════════════
+function renderDashboard(root) {
+  root.append(el('div', { class: 'topbar' },
+    el('div', {},
+      el('h1', {}, '数据看板'),
+      el('div', { class: 'sub' }, 'KPI 录入 → 沉淀为数据飞轮，反哺下一次 AI 生成'),
+    ),
+  ));
+
+  // 顶部汇总
+  const agg = aggregateKPI(state.activities);
+  const grid = el('div', { class: 'kpi-grid' });
+  grid.append(
+    kpiCard('活动总数',  state.activities.length, '已沉淀活动'),
+    kpiCard('累计曝光',  agg.impressions || '—', '所有活动累计'),
+    kpiCard('平均转化率', agg.avgCvr ? agg.avgCvr + '%' : '—', '商店页 CVR'),
+    kpiCard('累计安装',  agg.installs || '—', '推广内容带量'),
+    kpiCard('平均 D1 留存', agg.avgD1 ? agg.avgD1 + '%' : '—', '新增次留'),
+    kpiCard('平均 D7 留存', agg.avgD7 ? agg.avgD7 + '%' : '—', '新增 7 留'),
+  );
+  root.append(grid);
+
+  // KPI 录入表
+  const card = el('div', { class: 'card' });
+  card.append(el('div', { class: 'card-h' }, el('h3', {}, 'KPI 录入'), el('div', { class: 'hint' }, '直接编辑单元格，回车或失焦自动保存')));
+  if (!state.activities.length) {
+    card.append(el('div', { class: 'empty' }, el('div', { class: 'ic' }, '📊'), el('div', { class: 't' }, '暂无活动'), el('div', { class: 'd' }, '先到「新建活动」创建并保存活动，才能在这里录入数据。')));
+  } else {
+    const wrap = el('div', { class: 'tbl-wrap' });
+    const tbl = el('table', { class: 'tbl' });
+    tbl.append(el('thead', {}, el('tr', {},
+      el('th', {}, '活动'),
+      el('th', {}, '曝光量'),
+      el('th', {}, '商店 CVR (%)'),
+      el('th', {}, '安装数'),
+      el('th', {}, 'D1 留存 (%)'),
+      el('th', {}, 'D7 留存 (%)'),
+      el('th', {}, '营收'),
+      el('th', {}, '备注'),
+    )));
+    const tbody = el('tbody');
+    [...state.activities].sort((a,b)=>b.updatedAt-a.updatedAt).forEach(a => {
+      const tr = el('tr', { 'data-id': a.id });
+      const kpi = a.kpi || {};
+      const mkInput = (field) => el('input', { type: 'text', value: kpi[field] || '', style: { width: '90px' },
+        onchange: async e => {
+          a.kpi = { ...(a.kpi||{}), [field]: e.target.value };
+          a.updatedAt = Date.now();
+          await idbPut('activities', a);
+          toast('已保存', 'success');
+        }
+      });
+      tr.append(
+        el('td', {}, el('div', { style: { fontWeight: 600, fontSize: '12px' } }, a.theme), el('div', { class: 'tiny muted' }, a.version || '—')),
+        el('td', {}, mkInput('impressions')),
+        el('td', {}, mkInput('storeCvr')),
+        el('td', {}, mkInput('installs')),
+        el('td', {}, mkInput('d1')),
+        el('td', {}, mkInput('d7')),
+        el('td', {}, mkInput('revenue')),
+        el('td', {}, el('input', { type: 'text', value: kpi.notes || '', placeholder: '老用户回流明显…',
+          onchange: async e => { a.kpi = { ...(a.kpi||{}), notes: e.target.value }; a.updatedAt = Date.now(); await idbPut('activities', a); }
+        })),
+      );
+      tbody.append(tr);
+    });
+    tbl.append(tbody);
+    wrap.append(tbl);
+    card.append(wrap);
+  }
+  root.append(card);
+}
+function kpiCard(label, val, sub) {
+  return el('div', { class: 'kpi-card' },
+    el('div', { class: 'lab' }, label),
+    el('div', { class: 'val' }, String(val)),
+    el('div', { class: 'sub' }, sub || ''),
+  );
+}
+function aggregateKPI(list) {
+  const num = v => { const n = parseFloat(String(v||'').replace(/,/g,'')); return isFinite(n) ? n : 0; };
+  let imp = 0, ins = 0, cvrSum = 0, cvrN = 0, d1Sum = 0, d1N = 0, d7Sum = 0, d7N = 0;
+  for (const a of list) {
+    const k = a.kpi || {};
+    imp += num(k.impressions); ins += num(k.installs);
+    if (k.storeCvr) { cvrSum += num(k.storeCvr); cvrN++; }
+    if (k.d1) { d1Sum += num(k.d1); d1N++; }
+    if (k.d7) { d7Sum += num(k.d7); d7N++; }
+  }
+  return {
+    impressions: imp ? imp.toLocaleString() : 0,
+    installs:    ins ? ins.toLocaleString() : 0,
+    avgCvr: cvrN ? (cvrSum/cvrN).toFixed(2) : '',
+    avgD1:  d1N  ? (d1Sum/d1N).toFixed(1)  : '',
+    avgD7:  d7N  ? (d7Sum/d7N).toFixed(1)  : '',
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 12. View — 术语库
+// ════════════════════════════════════════════════════════════════════
+function renderGlossary(root) {
+  root.append(el('div', { class: 'topbar' },
+    el('div', {},
+      el('h1', {}, '术语库'),
+      el('div', { class: 'sub' }, '游戏 / 应用专属词汇映射，确保跨语种翻译一致'),
+    ),
+    el('div', { class: 'topbar-actions' },
+      el('button', { class: 'btn', onclick: () => importGlossary() }, '⬆ 导入 JSON'),
+      el('button', { class: 'btn', onclick: () => downloadFile('glossary.json', JSON.stringify(state.glossary, null, 2), 'application/json') }, '⬇ 导出'),
+      el('button', { class: 'btn btn-primary', onclick: () => addGlossaryRow() }, '＋ 新增词条'),
+    ),
+  ));
+
+  const wrap = el('div', { class: 'tbl-wrap' });
+  const tbl = el('table', { class: 'tbl' });
+  // 重点展示 7 种主流语言
+  const cols = ['en-US','ja-JP','ko-KR','de-DE','fr-FR','es-ES','pt-BR'];
+  tbl.append(el('thead', {}, el('tr', {},
+    el('th', { style: { width: '14%' } }, '源词（中文）'),
+    ...cols.map(c => el('th', { style: { width: '11%' } }, c)),
+    el('th', { style: { width: '5%' } }, ''),
+  )));
+  const tbody = el('tbody');
+  if (!state.glossary.length) {
+    tbody.append(el('tr', {}, el('td', { colspan: cols.length + 2, class: 'tbl-empty' }, '尚无词条')));
+  } else {
+    state.glossary.forEach(g => {
+      const tr = el('tr', { class: 'gloss-row', 'data-id': g.id });
+      tr.append(el('td', {}, el('input', { value: g.source || '', onchange: e => saveGlossaryField(g.id, 'source', e.target.value) })));
+      cols.forEach(c => tr.append(el('td', {}, el('input', { value: g[c] || '', onchange: e => saveGlossaryField(g.id, c, e.target.value) }))));
+      tr.append(el('td', {}, el('button', { class: 'btn btn-sm btn-ghost', onclick: async () => {
+        await idbDel('glossary', g.id);
+        state.glossary = await idbAll('glossary');
+        render();
+      }}, '✕')));
+      tbody.append(tr);
+    });
+  }
+  tbl.append(tbody);
+  wrap.append(tbl);
+  root.append(wrap);
+
+  root.append(el('div', { class: 'tiny muted mt' }, '词典在本地化时自动挂载到 AI 提示，确保抽卡 → Gacha、赛季 → Season 等核心词在所有语种中一致。'));
+}
+async function saveGlossaryField(id, field, value) {
+  const g = state.glossary.find(x => x.id === id);
+  if (!g) return;
+  g[field] = value;
+  await idbPut('glossary', g);
+}
+async function addGlossaryRow() {
+  const id = await idbPut('glossary', { source: '' });
+  state.glossary = await idbAll('glossary');
+  render();
+}
+function importGlossary() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json';
+  inp.onchange = async e => {
+    const f = e.target.files?.[0]; if (!f) return;
+    try {
+      const txt = await f.text();
+      const arr = JSON.parse(txt);
+      if (!Array.isArray(arr)) throw new Error('不是数组');
+      for (const g of arr) {
+        const copy = { ...g }; delete copy.id;
+        await idbPut('glossary', copy);
+      }
+      state.glossary = await idbAll('glossary');
+      toast(`已导入 ${arr.length} 条`, 'success');
+      render();
+    } catch (e) { toast('导入失败：' + e.message, 'error'); }
+  };
+  inp.click();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 13. View — 设置
+// ════════════════════════════════════════════════════════════════════
+function renderSettings(root) {
+  root.append(el('div', { class: 'topbar' },
+    el('div', {},
+      el('h1', {}, '设置'),
+      el('div', { class: 'sub' }, 'API Key 仅存本浏览器（IndexedDB），不上传任何服务器'),
+    )
+  ));
+
+  const card = el('div', { class: 'card' });
+  card.append(el('div', { class: 'card-h' }, el('h3', {}, 'Gemini API')));
+
+  // API Key
+  const keyField = el('div', { class: 'field' });
+  keyField.append(el('label', {}, 'API Key'));
+  const keyInput = el('input', { type: 'password', value: state.settings.apiKey, placeholder: '粘贴 AIza... 开头的 Key' });
+  const toggle = el('button', { class: 'btn btn-sm', type: 'button', onclick: () => {
+    keyInput.type = keyInput.type === 'password' ? 'text' : 'password';
+    toggle.textContent = keyInput.type === 'password' ? '👁 显示' : '🙈 隐藏';
+  }}, '👁 显示');
+  const keyRow = el('div', { class: 'flex gap-sm' });
+  keyInput.style.flex = '1';
+  keyRow.append(keyInput, toggle);
+  keyField.append(keyRow);
+  keyField.append(el('div', { class: 'hint' },
+    '从 ', el('a', { href: 'https://aistudio.google.com/apikey', target: '_blank' }, 'Google AI Studio'), ' 申请。Key 仅保存在本浏览器 IndexedDB 中。'
+  ));
+  card.append(keyField);
+
+  // 测试
+  const testRow = el('div', { class: 'flex gap-sm mb' });
+  testRow.append(el('button', { class: 'btn btn-sm', onclick: async () => {
+    const key = keyInput.value.trim();
+    if (!key) { toast('请先填入 Key', 'error'); return; }
+    try {
+      const r = await geminiCall({ apiKey: key, model: $('#m-sel').value, prompt: '只回复"ok"两个字', temperature: 0 });
+      toast('连通正常：' + r.slice(0, 30), 'success');
+    } catch (e) { toast('连接失败：' + e.message, 'error'); }
+  }}, '🔌 测试连通'));
+  card.append(testRow);
+
+  // 模型选择
+  const modField = el('div', { class: 'field' });
+  modField.append(el('label', {}, '模型'));
+  const modSel = el('select', { id: 'm-sel' });
+  GEMINI_MODELS.forEach(m => modSel.append(el('option', { value: m.id, selected: state.settings.model === m.id ? 'selected' : false }, `${m.name} — ${m.desc}`)));
+  modField.append(modSel);
+  card.append(modField);
+
+  // 品牌与语气
+  const brandField = el('div', { class: 'field' });
+  brandField.append(el('label', {}, '品牌 / 产品名（可选，写入提示）'));
+  const brandIn = el('input', { type: 'text', value: state.settings.brand, placeholder: '例：Rebel Glam / 螺丝大师' });
+  brandField.append(brandIn);
+  card.append(brandField);
+
+  const toneField = el('div', { class: 'field' });
+  toneField.append(el('label', {}, '默认语气'));
+  const toneIn = el('input', { type: 'text', value: state.settings.tone, placeholder: '简洁、亲切、有节奏感' });
+  toneField.append(toneIn);
+  card.append(toneField);
+
+  // 默认目标语言
+  const defLangField = el('div', { class: 'field' });
+  defLangField.append(el('label', {}, '默认目标语言（每次新建活动时自动勾选）'));
+  const lg = el('div', { class: 'lang-grid' });
+  LANG_LIST.forEach(l => {
+    const sel = state.settings.defaultLangs.includes(l.code);
+    const chip = el('label', { class: `lang-chip ${sel?'selected':''}` },
+      el('input', { type: 'checkbox', checked: sel?'checked':false, 'data-code': l.code, onchange: e => chip.classList.toggle('selected', e.target.checked) }),
+      el('span', { class: 'lang-flag' }, l.flag),
+      el('span', {}, l.short || l.code),
+    );
+    lg.append(chip);
+  });
+  defLangField.append(lg);
+  card.append(defLangField);
+
+  const saveBtn = el('button', { class: 'btn btn-primary', onclick: async () => {
+    const defaultLangs = [...lg.querySelectorAll('input:checked')].map(i => i.dataset.code);
+    state.settings = await saveSettings({
+      apiKey: keyInput.value.trim(),
+      model: modSel.value,
+      brand: brandIn.value.trim(),
+      tone: toneIn.value.trim() || '简洁、亲切、有节奏感',
+      defaultLangs,
+    });
+    toast('设置已保存', 'success');
+  }}, '💾 保存设置');
+  card.append(saveBtn);
+  root.append(card);
+
+  // 数据管理
+  const dataCard = el('div', { class: 'card' });
+  dataCard.append(el('div', { class: 'card-h' }, el('h3', {}, '数据管理')));
+  dataCard.append(el('div', { class: 'flex gap-sm' },
+    el('button', { class: 'btn', onclick: async () => {
+      const data = { activities: state.activities, glossary: state.glossary, settings: { ...state.settings, apiKey: '' } };
+      downloadFile('liveops_backup_' + Date.now() + '.json', JSON.stringify(data, null, 2), 'application/json');
+    }}, '⬇ 全量备份'),
+    el('button', { class: 'btn', onclick: () => importBackup() }, '⬆ 恢复备份'),
+    el('button', { class: 'btn btn-danger', onclick: async () => {
+      if (!await confirmModal({ title: '清空全部数据？', body: '所有活动、KPI、术语库将被清空（保留设置）。', okText: '清空', okClass: 'btn-danger' })) return;
+      for (const a of state.activities) await idbDel('activities', a.id);
+      for (const g of state.glossary) await idbDel('glossary', g.id);
+      state.activities = []; state.glossary = [];
+      await seedGlossaryIfEmpty(); state.glossary = await idbAll('glossary');
+      toast('已清空', 'success'); render();
+    }}, '✕ 清空数据'),
+  ));
+  root.append(dataCard);
+}
+function importBackup() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json,.json';
+  inp.onchange = async e => {
+    const f = e.target.files?.[0]; if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (Array.isArray(data.activities)) for (const a of data.activities) await idbPut('activities', a);
+      if (Array.isArray(data.glossary))   for (const g of data.glossary)   { const c={...g}; delete c.id; await idbPut('glossary', c); }
+      state.activities = await idbAll('activities');
+      state.glossary = await idbAll('glossary');
+      toast('恢复完成', 'success'); render();
+    } catch (e) { toast('恢复失败：' + e.message, 'error'); }
+  };
+  inp.click();
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 14. boot
+// ════════════════════════════════════════════════════════════════════
+window.addEventListener('hashchange', () => go(location.hash.replace('#','') || 'new'));
+bootstrap().catch(e => {
+  document.body.innerHTML = '<div style="padding:40px;color:#B91C1C">启动失败：' + esc(e.message) + '</div>';
+  console.error(e);
+});
+</script>
+</body>
+</html>

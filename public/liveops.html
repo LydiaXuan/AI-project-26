@@ -3,1432 +3,1075 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Liveops · Google Play 推广内容运营助手</title>
+<title>PlayOps Pro · Google Play 推广内容运营平台</title>
 <style>
-/* ============== base ============== */
+/* ============== tokens ============== */
 *,*::before,*::after{box-sizing:border-box}
 :root{
-  --bg:#f5f7fb;--panel:#fff;--ink:#1b2031;--ink-soft:#4a5066;--muted:#7d869c;
-  --line:#e4e8f1;--line-soft:#eef1f7;
-  --brand:#1f9d55;--brand-deep:#157f43;--brand-soft:#e7f6ee;
-  --accent:#4f7cff;--danger:#d93636;--danger-soft:#fde7e7;
-  --warn:#cf8a1d;--warn-soft:#fcf3e0;--info-soft:#e6efff;
-  --shadow:0 1px 2px rgba(20,30,60,.05),0 8px 28px rgba(20,30,60,.06);
-  --radius:12px;--radius-sm:8px;
+  --bg:#F4F7FC;--card:#FFFFFF;--border:#E2E8F0;--border-soft:#EDF1F7;
+  --th-bg:#F8FAFC;
+  --ink:#1f2733;--ink-soft:#475467;--muted:#8a94a6;
+  --blue:#1A73E8;--blue-deep:#1557b0;--blue-soft:#E8F0FE;
+  --green:#00A86B;--green-deep:#00875a;--green-soft:#E3F6EE;
+  --amber:#C8860D;--amber-soft:#FCF3DF;
+  --red:#D64545;--red-soft:#FCE9E9;
+  --shadow-sm:0 1px 2px rgba(16,30,54,.04),0 1px 3px rgba(16,30,54,.06);
+  --shadow:0 1px 2px rgba(16,30,54,.04),0 8px 24px rgba(16,30,54,.06);
+  --r:12px;--r-sm:8px;
 }
-html,body{margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;font-size:14px;color:var(--ink);background:var(--bg);min-height:100vh;display:flex;flex-direction:column}
+html,body{margin:0;height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;font-size:14px;color:var(--ink);background:var(--bg);display:flex;min-height:100vh}
 h1,h2,h3,h4{margin:0;font-weight:600}
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--line-soft);padding:1px 6px;border-radius:4px;font-size:12px}
+a{color:var(--blue);text-decoration:none}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--border-soft);padding:1px 6px;border-radius:4px;font-size:12px}
+::-webkit-scrollbar{height:10px;width:10px}
+::-webkit-scrollbar-thumb{background:#cfd8e6;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:#b6c2d4;background-clip:content-box}
 
-/* topbar */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--brand) 0%,#2bc274 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;box-shadow:0 4px 12px rgba(31,157,85,.25)}
-.brand-text h1{font-size:18px;line-height:1.1}
-.brand-text span{font-size:12px;color:var(--muted)}
-.topnav{display:flex;gap:8px}
-.topnav-btn{border:1px solid var(--line);background:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--ink-soft);transition:all .15s;text-decoration:none;display:inline-block}
-.topnav-btn:hover{border-color:var(--brand);color:var(--brand);text-decoration:none}
-.topnav-btn.ghost{background:transparent}
+/* ============== sidebar ============== */
+.sidebar{width:260px;min-width:260px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.brand{padding:22px 20px 18px;border-bottom:1px solid var(--border-soft)}
+.brand-row{display:flex;align-items:center;gap:11px}
+.brand-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--blue) 0%,var(--green) 120%);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;box-shadow:0 6px 14px rgba(26,115,232,.28)}
+.brand-name{font-size:16px;font-weight:700;letter-spacing:.2px}
+.brand-sub{display:flex;align-items:center;gap:7px;margin-top:9px}
+.ver-badge{font-size:10.5px;font-weight:600;color:var(--green-deep);background:var(--green-soft);border:1px solid #bfe8d6;padding:2px 8px;border-radius:999px}
+.brand-tag{font-size:11px;color:var(--muted)}
+.nav{padding:14px 12px;flex:1;overflow-y:auto}
+.nav-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px 6px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;cursor:pointer;color:var(--ink-soft);font-size:13.5px;font-weight:500;margin-bottom:3px;transition:all .14s;border:1px solid transparent}
+.nav-item .ico{font-size:17px;width:22px;text-align:center}
+.nav-item .sub{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px;line-height:1.3}
+.nav-item:hover{background:var(--bg)}
+.nav-item.active{background:var(--blue-soft);color:var(--blue-deep);border-color:#cfe0fb}
+.nav-item.active .sub{color:#6f9be6}
+.sidebar-foot{padding:14px 18px;border-top:1px solid var(--border-soft);font-size:11px;color:var(--muted);line-height:1.5}
 
-/* stepbar */
-.stepbar{display:flex;gap:4px;padding:14px 28px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
-.step{display:flex;align-items:center;gap:8px;padding:8px 18px 8px 12px;border-radius:999px;font-size:13px;color:var(--muted);background:var(--line-soft);white-space:nowrap;cursor:pointer;transition:all .15s}
-.step span{width:20px;height:20px;border-radius:50%;background:#fff;color:var(--muted);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;border:1px solid var(--line)}
-.step:hover{color:var(--ink)}
-.step.is-active{background:var(--brand-soft);color:var(--brand-deep)}
-.step.is-active span{background:var(--brand);color:#fff;border-color:var(--brand)}
-.step.is-done{color:var(--brand-deep)}
-.step.is-done span{background:var(--brand);color:#fff;border-color:var(--brand)}
+/* ============== main ============== */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow-y:auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:rgba(244,247,252,.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5;border-bottom:1px solid var(--border-soft)}
+.topbar h2{font-size:18px}
+.topbar .crumb{font-size:12px;color:var(--muted);margin-top:3px}
+.topbar-actions{display:flex;gap:8px}
+.view{display:none;padding:22px 28px 60px}
+.view.active{display:block;animation:fade .2s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-/* stage */
-.stage{max-width:1280px;width:100%;margin:0 auto;padding:24px 28px 80px;flex:1}
-.panel{display:none}
-.panel.is-active{display:block;animation:fadein .2s ease}
-@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-.panel-head{margin-bottom:18px}
-.panel-head h2{font-size:20px}
-.panel-head p{margin:6px 0 0;color:var(--muted);font-size:13px}
+/* ============== card ============== */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm)}
+.card-pad{padding:18px}
+.card-h{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--border-soft)}
+.card-h h3{font-size:14px}
+.card-h .step-no{width:22px;height:22px;border-radius:50%;background:var(--blue-soft);color:var(--blue-deep);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-right:9px}
+.section-title{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;margin:0 0 12px}
 
-/* card */
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
-.card h3{font-size:14px;margin-bottom:12px;color:var(--ink)}
-.grid{display:grid;gap:16px}
-.grid.two{grid-template-columns:1fr 1fr}
-@media (max-width:900px){.grid.two{grid-template-columns:1fr}}
+/* ============== engine layout ============== */
+.engine-grid{display:grid;grid-template-columns:35% 65%;gap:18px;align-items:start}
+@media (max-width:1080px){.engine-grid{grid-template-columns:1fr}}
+.stack{display:flex;flex-direction:column;gap:18px}
 
-/* fields */
-.field{display:block;margin-bottom:12px}
-.label{font-size:12px;color:var(--ink-soft);display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.counter{font-style:normal;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
-.counter.warn{color:var(--warn)}
-.counter.over{color:var(--danger);font-weight:600}
-input[type=text],input[type=date],select,textarea{width:100%;font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 10px;background:#fff;transition:border .15s}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
-textarea{resize:vertical;min-height:100px;line-height:1.55}
-select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:28px}
-.row{display:flex;align-items:center;gap:8px}
-.row.gap{gap:10px}
-.row.between{justify-content:space-between}
-.row.end{justify-content:flex-end}
+/* ============== fields ============== */
+.field{margin-bottom:13px}
+.field:last-child{margin-bottom:0}
+.flabel{font-size:12px;color:var(--ink-soft);font-weight:500;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+input[type=text],input[type=date],input[type=number],select,textarea{width:100%;font:inherit;color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;background:#fff;transition:border .14s,box-shadow .14s}
+input::placeholder,textarea::placeholder{color:#b3bccb}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+textarea{resize:vertical;min-height:72px;line-height:1.55}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 15px) 53%,calc(100% - 10px) 53%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:30px}
+.counter{font-size:11px;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600}
+.counter.warn{color:var(--amber)}
+.counter.over{color:var(--red)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .muted{color:var(--muted);font-size:12px}
+.row{display:flex;align-items:center;gap:8px}
+.row.gap{gap:10px}.row.between{justify-content:space-between}.row.end{justify-content:flex-end}.row.wrap{flex-wrap:wrap}
 
 /* chips */
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:6px}
-.chip{background:var(--info-soft);color:#2e58c8;border-radius:999px;padding:4px 10px 4px 12px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
-.chip button{border:none;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{background:var(--blue-soft);color:var(--blue-deep);border-radius:999px;padding:4px 9px 4px 11px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.chip button{border:0;background:transparent;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0}
 
-/* dropzone */
-.dropzone{position:relative;border:2px dashed var(--line);border-radius:var(--radius);background:var(--line-soft);min-height:220px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;overflow:hidden}
-.dropzone:hover,.dropzone.is-drag{border-color:var(--brand);background:var(--brand-soft)}
-.dz-empty{text-align:center;padding:20px}
-.dz-icon{font-size:32px;color:var(--brand);margin-bottom:8px}
-.dz-text{font-size:13px;color:var(--ink-soft);margin-bottom:4px}
-.dz-hint{font-size:11px;color:var(--muted)}
-#preview{display:none;max-width:100%;max-height:280px;border-radius:8px}
-.dropzone.has-img{background:#fff}
-.dropzone.has-img .dz-empty{display:none}
-.dropzone.has-img #preview{display:block}
-.meta{margin-top:8px;font-size:12px;color:var(--muted)}
-
-.modeswitch{display:flex;gap:14px;flex-wrap:wrap}
-.modeswitch label{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer}
-.reflinks{padding-left:18px;margin:0;font-size:13px}
-.reflinks li{margin:6px 0}
+/* dropzone 16:9 */
+.dropzone{position:relative;border:2px dashed var(--border);border-radius:var(--r);background:var(--th-bg);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;overflow:hidden}
+.dropzone:hover,.dropzone.drag{border-color:var(--green);background:var(--green-soft)}
+.dz-in{text-align:center;padding:14px}
+.dz-ico{width:46px;height:46px;margin:0 auto 8px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--green)}
+.dz-t{font-size:12.5px;color:var(--ink-soft)}
+.dz-h{font-size:11px;color:var(--muted);margin-top:3px}
+#preview{display:none;width:100%;height:100%;object-fit:cover}
+.dropzone.has #preview{display:block}
+.dropzone.has .dz-in{display:none}
 
 /* buttons */
-.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 18px;font:inherit;font-size:13px;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s}
-.btn:hover{border-color:var(--brand);color:var(--brand)}
+.btn{border:1px solid var(--border);background:#fff;color:var(--ink);padding:9px 16px;font:inherit;font-size:13px;font-weight:500;border-radius:var(--r-sm);cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.btn:hover{border-color:#cbd5e3;background:var(--th-bg)}
 .btn.sm{padding:6px 12px;font-size:12px}
-.btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
-.btn.primary:hover{background:var(--brand-deep);border-color:var(--brand-deep);color:#fff}
+.btn.block{width:100%}
+.btn.green{background:linear-gradient(135deg,#00b673,#009160);color:#fff;border:0;box-shadow:0 4px 12px rgba(0,168,107,.28)}
+.btn.green:hover{filter:brightness(1.05);background:linear-gradient(135deg,#00b673,#009160)}
+.btn.blue{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn.blue:hover{background:var(--blue-deep);border-color:var(--blue-deep)}
 .btn.ghost{background:transparent}
-.btn.back{color:var(--muted);border-color:var(--line-soft)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.btn:disabled:hover{color:inherit;border-color:var(--line);background:#fff}
-.btn.primary:disabled:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn:disabled:hover{background:#fff;border-color:var(--border)}
+.btn.green:disabled:hover,.btn.blue:disabled:hover{filter:none}
 
-.actionbar{display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding:16px 20px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);position:sticky;bottom:14px;box-shadow:var(--shadow);gap:8px;flex-wrap:wrap}
-.actionbar .status{color:var(--muted);font-size:12px;flex:1;padding:0 12px;min-width:140px}
+/* compliance strip */
+.compliance{margin-top:12px;border:1px solid var(--border-soft);border-radius:var(--r-sm);overflow:hidden}
+.comp-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--th-bg);font-size:12px}
+.comp-badges{display:flex;gap:6px}
+.cbadge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600}
+.cbadge.h{background:var(--red-soft);color:var(--red)}
+.cbadge.m{background:var(--amber-soft);color:var(--amber)}
+.cbadge.l{background:var(--blue-soft);color:var(--blue-deep)}
+.cbadge.ok{background:var(--green-soft);color:var(--green-deep)}
+.comp-list{max-height:165px;overflow-y:auto}
+.risk{padding:9px 12px;border-top:1px solid var(--border-soft);font-size:12px;border-left:3px solid transparent}
+.risk.high{border-left-color:var(--red);background:#fff6f6}
+.risk.med{border-left-color:var(--amber);background:#fffcf3}
+.risk.low{border-left-color:var(--blue);background:#f7faff}
+.risk .rh{display:flex;justify-content:space-between;font-weight:600;gap:8px}
+.risk .rb{color:var(--ink-soft);margin-top:3px;line-height:1.45}
 
-/* audit */
-.audit{display:flex;flex-direction:column;gap:8px}
-.audit-item{display:grid;grid-template-columns:18px 1fr auto;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);align-items:center;background:#fff}
-.audit-item .dot{width:12px;height:12px;border-radius:50%;display:inline-block}
-.audit-item .dot.pass{background:var(--brand)}
-.audit-item .dot.warn{background:var(--warn)}
-.audit-item .dot.fail{background:var(--danger)}
-.audit-item .dot.todo{background:var(--line);border:1px solid var(--muted)}
-.audit-item .title{font-size:13px;color:var(--ink)}
-.audit-item .desc{font-size:11px;color:var(--muted);margin-top:2px}
-.audit-item .tag{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--line-soft);color:var(--ink-soft)}
-.audit-item.pass .tag{background:var(--brand-soft);color:var(--brand-deep)}
-.audit-item.warn .tag{background:var(--warn-soft);color:var(--warn)}
-.audit-item.fail .tag{background:var(--danger-soft);color:var(--danger)}
-.featured{margin-top:14px;padding:14px;border-radius:var(--radius-sm);border:1px dashed var(--line);font-size:13px;color:var(--ink-soft)}
-.featured.is-pass{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-deep)}
-.featured.is-warn{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
-.featured.is-fail{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
-.featured strong{font-weight:600}
+/* pill tags (language) */
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 4px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--border);border-radius:999px;font-size:12.5px;cursor:pointer;user-select:none;transition:all .12s;background:#fff}
+.pill:hover{border-color:#cbd5e3}
+.pill input{display:none}
+.pill .flag{font-size:14px}
+.pill.on{background:var(--green-soft);border-color:#7fd3b3;color:var(--green-deep);font-weight:600}
+.pill .code{font-family:ui-monospace,monospace;font-size:11px;opacity:.85}
 
-/* meters */
-.meterblock{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
-.meter-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
-.bar{background:var(--line-soft);border-radius:999px;height:8px;overflow:hidden}
-.fill{height:100%;width:0;background:var(--brand);transition:width .25s,background .15s;border-radius:999px}
-.fill.warn{background:var(--warn)}
-.fill.over{background:var(--danger)}
-.hint{font-size:11px;color:var(--muted);margin-top:6px}
-.hint.over{color:var(--danger);font-weight:600}
+/* preview table */
+.tablewrap{overflow-x:auto;border:1px solid var(--border-soft);border-radius:var(--r-sm)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{background:var(--th-bg);color:var(--ink-soft);font-weight:600;font-size:11.5px;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+tbody td{padding:11px 12px;border-bottom:1px solid var(--border-soft);vertical-align:top;line-height:1.5}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbfcfe}
+.i18n-table td.lc{font-family:ui-monospace,monospace;font-weight:600;white-space:nowrap;color:var(--ink)}
+.i18n-table td.lc .lname{display:block;font-family:inherit;font-weight:400;color:var(--muted);font-size:11px;margin-top:2px}
+.i18n-table .cell-txt{max-width:340px}
+.len{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:4px}
+.len.warn{color:var(--amber)}.len.over{color:var(--red)}
+.tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+.tag.ok{background:var(--green-soft);color:var(--green-deep)}
+.tag.aligned{background:var(--amber-soft);color:var(--amber)}
+.tag.over{background:var(--red-soft);color:var(--red)}
+.tag.gray{background:var(--border-soft);color:var(--ink-soft)}
 
-/* risk */
-.riskreport{display:flex;flex-direction:column;gap:8px;min-height:80px}
-.risk-item{padding:10px 12px;border-left:3px solid var(--line);background:var(--line-soft);border-radius:6px;font-size:13px}
-.risk-item.high{border-color:var(--danger);background:var(--danger-soft);color:#8a1f1f}
-.risk-item.med{border-color:var(--warn);background:var(--warn-soft);color:#6b4612}
-.risk-item.low{border-color:var(--accent);background:var(--info-soft);color:#213f93}
-.risk-item.pass{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-deep)}
-.risk-item .head{display:flex;justify-content:space-between;align-items:center}
-.risk-item .head strong{font-size:13px}
-.risk-item .lvl{font-size:11px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.55)}
-.risk-item .body{font-size:12px;margin-top:4px;opacity:.9}
-.risk-item .body code{background:rgba(255,255,255,.6)}
+/* csv preview */
+.csvbox{margin-top:12px;background:#0f1626;color:#d7e0ef;border-radius:var(--r-sm);padding:13px 14px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.5px;line-height:1.6;max-height:160px;overflow:auto;white-space:pre}
 
-/* languages */
-.langgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-top:12px;max-height:320px;overflow-y:auto;padding:4px}
-.langgrid label{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;transition:all .12s}
-.langgrid label:hover{border-color:var(--brand)}
-.langgrid label.checked{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-deep)}
-.langgrid input{accent-color:var(--brand)}
-.langgrid .name{font-size:12px}
-.langgrid .code{color:var(--muted);font-size:10px;margin-left:auto;font-family:ui-monospace,monospace}
+/* ============== registry ============== */
+.filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.filterbar .fb{display:flex;flex-direction:column;gap:4px}
+.filterbar .fb label{font-size:10.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding-left:2px}
+.filterbar select,.filterbar input{padding:8px 11px;font-size:12.5px;min-width:130px;background:#fff}
+.filterbar .search{position:relative;margin-left:auto}
+.filterbar .search input{padding-left:32px;min-width:220px}
+.filterbar .search .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
 
-/* tables */
-.tablewrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
-th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top}
-th{color:var(--muted);font-weight:500;background:var(--line-soft);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
-tbody tr:hover{background:var(--line-soft)}
-td input,td textarea{font-size:12px;padding:4px 6px}
-.termtable input{font-size:11px}
-.i18ntable td{font-size:12px}
-.i18ntable .langcell{white-space:nowrap;font-weight:600}
-.i18ntable .lenbadge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-variant-numeric:tabular-nums;background:var(--brand-soft);color:var(--brand-deep)}
-.i18ntable .lenbadge.warn{background:var(--warn-soft);color:var(--warn)}
-.i18ntable .lenbadge.over{background:var(--danger-soft);color:var(--danger)}
-.i18ntable .statebadge{font-size:10px;padding:2px 8px;border-radius:999px;background:var(--line-soft);color:var(--muted)}
-.i18ntable .statebadge.ok{background:var(--brand-soft);color:var(--brand-deep)}
-.i18ntable .statebadge.fail{background:var(--danger-soft);color:var(--danger)}
-.i18ntable .statebadge.warn{background:var(--warn-soft);color:var(--warn)}
+.tabs{display:inline-flex;background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px;gap:3px;margin-bottom:16px}
+.tab{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink-soft);cursor:pointer;border:0;background:transparent;display:inline-flex;align-items:center;gap:7px;transition:all .14s}
+.tab:hover{color:var(--ink)}
+.tab.active{background:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(26,115,232,.25)}
+.tabpanel{display:none}
+.tabpanel.active{display:block}
+.stat-line{display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap}
+.stat{background:#fff;border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 16px;min-width:130px}
+.stat .v{font-size:20px;font-weight:700}
+.stat .l{font-size:11px;color:var(--muted);margin-top:2px}
+.stat .v.green{color:var(--green-deep)}.stat .v.blue{color:var(--blue-deep)}
 
-/* csv */
-.csvwrap{margin-top:12px;background:#0e1322;color:#d8e0ee;border-radius:var(--radius-sm);padding:14px;overflow-x:auto;font-size:12px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;max-height:360px;overflow-y:auto}
-.csvwrap pre{margin:0;white-space:pre;line-height:1.55}
+/* registry table */
+.reg-table{font-size:12px}
+.reg-table thead th{font-size:11px;text-transform:none}
+.reg-table td{white-space:nowrap}
+.reg-table .thumb{width:40px;height:40px;border-radius:7px;object-fit:cover;border:1px solid var(--border);cursor:zoom-in;transition:transform .15s;display:block}
+.reg-table .thumb:hover{transform:scale(1.05)}
+.proj{font-weight:600;color:var(--ink)}
+.camp{color:var(--ink-soft);white-space:normal;min-width:150px}
+.geos{display:inline-flex;gap:3px;font-size:14px}
+.geo-chip{font-size:14px}
+.cvr{font-weight:700;color:var(--green-deep)}
+.imp{font-variant-numeric:tabular-nums}
+.pic{display:inline-flex;align-items:center;gap:6px}
+.avatar{width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.type-tag{font-size:11px;padding:2px 9px;border-radius:6px;background:var(--border-soft);color:var(--ink-soft);font-weight:500}
+.type-tag.update{background:var(--blue-soft);color:var(--blue-deep)}
+.type-tag.event{background:#fdeede;color:#b5700d}
+.type-tag.festival{background:#f3e8fd;color:#8b3fd1}
+.star{cursor:default;font-size:15px}
+.star.on{color:#f5a623}.star.off{color:#d6dde7}
+.icon-btn{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:14px;padding:4px 6px;border-radius:6px}
+.icon-btn:hover{background:var(--border-soft);color:var(--ink)}
 
-/* tracking */
-.tracking{background:var(--line-soft);border-radius:var(--radius-sm);padding:12px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;max-height:360px;overflow-y:auto;margin-bottom:10px}
-.kpitable input{width:100%}
+/* gallery */
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:16px}
+.gcard{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s;cursor:pointer}
+.gcard:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.gcard .cover{aspect-ratio:16/9;width:100%;object-fit:cover;background:var(--th-bg);display:block;position:relative}
+.gcard .cover-wrap{position:relative}
+.gcard .feat{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.92);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600;color:#b5700d;backdrop-filter:blur(4px)}
+.gcard .gbody{padding:13px 14px}
+.gcard .gp{font-weight:700;font-size:13.5px}
+.gcard .gc{color:var(--ink-soft);font-size:12px;margin-top:2px;line-height:1.4}
+.gcard .gmeta{display:flex;gap:8px;margin-top:11px}
+.gmtag{flex:1;background:var(--th-bg);border-radius:7px;padding:7px 9px;text-align:center}
+.gmtag .mv{font-size:14px;font-weight:700}
+.gmtag .mv.green{color:var(--green-deep)}
+.gmtag .ml{font-size:10px;color:var(--muted);margin-top:1px}
+.gcard .gfoot{display:flex;align-items:center;justify-content:space-between;margin-top:11px;font-size:11px;color:var(--muted)}
 
-/* drawer */
-.drawer{position:fixed;top:0;right:0;width:460px;max-width:100vw;height:100vh;background:#fff;border-left:1px solid var(--line);box-shadow:-8px 0 32px rgba(20,30,60,.12);transform:translateX(100%);transition:transform .24s ease;z-index:30;display:flex;flex-direction:column}
-.drawer.is-open{transform:translateX(0)}
-.drawer-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
-.drawer-head h3{font-size:14px}
-.x{border:none;background:transparent;font-size:22px;cursor:pointer;color:var(--muted)}
-.drawer-body{flex:1;overflow-y:auto;padding:16px 20px;font-size:13px}
+/* gantt */
+.gantt{border:1px solid var(--border);border-radius:var(--r);background:#fff;overflow:hidden}
+.gantt-scroll{overflow-x:auto}
+.gantt-inner{min-width:760px}
+.gantt-headrow{display:flex;border-bottom:1px solid var(--border);background:var(--th-bg);position:sticky;top:0;z-index:2}
+.gantt-corner{width:230px;min-width:230px;padding:11px 14px;font-size:11.5px;font-weight:600;color:var(--ink-soft);border-right:1px solid var(--border)}
+.gantt-axis{flex:1;position:relative;height:40px}
+.gantt-tick{position:absolute;top:0;height:100%;border-left:1px solid var(--border-soft);font-size:10.5px;color:var(--muted);padding:6px 0 0 6px}
+.gantt-row{display:flex;border-bottom:1px solid var(--border-soft);min-height:46px}
+.gantt-row:last-child{border-bottom:0}
+.gantt-row:hover{background:#fbfcfe}
+.gantt-label{width:230px;min-width:230px;padding:8px 14px;border-right:1px solid var(--border);font-size:12px}
+.gantt-label .gp{font-weight:600;font-size:12px}
+.gantt-label .gc{color:var(--muted);font-size:11px;margin-top:1px}
+.gantt-track{flex:1;position:relative}
+.gantt-grid{position:absolute;inset:0}
+.gantt-grid span{position:absolute;top:0;height:100%;border-left:1px solid var(--border-soft)}
+.gbar{position:absolute;top:50%;transform:translateY(-50%);height:20px;border-radius:6px;display:flex;overflow:hidden;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.gbar .seg-prev{background:#bcd5f7}
+.gbar .seg-live{background:var(--blue);display:flex;align-items:center;padding:0 8px;color:#fff;font-size:10.5px;font-weight:600;white-space:nowrap;overflow:hidden}
+.gbar.evt .seg-live{background:var(--green)}
+.gbar.evt .seg-prev{background:#aee6cf}
 
-/* toast */
-.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,100px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:12px;box-shadow:0 8px 24px rgba(20,30,60,.25);z-index:40;opacity:0;transition:all .24s;pointer-events:none}
+/* tooltip */
+.gtip{position:fixed;z-index:50;background:#0f1626;color:#e7edefff;border-radius:8px;padding:10px 12px;font-size:11.5px;line-height:1.6;box-shadow:0 8px 28px rgba(0,0,0,.3);pointer-events:none;opacity:0;transition:opacity .12s;max-width:280px}
+.gtip.show{opacity:1}
+.gtip b{color:#fff}
+.gtip .ttl{font-weight:700;margin-bottom:5px;font-size:12.5px}
+.gtip .grow{display:flex;justify-content:space-between;gap:14px}
+.gtip .muted2{color:#9fb0c9}
+
+/* empty */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .ei{font-size:40px;margin-bottom:12px;opacity:.5}
+
+/* toast + modal */
+.toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,90px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13px;box-shadow:0 10px 30px rgba(16,30,54,.3);z-index:60;opacity:0;transition:all .24s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;background:rgba(15,22,38,.55);display:none;align-items:center;justify-content:center;z-index:70;padding:24px}
+.modal.show{display:flex}
+.modal img{max-width:90vw;max-height:86vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 
-.footer{padding:18px 28px;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-soft);gap:8px;flex-wrap:wrap}
+@media (max-width:760px){
+  .sidebar{display:none}
+}
 </style>
 </head>
 <body>
 
-<header class="topbar">
+<!-- ============ SIDEBAR ============ -->
+<aside class="sidebar">
   <div class="brand">
-    <div class="logo">L</div>
-    <div class="brand-text">
-      <h1>Liveops</h1>
-      <span>Google Play 推广内容 · 出海运营助手</span>
+    <div class="brand-row">
+      <div class="brand-logo">P</div>
+      <div>
+        <div class="brand-name">PlayOps Pro</div>
+      </div>
+    </div>
+    <div class="brand-sub">
+      <span class="ver-badge">v2.1 Stable</span>
+      <span class="brand-tag">推广内容运营平台</span>
     </div>
   </div>
-  <nav class="topnav">
-    <button class="topnav-btn" id="navGlossary" type="button">术语库</button>
-    <button class="topnav-btn" id="navHistory" type="button">活动记录</button>
-    <button class="topnav-btn" id="navTracking" type="button">埋点/KPI</button>
-    <a class="topnav-btn ghost" href="https://support.google.com/googleplay/android-developer/answer/12929944?hl=zh-Hans" target="_blank" rel="noopener">官方规则</a>
+  <nav class="nav">
+    <div class="nav-label">工作区</div>
+    <div class="nav-item active" data-view="engine">
+      <span class="ico">🎮</span>
+      <span>内容生产引擎
+        <span class="sub">素材输入 · AI 生成 · 多语本地化</span>
+      </span>
+    </div>
+    <div class="nav-item" data-view="registry">
+      <span class="ico">📊</span>
+      <span>活动历史与指标看板
+        <span class="sub">LiveOps Registry</span>
+      </span>
+    </div>
   </nav>
-</header>
+  <div class="sidebar-foot">
+    严格贴合 Google Play 推广内容审核规范<br>数据保存在本地浏览器，不上传服务器
+  </div>
+</aside>
 
-<div class="stepbar" id="stepbar">
-  <div class="step is-active" data-step="1"><span>1</span>素材输入</div>
-  <div class="step" data-step="2"><span>2</span>文案&amp;图像</div>
-  <div class="step" data-step="3"><span>3</span>风控关卡</div>
-  <div class="step" data-step="4"><span>4</span>多语本地化</div>
-  <div class="step" data-step="5"><span>5</span>CSV 导出</div>
-  <div class="step" data-step="6"><span>6</span>记录&amp;埋点</div>
-</div>
+<!-- ============ MAIN ============ -->
+<div class="main">
 
-<main class="stage">
+  <!-- ===== VIEW: ENGINE ===== -->
+  <div class="topbar" data-topbar="engine">
+    <div>
+      <h2>内容生产引擎</h2>
+      <div class="crumb">Creation Engine · 输入 → 智能生成 → 风控 → 本地化 → 导出</div>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn ghost sm" href="https://support.google.com/googleplay/android-developer/answer/12929944?hl=zh-Hans" target="_blank" rel="noopener">📘 内容质量指南</a>
+    </div>
+  </div>
 
-  <!-- STEP 1 -->
-  <section class="panel is-active" data-panel="1">
-    <div class="panel-head">
-      <h2>Step 1 · 需求与素材输入</h2>
-      <p>文本 / 视觉 / 模式三维输入。AI 会基于这些素材进入下一步生成。</p>
-    </div>
-    <div class="grid two">
-      <div class="card">
-        <h3>活动信息</h3>
-        <label class="field"><span class="label">应用 / 游戏名称</span>
-          <input id="inAppName" type="text" placeholder="例：Rebel Glam · 3D 螺丝解谜" /></label>
-        <label class="field"><span class="label">活动主题</span>
-          <input id="inTheme" type="text" placeholder="例：夏日海岛新赛季 / 独家皮肤礼包 / 新关卡上线" /></label>
-        <label class="field"><span class="label">活动类型</span>
-          <select id="inType">
-            <option value="new_season">新赛季 / 通行证</option>
-            <option value="new_event">限时活动 / 节日活动</option>
-            <option value="new_content">新角色 / 新关卡 / 新皮肤</option>
-            <option value="bundle">礼包 / 折扣 / 优惠</option>
-            <option value="anniversary">周年庆 / 里程碑</option>
-            <option value="comeback">回流福利 / 老用户专属</option>
-          </select></label>
-        <label class="field"><span class="label">活动周期</span>
-          <div class="row"><input id="inStart" type="date" /><span class="muted">至</span><input id="inEnd" type="date" /></div></label>
-        <label class="field"><span class="label">核心卖点（回车添加 · 最多 5 个）</span>
-          <input id="inSellingPoint" type="text" placeholder="例：限时五折 / 全新 BOSS / 独家皮肤" />
-          <div class="chips" id="sellingChips"></div></label>
-        <label class="field"><span class="label">目标人群（可选）</span>
-          <input id="inAudience" type="text" placeholder="例：休闲解谜玩家 / 30 天未登录的老用户" /></label>
-      </div>
-      <div class="card">
-        <h3>视觉素材</h3>
-        <div class="dropzone" id="dropzone">
-          <input id="inImage" type="file" accept="image/*" hidden />
-          <div class="dz-empty">
-            <div class="dz-icon">＋</div>
-            <div class="dz-text">点击或拖拽上传活动海报（草图或完成稿）</div>
-            <div class="dz-hint">建议 1200×600 / 4:3 / PNG&middot;JPG · 单文件 ≤ 5MB</div>
-          </div>
-          <img id="preview" alt="" />
-        </div>
-        <div class="meta" id="imgMeta"></div>
+  <section class="view active" data-view="engine">
+    <div class="engine-grid">
 
-        <h3 style="margin-top:18px">上架模式</h3>
-        <div class="modeswitch">
-          <label><input type="radio" name="mode" value="single" checked /> 单品上架（一个活动）</label>
-          <label><input type="radio" name="mode" value="multi" /> 多活动综合分析上架</label>
-        </div>
-
-        <h3 style="margin-top:18px">谷歌官方规则速查</h3>
-        <ul class="reflinks">
-          <li><a href="https://support.google.com/googleplay/android-developer/answer/12929944?hl=zh-Hans" target="_blank" rel="noopener">内容质量指南</a></li>
-          <li><a href="https://support.google.com/googleplay/android-developer/answer/12929029?hl=zh-Hans" target="_blank" rel="noopener">了解推广内容</a></li>
-          <li><a href="https://support.google.com/googleplay/android-developer/answer/12932123?hl=zh-Hans" target="_blank" rel="noopener">跟踪与修正不合规提交</a></li>
-          <li><a href="https://support.google.com/googleplay/android-developer/answer/12932541?hl=zh-Hans" target="_blank" rel="noopener">创建推广内容（CSV 模板）</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="actionbar">
-      <span class="status" id="step1Status">至少填写：应用名称、活动主题、1 个核心卖点。</span>
-      <button class="btn primary" id="toStep2" type="button">生成文案 &amp; 审计图片 →</button>
-    </div>
-  </section>
-
-  <!-- STEP 2 -->
-  <section class="panel" data-panel="2">
-    <div class="panel-head">
-      <h2>Step 2 · 文案创意生成 &amp; 图片智能审计</h2>
-      <p>同时处理文案与视觉资源，对齐 Google Play 精选（Featured）推荐位标准。</p>
-    </div>
-    <div class="grid two">
-      <div class="card">
-        <h3>视觉资源审计</h3>
-        <div class="audit" id="auditList"></div>
-        <div class="featured" id="featuredBadge"></div>
-      </div>
-      <div class="card">
-        <h3>初始文案（中文母语）</h3>
-        <label class="field"><span class="label">宣传口号 Tagline <em class="counter" id="cntTagline">0 / 80</em></span>
-          <input id="outTagline" type="text" maxlength="160" /></label>
-        <label class="field"><span class="label">长说明 Description <em class="counter" id="cntDesc">0 / 500</em></span>
-          <textarea id="outDesc" rows="8" maxlength="900"></textarea></label>
-        <div class="row gap">
-          <button class="btn ghost" id="regenBtn" type="button">↻ 重新生成</button>
-          <button class="btn ghost" id="shrinkBtn" type="button">⤓ 一键精简</button>
-        </div>
-      </div>
-    </div>
-    <div class="actionbar">
-      <button class="btn back" data-back="1" type="button">← 返回素材输入</button>
-      <button class="btn primary" id="toStep3" type="button">进入风控关卡 →</button>
-    </div>
-  </section>
-
-  <!-- STEP 3 -->
-  <section class="panel" data-panel="3">
-    <div class="panel-head">
-      <h2>Step 3 · 谷歌红线 &amp; 字数双重校验</h2>
-      <p>在母语阶段卡死合规与字数，避免后续多语种翻译复制垃圾资产。</p>
-    </div>
-    <div class="grid two">
-      <div class="card">
-        <h3>① 字数强制拦截</h3>
-        <div class="meterblock">
-          <div class="meter">
-            <div class="meter-head"><span>Tagline</span><span id="m1">0 / 80</span></div>
-            <div class="bar"><div class="fill" id="b1"></div></div>
-            <div class="hint" id="h1">符合谷歌字符计算规则（含空格、中英混排按字符计）。</div>
-          </div>
-          <div class="meter">
-            <div class="meter-head"><span>Description</span><span id="m2">0 / 500</span></div>
-            <div class="bar"><div class="fill" id="b2"></div></div>
-            <div class="hint" id="h2">超过限制 AI 会自动精简，禁止进入下一步。</div>
+      <!-- ===== LEFT 35% ===== -->
+      <div class="stack">
+        <!-- 1. 素材输入 -->
+        <div class="card">
+          <div class="card-h"><h3><span class="step-no">1</span>素材输入与视觉审计</h3></div>
+          <div class="card-pad">
+            <div class="field">
+              <div class="flabel">项目名称</div>
+              <input id="inProject" type="text" placeholder="Rebel Glam" />
+            </div>
+            <div class="field">
+              <div class="flabel">活动名称</div>
+              <input id="inCampaign" type="text" placeholder="例：夏季浪潮沙滩派对更新" />
+            </div>
+            <div class="field">
+              <div class="flabel">活动类型</div>
+              <select id="inType">
+                <option value="event">限时活动</option>
+                <option value="update">版本更新</option>
+                <option value="festival">节日活动</option>
+                <option value="season">新赛季 / 通行证</option>
+                <option value="bundle">礼包 / 优惠</option>
+                <option value="comeback">回流福利</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="flabel">核心卖点（回车添加 · 最多 5 个）</div>
+              <input id="inPoint" type="text" placeholder="运营灵感：全新 BOSS / 独家皮肤 / 限时礼包" />
+              <div class="chips" id="pointChips"></div>
+            </div>
+            <div class="field">
+              <div class="flabel">视觉图（16:9 海报草图或完成稿）</div>
+              <div class="dropzone" id="dropzone">
+                <input id="inImage" type="file" accept="image/*" hidden />
+                <div class="dz-in">
+                  <div class="dz-ico">☁︎</div>
+                  <div class="dz-t">点击或拖拽上传活动海报</div>
+                  <div class="dz-h">建议 1200×675 · PNG / JPG · ≤ 5MB</div>
+                </div>
+                <img id="preview" alt="" />
+              </div>
+              <div class="muted" id="imgMeta" style="margin-top:6px"></div>
+            </div>
+            <button class="btn green block" id="genBtn" type="button">✨ AI 智能生成符合指南文案</button>
           </div>
         </div>
-        <button class="btn" id="autoShrink" type="button">⤓ 自动精简到上限内</button>
+
+        <!-- 2. 母语合规与字数卡口 -->
+        <div class="card">
+          <div class="card-h"><h3><span class="step-no">2</span>母语合规与字数卡口</h3></div>
+          <div class="card-pad">
+            <div class="field">
+              <div class="flabel">宣传口号 (Tagline) <span class="counter" id="cntTag">0 / 80</span></div>
+              <input id="outTag" type="text" maxlength="160" placeholder="点击上方按钮生成，或手动输入" />
+            </div>
+            <div class="field">
+              <div class="flabel">长说明 (Description) <span class="counter" id="cntDesc">0 / 500</span></div>
+              <textarea id="outDesc" rows="5" maxlength="900" placeholder="点击上方按钮生成，或手动输入"></textarea>
+            </div>
+            <div class="row gap">
+              <button class="btn sm" id="shrinkBtn" type="button">⤓ 自动精简到上限内</button>
+              <button class="btn sm" id="rescanBtn" type="button">↻ 重新扫描合规</button>
+            </div>
+            <div class="compliance">
+              <div class="comp-head">
+                <span>政策红线扫描</span>
+                <span class="comp-badges" id="compBadges"></span>
+              </div>
+              <div class="comp-list" id="compList"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 活动登记信息（用于看板归档） -->
+        <div class="card">
+          <div class="card-h"><h3><span class="step-no">＋</span>活动登记信息（看板用）</h3></div>
+          <div class="card-pad">
+            <div class="three-col">
+              <div class="field"><div class="flabel">预览时间</div><input id="inPreview" type="date" /></div>
+              <div class="field"><div class="flabel">开始时间</div><input id="inStart" type="date" /></div>
+              <div class="field"><div class="flabel">结束时间</div><input id="inEnd" type="date" /></div>
+            </div>
+            <div class="two-col">
+              <div class="field"><div class="flabel">受众群体</div><input id="inAudience" type="text" placeholder="Gen Z / Dress-up Users" /></div>
+              <div class="field"><div class="flabel">负责人 (PIC)</div><input id="inPic" type="text" placeholder="You Yirou" /></div>
+            </div>
+            <label class="row gap" style="cursor:pointer;font-size:13px;margin-top:4px">
+              <input type="checkbox" id="inFeatured" style="width:auto" /> ⭐ 申请谷歌特推位 (Featured)
+            </label>
+          </div>
+        </div>
       </div>
-      <div class="card">
-        <h3>② 政策红线智能扫描</h3>
-        <div class="riskreport" id="riskReport"></div>
-        <div class="row gap end" style="margin-top:8px"><button class="btn ghost" id="rescanBtn" type="button">↻ 重新扫描</button></div>
+
+      <!-- ===== RIGHT 65% ===== -->
+      <div class="stack">
+        <div class="card">
+          <div class="card-h">
+            <h3><span class="step-no">3</span>全球本地化语言后台选配</h3>
+            <div class="row gap">
+              <button class="btn sm" id="langCore" type="button">核心语种</button>
+              <button class="btn sm" id="langClear" type="button">清空</button>
+            </div>
+          </div>
+          <div class="card-pad">
+            <div class="pills" id="langPills"></div>
+            <button class="btn blue block" id="translateBtn" type="button" style="margin-top:8px">🌐 一键执行多语言盲测翻译本地化</button>
+
+            <div style="margin-top:16px">
+              <div class="section-title">📋 多语言预览表格</div>
+              <div class="tablewrap">
+                <table class="i18n-table">
+                  <thead><tr><th>Language Code</th><th>Tagline</th><th>Description</th><th>状态</th></tr></thead>
+                  <tbody id="i18nBody">
+                    <tr><td colspan="4" class="empty" style="padding:34px"><div class="ei">🌍</div>选择语言后点击「一键本地化」生成多语文案</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="margin-top:16px">
+              <div class="row between">
+                <div class="section-title" style="margin:0">📤 官方批量上传 CSV 预览</div>
+                <span class="muted">列：Language Code · Tagline · Description</span>
+              </div>
+              <div class="csvbox" id="csvBox">— 暂无数据 —</div>
+            </div>
+
+            <div class="row end gap" style="margin-top:16px">
+              <button class="btn" id="archiveBtn" type="button">💾 保存数据归档</button>
+              <button class="btn green" id="csvBtn" type="button">⬇ 导出官方批量一键上传 CSV</button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="actionbar">
-      <button class="btn back" data-back="2" type="button">← 返回文案</button>
-      <span class="status" id="step3Status">通过字数 &amp; 红线校验后可继续。</span>
-      <button class="btn primary" id="toStep4" type="button" disabled>进入多语本地化 →</button>
+
     </div>
   </section>
 
-  <!-- STEP 4 -->
-  <section class="panel" data-panel="4">
-    <div class="panel-head">
-      <h2>Step 4 · 行业级多语种本地化</h2>
-      <p>勾选 Google Play 后台标准语言代码 · 挂载术语库 · 翻译后二次字数校验。</p>
+  <!-- ===== VIEW: REGISTRY ===== -->
+  <div class="topbar" data-topbar="registry" style="display:none">
+    <div>
+      <h2>活动历史与指标看板</h2>
+      <div class="crumb">LiveOps Registry · 表格 / 画册 / 甘特排期</div>
     </div>
-    <div class="grid two">
-      <div class="card">
-        <h3>选择目标语言</h3>
-        <div class="row gap">
-          <button class="btn ghost sm" id="langAll" type="button">全选</button>
-          <button class="btn ghost sm" id="langCore" type="button">核心 7 语种</button>
-          <button class="btn ghost sm" id="langNone" type="button">清空</button>
-        </div>
-        <div class="langgrid" id="langGrid"></div>
-      </div>
-      <div class="card">
-        <h3>专业术语库（Glossary）</h3>
-        <p class="muted">AI 会在翻译时锁定术语，避免直译失味。</p>
-        <table class="termtable" id="termTable">
-          <thead><tr><th>源词（中/英）</th><th>en-US</th><th>ja-JP</th><th>ko-KR</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <div class="row gap" style="margin-top:8px">
-          <input id="termSrc" type="text" placeholder="源词" />
-          <input id="termEn" type="text" placeholder="en-US" />
-          <input id="termJa" type="text" placeholder="ja-JP" />
-          <input id="termKo" type="text" placeholder="ko-KR" />
-          <button class="btn sm" id="addTerm" type="button">+ 添加</button>
-        </div>
-      </div>
+    <div class="topbar-actions">
+      <button class="btn sm" id="seedBtn" type="button">↻ 重置示例数据</button>
+      <button class="btn blue sm" id="goEngine" type="button">＋ 新建活动</button>
     </div>
-    <div class="card" style="margin-top:14px">
-      <div class="row between">
-        <h3 style="margin:0">翻译结果与字数二次校验</h3>
-        <button class="btn primary sm" id="runTranslate" type="button">▷ 开始本地化</button>
-      </div>
-      <div class="tablewrap">
-        <table class="i18ntable" id="i18nTable">
-          <thead><tr><th>语言</th><th>Tagline</th><th>长度</th><th>Description</th><th>长度</th><th>状态</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-    <div class="actionbar">
-      <button class="btn back" data-back="3" type="button">← 返回风控</button>
-      <button class="btn primary" id="toStep5" type="button" disabled>生成 CSV →</button>
-    </div>
-  </section>
+  </div>
 
-  <!-- STEP 5 -->
-  <section class="panel" data-panel="5">
-    <div class="panel-head">
-      <h2>Step 5 · 官方标准 CSV 批量导出</h2>
-      <p>列结构对齐 Google Play Console 推广内容批量导入模板。可直接上传至后台。</p>
+  <section class="view" data-view="registry">
+    <!-- filter bar -->
+    <div class="filterbar">
+      <div class="fb"><label>季度</label><select id="fQuarter"><option value="">全部季度</option></select></div>
+      <div class="fb"><label>国家 / 地区</label><select id="fGeo"><option value="">全部地区</option></select></div>
+      <div class="fb"><label>负责人</label><select id="fPic"><option value="">全部负责人</option></select></div>
+      <div class="fb"><label>是否特推</label><select id="fFeat"><option value="">全部</option><option value="yes">⭐ 仅特推</option><option value="no">非特推</option></select></div>
+      <div class="fb search"><label>&nbsp;</label><div style="position:relative"><span class="si">🔍</span><input id="fSearch" type="text" placeholder="搜索项目 / 活动名称…" /></div></div>
     </div>
-    <div class="card">
-      <div class="row between">
-        <h3 style="margin:0">CSV 预览</h3>
-        <div class="row gap">
-          <button class="btn ghost sm" id="copyCsv" type="button">复制内容</button>
-          <button class="btn primary" id="dlCsv" type="button">⤓ 下载 CSV</button>
-        </div>
-      </div>
-      <div class="csvwrap"><pre id="csvPreview"></pre></div>
-      <p class="muted">列：<code>Language Code</code> · <code>Tagline</code> · <code>Description</code>。文本含逗号或换行将自动转义。</p>
-    </div>
-    <div class="actionbar">
-      <button class="btn back" data-back="4" type="button">← 返回本地化</button>
-      <button class="btn primary" id="toStep6" type="button">归档活动 &amp; 生成埋点 →</button>
-    </div>
-  </section>
 
-  <!-- STEP 6 -->
-  <section class="panel" data-panel="6">
-    <div class="panel-head">
-      <h2>Step 6 · 配置记录、埋点与数据追踪</h2>
-      <p>活动上线不是终点。沉淀资产、对齐跨岗位、为 Data Flywheel 提供反馈。</p>
+    <!-- stats -->
+    <div class="stat-line" id="statLine"></div>
+
+    <!-- tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="table">▦ 表格视图</button>
+      <button class="tab" data-tab="gallery">🖼 画册视图</button>
+      <button class="tab" data-tab="gantt">📅 甘特排期</button>
     </div>
-    <div class="grid two">
-      <div class="card">
-        <h3>① 活动配置历史</h3>
-        <div class="tablewrap">
-          <table class="histtable" id="histTable">
-            <thead><tr><th>时间</th><th>应用</th><th>活动</th><th>类型</th><th>语种</th><th>操作</th></tr></thead>
-            <tbody></tbody>
+
+    <div class="tabpanel active" data-tab="table">
+      <div class="card" style="overflow:hidden">
+        <div class="tablewrap" style="border:0;border-radius:0">
+          <table class="reg-table">
+            <thead><tr>
+              <th>图片</th><th>项目名称</th><th>活动名称</th><th>类型</th><th>季度</th>
+              <th>预览时间</th><th>开始时间</th><th>结束时间</th><th>特推</th>
+              <th>受众群体</th><th>国家地区</th><th>曝光量</th><th>转化率</th><th>负责人</th><th></th>
+            </tr></thead>
+            <tbody id="regBody"></tbody>
           </table>
         </div>
       </div>
-      <div class="card">
-        <h3>② 跨岗位标准需求单 / 埋点字段</h3>
-        <div class="tracking" id="trackingOut"></div>
-        <button class="btn ghost sm" id="copyTracking" type="button">复制需求单</button>
-      </div>
     </div>
-    <div class="card" style="margin-top:14px">
-      <h3>③ 后续效果跟踪（KPI）</h3>
-      <div class="tablewrap">
-        <table class="kpitable" id="kpiTable">
-          <thead><tr><th>日期</th><th>曝光量</th><th>点击量</th><th>商店页 CVR</th><th>新增安装</th><th>老用户回流</th><th>D1 留存</th><th>D7 留存</th><th>备注</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="row gap" style="margin-top:8px">
-        <button class="btn sm" id="addKpi" type="button">+ 新增一行</button>
-        <button class="btn ghost sm" id="exportKpi" type="button">⤓ 导出 KPI CSV</button>
-      </div>
+
+    <div class="tabpanel" data-tab="gallery">
+      <div class="gallery" id="galleryWrap"></div>
     </div>
-    <div class="actionbar">
-      <button class="btn back" data-back="5" type="button">← 返回 CSV</button>
-      <button class="btn primary" id="archiveBtn" type="button">✓ 归档本次活动</button>
+
+    <div class="tabpanel" data-tab="gantt">
+      <div class="gantt">
+        <div class="gantt-scroll">
+          <div class="gantt-inner" id="ganttInner"></div>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:10px">浅色段 = 预览期 · 深色段 = 活动正式期（开始 → 结束）。鼠标悬浮查看各国家覆盖排期。</div>
     </div>
   </section>
 
-</main>
+</div>
 
-<!-- DRAWERS -->
-<aside class="drawer" id="drawerHistory">
-  <div class="drawer-head"><h3>活动配置历史</h3><button class="x" data-close="drawerHistory">×</button></div>
-  <div class="drawer-body" id="drawerHistoryBody"></div>
-</aside>
-<aside class="drawer" id="drawerGlossary">
-  <div class="drawer-head"><h3>术语库（全局）</h3><button class="x" data-close="drawerGlossary">×</button></div>
-  <div class="drawer-body" id="drawerGlossaryBody"></div>
-</aside>
-<aside class="drawer" id="drawerTracking">
-  <div class="drawer-head"><h3>埋点 / KPI 总览</h3><button class="x" data-close="drawerTracking">×</button></div>
-  <div class="drawer-body" id="drawerTrackingBody"></div>
-</aside>
-
+<div class="gtip" id="gtip"></div>
+<div class="modal" id="imgModal"><img id="modalImg" alt="" /></div>
 <div class="toast" id="toast"></div>
 
-<footer class="footer">
-  <span>Liveops · 用于谷歌商店推广内容创作、合规审计与批量上架的运营辅助工具</span>
-  <span class="muted">所有数据均保存在你本地浏览器，不上传任何服务器。</span>
-</footer>
-
 <script>
-/* ==================================================================
- *  Liveops · 单文件版（可双击直接打开）
- *  ================================================================== */
+/* ====================================================================
+ *  PlayOps Pro · 单文件版（双击即可在浏览器打开）
+ * ==================================================================== */
 
-/* ---------- chars.js · Google 字符计数 ---------- */
-const LIMITS = { tagline: 80, description: 500 };
-function countChars(str){ if(!str) return 0; return Array.from(String(str)).length; }
-function classifyLength(len,limit){ if(len===0) return 'empty'; if(len>limit) return 'over'; if(len>limit*0.92) return 'warn'; return 'ok'; }
-function hardTrim(str,limit){ const a=Array.from(String(str||'')); return a.length<=limit?str:a.slice(0,limit).join(''); }
-function smartShrink(str,limit,opts={}){
-  const tail = opts.tail ?? '';
-  if(!str) return '';
-  if(countChars(str)<=limit) return str;
-  const parts = String(str).split(/([。！？!?.;；])/);
-  let out='';
-  for(let i=0;i<parts.length;i+=2){
-    const seg=(parts[i]||'')+(parts[i+1]||'');
-    if(countChars(out+seg+tail)>limit) break;
-    out+=seg;
-  }
-  if(!out) out = hardTrim(str, limit-countChars(tail));
-  out = out.trim();
-  if(countChars(out+tail)>limit) out = hardTrim(out, limit-countChars(tail));
-  return (out+tail).trim();
+/* ---------- 字符计数（Google UTF-16 规则）---------- */
+const LIMITS={tagline:80,description:500};
+function countChars(s){return s?Array.from(String(s)).length:0;}
+function classifyLen(n,lim){if(n===0)return'empty';if(n>lim)return'over';if(n>lim*0.92)return'warn';return'ok';}
+function hardTrim(s,lim){const a=Array.from(String(s||''));return a.length<=lim?s:a.slice(0,lim).join('');}
+function smartShrink(s,lim){
+  if(!s)return'';if(countChars(s)<=lim)return s;
+  const parts=String(s).split(/([。！？!?.;；])/);let out='';
+  for(let i=0;i<parts.length;i+=2){const seg=(parts[i]||'')+(parts[i+1]||'');if(countChars(out+seg)>lim)break;out+=seg;}
+  if(!out)out=hardTrim(s,lim);
+  out=out.trim();if(countChars(out)>lim)out=hardTrim(out,lim);
+  return out.trim();
 }
 
-/* ---------- risk.js · 政策红线 ---------- */
-const RULES = [
-  { id:'fake_button', level:'high', name:'虚假按钮 / 仿系统提示',
-    regex:/(点击下载|立即下载|click\s*to\s*(download|install)|tap\s*to\s*install|download\s*now)/i,
-    hint:'禁止在文案或图片中使用「点击下载 / 立即安装」等仿 CTA 按钮的字样，谷歌会判定为误导。' },
-  { id:'price_in_copy', level:'high', name:'硬性价格 / 折扣百分比',
-    regex:/(\$\s*\d+|￥\s*\d+|€\s*\d+|\d+\s*(off|折)|\d+\s*%\s*(off|折扣|优惠)?)/i,
-    hint:'推广内容不允许在文案中直接出现价格数字或硬性折扣（"50% OFF"），改为「限时福利 / 超值礼包」等表达。' },
-  { id:'exclusive_to_play', level:'high', name:'与 Google Play 平台相关的虚假声明',
-    regex:/(google\s*play\s*独家|官方推荐|Google\s*精选|google\s*editor'?s?\s*choice)/i,
-    hint:'禁止伪称「Google Play 独家 / 官方推荐 / Editor\\u0027s Choice」，除非确已获得相应荣誉。' },
-  { id:'misleading_claim', level:'high', name:'夸张 / 误导性宣称',
-    regex:/(全球第[一1]|世界第[一1]|宇宙第[一1]|no\.\s*1|number\s*one|best\s*ever|绝对(免费|赢|不输))/i,
-    hint:'避免「全球第一 / No.1 / 绝对免费」等无法证伪的宣称，谷歌会要求提供证据，否则会被下线。' },
-  { id:'all_caps', level:'med', name:'全大写 / 过度标点',
-    test:(t)=>{ if(/!{3,}|\?{3,}|！{3,}|？{3,}/.test(t)) return true; const m=t.match(/\b[A-Z]{3,}\b/g); return m&&m.length>=3; },
-    hint:'避免全大写英文段落或连续感叹号，谷歌将其判定为 spam 风格。' },
-  { id:'urgency_spam', level:'med', name:'紧迫感堆砌词',
-    regex:/(最后机会|仅此一次|错过即止|don'?t\s*miss|last\s*chance|hurry\s*up|act\s*now){2,}/i,
-    hint:'同类紧迫感词汇请控制在 1 处，过度堆砌会被判定为 clickbait。' },
-  { id:'emoji_spam', level:'med', name:'Emoji 过多',
-    test:(t)=>{ const re=/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu; const m=t.match(re); return m&&m.length>=5; },
-    hint:'单条文案的 emoji 建议 ≤ 3 个，避免影响阅读和合规审核。' },
-  { id:'fake_reward', level:'med', name:'兑现承诺 / 现金奖励',
-    regex:/(送现金|cash\s*reward|赢取真钱|withdraw\s*real\s*money|拿钱回家)/i,
-    hint:'推广内容不可承诺真实金钱奖励，涉及博彩或现金会被立即拒审。' },
-  { id:'placeholder_left', level:'low', name:'占位符未替换',
-    regex:/(\{\{?\s*\w+\s*\}?\}|\[\s*todo\s*\]|xxx{2,})/i,
-    hint:'检测到尚未替换的占位符（{...} / [TODO] / XXX），上线前请确认。' },
-  { id:'app_name_missing', level:'low', name:'未出现应用名',
-    test:(t,ctx)=>!!ctx&&!!ctx.appName&&!t.includes(ctx.appName),
-    hint:'建议在 Tagline 或 Description 中至少出现一次应用 / 游戏名称，便于用户识别。' },
-  { id:'no_cta', level:'low', name:'缺少行动引导',
-    test:(t)=>!/(立即|马上|开启|加入|挑战|体验|领取|参与|join|play|try|claim|enjoy)/i.test(t),
-    hint:'加入一个温和的行动引导动词（如「立即加入 / 体验」），可提升点击率。' },
+/* ---------- 政策红线 ---------- */
+const RULES=[
+  {id:'fake_button',level:'high',name:'虚假按钮 / 仿系统提示',regex:/(点击下载|立即下载|click\s*to\s*(download|install)|tap\s*to\s*install|download\s*now)/i,hint:'禁止使用「点击下载 / 立即安装」等仿 CTA 按钮字样，谷歌判定为误导。'},
+  {id:'price',level:'high',name:'硬性价格 / 折扣百分比',regex:/(\$\s*\d+|￥\s*\d+|€\s*\d+|\d+\s*(off|折)|\d+\s*%\s*(off|折扣|优惠)?)/i,hint:'不允许文案直接出现价格或硬折扣（如 50% OFF），改用「限时福利 / 超值礼包」。'},
+  {id:'exclusive',level:'high',name:'Google Play 平台虚假声明',regex:/(google\s*play\s*独家|官方推荐|Google\s*精选|google\s*editor'?s?\s*choice)/i,hint:'禁止伪称「Google Play 独家 / 官方推荐 / Editor’s Choice」。'},
+  {id:'misleading',level:'high',name:'夸张 / 误导性宣称',regex:/(全球第[一1]|世界第[一1]|宇宙第[一1]|no\.\s*1|number\s*one|best\s*ever|绝对(免费|赢|不输))/i,hint:'避免「全球第一 / No.1 / 绝对免费」等无法证伪的宣称。'},
+  {id:'caps',level:'med',name:'全大写 / 过度标点',test:t=>{if(/!{3,}|\?{3,}|！{3,}|？{3,}/.test(t))return true;const m=t.match(/\b[A-Z]{3,}\b/g);return m&&m.length>=3;},hint:'避免全大写英文段落或连续感叹号，会被判为 spam。'},
+  {id:'urgency',level:'med',name:'紧迫感堆砌词',regex:/(最后机会|仅此一次|错过即止|don'?t\s*miss|last\s*chance|hurry\s*up|act\s*now){2,}/i,hint:'同类紧迫感词控制在 1 处，过度堆砌判为 clickbait。'},
+  {id:'emoji',level:'med',name:'Emoji 过多',test:t=>{const m=t.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu);return m&&m.length>=5;},hint:'单条文案 emoji 建议 ≤ 3 个。'},
+  {id:'reward',level:'med',name:'现金 / 兑现承诺',regex:/(送现金|cash\s*reward|赢取真钱|withdraw\s*real\s*money|拿钱回家)/i,hint:'不可承诺真实金钱奖励，涉博彩 / 现金会被拒审。'},
+  {id:'placeholder',level:'low',name:'占位符未替换',regex:/(\{\{?\s*\w+\s*\}?\}|\[\s*todo\s*\]|xxx{2,})/i,hint:'检测到未替换占位符（{...} / [TODO] / XXX）。'},
+  {id:'noname',level:'low',name:'未出现应用名',test:(t,c)=>!!c&&!!c.project&&!t.includes(c.project),hint:'建议在文案中至少出现一次项目 / 应用名称。'},
+  {id:'nocta',level:'low',name:'缺少行动引导',test:t=>!/(立即|马上|开启|加入|挑战|体验|领取|参与|join|play|try|claim|enjoy)/i.test(t),hint:'加入温和的行动引导动词可提升点击率。'},
 ];
-function scan(text, ctx={}){
-  const findings=[]; const src=text||'';
-  for(const r of RULES){
-    let hit=false, snippet='';
-    if(r.regex){ const m=src.match(r.regex); if(m){ hit=true; snippet=m[0]; } }
-    else if(typeof r.test==='function'){ hit = !!r.test(src,ctx); }
-    if(hit) findings.push({ ...r, snippet });
-  }
-  return findings;
-}
-function summarize(findings){
-  const s={high:0,med:0,low:0};
-  for(const f of findings) s[f.level]++;
-  return { score:s, blocked: s.high>0 };
+function scan(text,ctx={}){
+  const out=[],src=text||'';
+  for(const r of RULES){let hit=false,sn='';
+    if(r.regex){const m=src.match(r.regex);if(m){hit=true;sn=m[0];}}
+    else if(r.test){hit=!!r.test(src,ctx);}
+    if(hit)out.push({...r,snippet:sn});}
+  return out;
 }
 
-/* ---------- i18n.js · 多语种本地化 ---------- */
-const LANGUAGES = [
-  {code:'en-US',name:'English (US)',core:true},
-  {code:'en-GB',name:'English (UK)'},
-  {code:'ja-JP',name:'日本語',core:true},
-  {code:'ko-KR',name:'한국어',core:true},
-  {code:'zh-TW',name:'繁體中文',core:true},
-  {code:'zh-HK',name:'繁體中文（香港）'},
-  {code:'de-DE',name:'Deutsch',core:true},
-  {code:'fr-FR',name:'Français',core:true},
-  {code:'es-ES',name:'Español (ES)',core:true},
-  {code:'es-419',name:'Español (Latinoamérica)'},
-  {code:'pt-BR',name:'Português (Brasil)'},
-  {code:'pt-PT',name:'Português (PT)'},
-  {code:'it-IT',name:'Italiano'},
-  {code:'ru-RU',name:'Русский'},
-  {code:'tr-TR',name:'Türkçe'},
-  {code:'ar',name:'العربية'},
-  {code:'th-TH',name:'ไทย'},
-  {code:'vi-VN',name:'Tiếng Việt'},
-  {code:'id-ID',name:'Bahasa Indonesia'},
-  {code:'ms-MY',name:'Bahasa Melayu'},
-  {code:'pl-PL',name:'Polski'},
-  {code:'nl-NL',name:'Nederlands'},
-  {code:'hi-IN',name:'हिन्दी'},
-  {code:'fil-PH',name:'Filipino'},
-  {code:'cs-CZ',name:'Čeština'},
-  {code:'sv-SE',name:'Svenska'},
-  {code:'fa',name:'فارسی'},
-  {code:'he-IL',name:'עברית'},
+/* ---------- 语言 & 模板 ---------- */
+const LANGUAGES=[
+  {code:'en-US',name:'English (US)',core:1},{code:'ja-JP',name:'日本語',core:1},
+  {code:'ko-KR',name:'한국어',core:1},{code:'zh-TW',name:'繁體中文',core:1},
+  {code:'de-DE',name:'Deutsch',core:1},{code:'fr-FR',name:'Français',core:1},
+  {code:'es-ES',name:'Español',core:1},{code:'pt-BR',name:'Português (BR)'},
+  {code:'it-IT',name:'Italiano'},{code:'ru-RU',name:'Русский'},
+  {code:'th-TH',name:'ไทย'},{code:'vi-VN',name:'Tiếng Việt'},
+  {code:'id-ID',name:'Bahasa ID'},{code:'tr-TR',name:'Türkçe'},
 ];
-const DEFAULT_GLOSSARY = [
+const GLOSSARY=[
   {src:'抽卡','en-US':'Summon','ja-JP':'ガチャ','ko-KR':'뽑기'},
   {src:'赛季','en-US':'Season','ja-JP':'シーズン','ko-KR':'시즌'},
   {src:'礼包','en-US':'Bundle','ja-JP':'パック','ko-KR':'패키지'},
   {src:'通行证','en-US':'Pass','ja-JP':'パス','ko-KR':'패스'},
   {src:'皮肤','en-US':'Skin','ja-JP':'スキン','ko-KR':'스킨'},
-  {src:'活动','en-US':'Event','ja-JP':'イベント','ko-KR':'이벤트'},
-  {src:'关卡','en-US':'Level','ja-JP':'ステージ','ko-KR':'레벨'},
-  {src:'上线','en-US':'Live now','ja-JP':'開催中','ko-KR':'진행 중'},
   {src:'限时','en-US':'Limited-Time','ja-JP':'期間限定','ko-KR':'기간 한정'},
-  {src:'回归','en-US':'Comeback','ja-JP':'復帰','ko-KR':'복귀'},
 ];
+const TPL={
+  event:{'zh-CN':{t:'{p}「{c}」限时活动开启',d:'{p} 限时活动「{c}」上线！参与即可解锁独家奖励与限定挑战。{pts} 立即加入，别错过。'},
+    'en-US':{t:'"{c}" Limited-Time Event in {p}',d:'Join the "{c}" event in {p}. Take on exclusive challenges and grab limited rewards. {pts} Jump in before it ends.'},
+    'ja-JP':{t:'{p}「{c}」期間限定イベント開催',d:'{p} で「{c}」イベント開催中。限定ミッションに挑戦して特別報酬をゲット。{pts} 今すぐ参加しよう。'},
+    'ko-KR':{t:'{p} "{c}" 기간 한정 이벤트',d:'{p}에서 "{c}" 이벤트 진행 중! 한정 미션에 도전하고 특별 보상을 받으세요. {pts} 지금 참여하세요.'},
+    'zh-TW':{t:'{p}「{c}」限時活動開跑',d:'{p} 限時活動「{c}」開跑！參加即可解鎖獨家獎勵與限定挑戰。{pts} 立即加入，別錯過。'},
+    'de-DE':{t:'Limitiertes Event "{c}" in {p}',d:'Nimm am Event "{c}" in {p} teil. Meistere exklusive Herausforderungen und sichere dir limitierte Belohnungen. {pts} Sei dabei, bevor es endet.'},
+    'fr-FR':{t:'Événement limité "{c}" sur {p}',d:'Participe à l\'événement "{c}" sur {p}. Relève des défis exclusifs et obtiens des récompenses limitées. {pts} Connecte-toi avant la fin.'},
+    'es-ES':{t:'Evento limitado "{c}" en {p}',d:'Participa en el evento "{c}" de {p}. Supera desafíos exclusivos y consigue recompensas limitadas. {pts} Únete antes de que acabe.'}},
+  update:{'zh-CN':{t:'{p} 全新版本「{c}」上线',d:'{p} 新版本「{c}」正式登场！体验全新玩法、角色与场景。{pts} 现在登录即可解锁。'},
+    'en-US':{t:'New Update "{c}" is live in {p}',d:'The "{c}" update is now live in {p}. Explore fresh gameplay, new characters and scenes. {pts} Log in to unlock everything.'},
+    'ja-JP':{t:'{p} 新バージョン「{c}」登場',d:'{p} に新アップデート「{c}」が登場。新しいゲームプレイ、キャラ、ステージを楽しもう。{pts} 今すぐログイン。'},
+    'ko-KR':{t:'{p} 신규 업데이트 "{c}"',d:'{p}에 "{c}" 업데이트가 적용되었습니다. 새로운 플레이, 캐릭터, 무대를 경험하세요. {pts} 지금 로그인하세요.'},
+    'zh-TW':{t:'{p} 全新版本「{c}」上線',d:'{p} 新版本「{c}」正式登場！體驗全新玩法、角色與場景。{pts} 立即登入即可解鎖。'},
+    'de-DE':{t:'Neues Update "{c}" in {p}',d:'Das Update "{c}" ist in {p} verfügbar. Entdecke frisches Gameplay, neue Charaktere und Schauplätze. {pts} Logge dich ein.'},
+    'fr-FR':{t:'Nouvelle mise à jour "{c}" sur {p}',d:'La mise à jour "{c}" arrive sur {p}. Découvre un nouveau gameplay et des personnages inédits. {pts} Connecte-toi pour tout débloquer.'},
+    'es-ES':{t:'Nueva actualización "{c}" en {p}',d:'La actualización "{c}" ya está en {p}. Descubre nueva jugabilidad, personajes y escenarios. {pts} Inicia sesión para desbloquearlo.'}},
+  festival:{'zh-CN':{t:'{p}「{c}」节日庆典开启',d:'{p} 节日活动「{c}」上线，与全球玩家共同庆祝！{pts} 登录即可领取节日专属奖励。'},
+    'en-US':{t:'{p} "{c}" Festival celebrations',d:'Celebrate "{c}" in {p} with players worldwide! {pts} Log in for exclusive festival rewards.'},
+    'ja-JP':{t:'{p}「{c}」フェス開催',d:'{p} で「{c}」フェス開催！世界中のプレイヤーと祝おう。{pts} ログインで限定報酬をゲット。'},
+    'ko-KR':{t:'{p} "{c}" 페스티벌',d:'{p}에서 "{c}" 페스티벌 개최! 전 세계 플레이어와 함께 즐기세요. {pts} 로그인하고 한정 보상을 받으세요.'},
+    'zh-TW':{t:'{p}「{c}」節日慶典開跑',d:'{p} 節日活動「{c}」上線，與全球玩家一同慶祝！{pts} 登入即可領取節日專屬獎勵。'},
+    'de-DE':{t:'{p} "{c}" Festival',d:'Feiere "{c}" in {p} mit Spielern weltweit! {pts} Logge dich für exklusive Festival-Belohnungen ein.'},
+    'fr-FR':{t:'Festival "{c}" sur {p}',d:'Célèbre "{c}" sur {p} avec des joueurs du monde entier ! {pts} Connecte-toi pour des récompenses exclusives.'},
+    'es-ES':{t:'Festival "{c}" en {p}',d:'¡Celebra "{c}" en {p} con jugadores de todo el mundo! {pts} Inicia sesión y recibe recompensas exclusivas.'}},
+  season:{'zh-CN':{t:'{p} 全新赛季「{c}」开启',d:'{p} 新赛季「{c}」现已上线！全新通行证、专属皮肤、限定关卡等你挑战。{pts} 立即体验。'},
+    'en-US':{t:'New Season "{c}" is live in {p}',d:'The "{c}" season is here in {p}. Unlock the new Pass, exclusive skins and limited levels. {pts} Claim your rewards now.'},
+    'ja-JP':{t:'{p} 新シーズン「{c}」開幕',d:'{p} に新シーズン「{c}」登場。新パス、限定スキン、特別ステージが解放。{pts} 今すぐ参加。'},
+    'ko-KR':{t:'{p} 신규 시즌 "{c}" 오픈',d:'{p}의 새 시즌 "{c}" 시작! 새 패스, 한정 스킨, 특별 스테이지를 만나보세요. {pts} 지금 참여하세요.'},
+    'zh-TW':{t:'{p} 全新賽季「{c}」開啟',d:'{p} 新賽季「{c}」上線！全新通行證、專屬造型、限定關卡等你挑戰。{pts} 立即體驗。'},
+    'de-DE':{t:'Neue Saison "{c}" in {p}',d:'Die Saison "{c}" startet in {p}! Schalte den neuen Pass, exklusive Skins und Level frei. {pts} Sichere dir Belohnungen.'},
+    'fr-FR':{t:'Nouvelle saison "{c}" sur {p}',d:'La saison "{c}" arrive sur {p}. Débloque le Pass, des skins exclusifs et des niveaux limités. {pts} Récupère tes récompenses.'},
+    'es-ES':{t:'Nueva temporada "{c}" en {p}',d:'¡La temporada "{c}" llega a {p}! Desbloquea el Pase, skins exclusivos y niveles limitados. {pts} Reclama tus recompensas.'}},
+  bundle:{'zh-CN':{t:'{p}「{c}」超值礼包上架',d:'{p} 限时礼包「{c}」现已上架。{pts} 一次入手多重福利，活动期间快来领取。'},
+    'en-US':{t:'Limited "{c}" Bundle in {p}',d:'The "{c}" bundle is available for a limited time in {p}. {pts} Grab multiple rewards in one go.'},
+    'ja-JP':{t:'{p}「{c}」お得パック登場',d:'{p} で「{c}」パックが期間限定登場。{pts} まとめてお得に入手、お見逃しなく。'},
+    'ko-KR':{t:'{p} "{c}" 한정 패키지',d:'{p}에서 "{c}" 패키지를 기간 한정으로 만나보세요. {pts} 한 번에 다양한 혜택을 받으세요.'},
+    'zh-TW':{t:'{p}「{c}」超值禮包上架',d:'{p} 限時禮包「{c}」上架囉。{pts} 一次入手多重福利，活動期間快來領取。'},
+    'de-DE':{t:'Limitiertes "{c}"-Paket in {p}',d:'Das "{c}"-Paket ist kurzzeitig in {p} verfügbar. {pts} Sichere dir mehrere Belohnungen auf einmal.'},
+    'fr-FR':{t:'Pack "{c}" limité sur {p}',d:'Le pack "{c}" est dispo en édition limitée sur {p}. {pts} Récupère plusieurs récompenses d\'un coup.'},
+    'es-ES':{t:'Pack "{c}" limitado en {p}',d:'El pack "{c}" llega a {p} por tiempo limitado. {pts} Llévate varias recompensas de una vez.'}},
+  comeback:{'zh-CN':{t:'欢迎回归 {p}「{c}」',d:'想念你！{p} 为回归玩家准备了「{c}」专属福利。{pts} 立即回到游戏，领取归来礼包。'},
+    'en-US':{t:'Welcome back to {p}: "{c}"',d:'We missed you! {p} offers "{c}" rewards for returning players. {pts} Come back and claim your comeback bundle.'},
+    'ja-JP':{t:'おかえり {p}「{c}」',d:'会いたかった！{p} は復帰プレイヤー専用「{c}」報酬を用意。{pts} 今すぐ戻って受け取ろう。'},
+    'ko-KR':{t:'{p}로 돌아온 당신께 "{c}"',d:'보고 싶었어요! {p}이 복귀 플레이어를 위해 "{c}" 보상을 준비했어요. {pts} 지금 돌아와 받으세요.'},
+    'zh-TW':{t:'歡迎回歸 {p}「{c}」',d:'想念你！{p} 為回歸玩家準備了「{c}」專屬福利。{pts} 立即回到遊戲，領取回歸禮包。'},
+    'de-DE':{t:'Willkommen zurück in {p}: "{c}"',d:'Wir haben dich vermisst! {p} bietet "{c}"-Belohnungen für Rückkehrer. {pts} Komm zurück und sichere dir dein Paket.'},
+    'fr-FR':{t:'Bon retour sur {p} : "{c}"',d:'Tu nous as manqué ! {p} propose des récompenses "{c}" aux joueurs de retour. {pts} Reviens et récupère ton pack.'},
+    'es-ES':{t:'Bienvenido de vuelta a {p}: "{c}"',d:'¡Te echamos de menos! {p} ofrece recompensas "{c}" para quienes vuelven. {pts} Vuelve y reclama tu pack.'}},
+};
+function joinPts(pts,code){
+  if(!pts.length)return'';
+  const m={'zh-CN':'亮点：'+pts.join('、')+'。','zh-TW':'亮點：'+pts.join('、')+'。','ja-JP':'見どころ：'+pts.join('、')+'。','ko-KR':'하이라이트: '+pts.join(', ')+'.','en-US':'Highlights: '+pts.join(', ')+'.','de-DE':'Highlights: '+pts.join(', ')+'.','fr-FR':'Temps forts : '+pts.join(', ')+'.','es-ES':'Lo destacado: '+pts.join(', ')+'.'};
+  return m[code]||('Highlights: '+pts.join(', ')+'.');
+}
+function fill(str,ctx,code){return str.replaceAll('{p}',ctx.project||'Your App').replaceAll('{c}',ctx.campaign||ctx.theme||'New Update').replaceAll('{pts}',joinPts(ctx.points||[],code));}
+function fallbackTr(text,code){let o=String(text||'');for(const g of GLOSSARY){const v=g[code];if(v&&o.includes(g.src))o=o.split(g.src).join(v);}return o;}
+function genNative(ctx){
+  const tpl=(TPL[ctx.type]||TPL.event)['zh-CN'];
+  return {tag:smartShrink(fill(tpl.t,ctx,'zh-CN'),LIMITS.tagline),desc:smartShrink(fill(tpl.d,ctx,'zh-CN'),LIMITS.description)};
+}
+function localize(ctx,codes){
+  const map=TPL[ctx.type]||TPL.event;const out=[];
+  const zh=map['zh-CN'];
+  const baseT=ctx.sourceTag||fill(zh.t,ctx,'zh-CN'),baseD=ctx.sourceDesc||fill(zh.d,ctx,'zh-CN');
+  for(const code of codes){
+    let tag,desc,byTpl=!!map[code];
+    if(byTpl){tag=fill(map[code].t,ctx,code);desc=fill(map[code].d,ctx,code);}
+    else{tag=fallbackTr(baseT,code);desc=fallbackTr(baseD,code);}
+    let trimmed=false;
+    if(countChars(tag)>LIMITS.tagline){tag=smartShrink(tag,LIMITS.tagline);trimmed=true;}
+    if(countChars(desc)>LIMITS.description){desc=smartShrink(desc,LIMITS.description);trimmed=true;}
+    out.push({code,name:LANGUAGES.find(l=>l.code===code)?.name||code,tag,desc,tagLen:countChars(tag),descLen:countChars(desc),byTpl,trimmed,ok:countChars(tag)<=LIMITS.tagline&&countChars(desc)<=LIMITS.description});
+  }
+  return out;
+}
 
-const T = {
-  new_season:{
-    'zh-CN':{tag:'{name} 全新赛季「{theme}」正式开启', desc:'{name} 新赛季「{theme}」现已上线！全新通行证、专属皮肤、限定关卡等你来挑战。{points} 立即体验，赢取丰厚奖励。'},
-    'en-US':{tag:'New Season "{theme}" is now live in {name}', desc:'The brand-new "{theme}" season is here in {name}. Unlock the new Pass, exclusive skins and limited-time levels. {points} Jump in and claim your rewards now.'},
-    'ja-JP':{tag:'{name} 新シーズン「{theme}」開幕！', desc:'{name} に新シーズン「{theme}」が登場。新パス、限定スキン、特別ステージが続々解放。{points} 今すぐ参加して報酬をゲットしよう。'},
-    'ko-KR':{tag:'{name} 신규 시즌 "{theme}" 오픈', desc:'{name}의 새 시즌 "{theme}"이 시작되었습니다. 새로운 패스, 한정 스킨, 특별 스테이지를 만나보세요. {points} 지금 참여하고 보상을 받으세요.'},
-    'zh-TW':{tag:'{name} 全新賽季「{theme}」正式登場', desc:'{name} 全新賽季「{theme}」上線囉！全新通行證、專屬造型、限定關卡等你挑戰。{points} 立即體驗，贏取豐厚獎勵。'},
-    'de-DE':{tag:'Neue Saison "{theme}" ist jetzt in {name} live', desc:'Die neue Saison "{theme}" startet in {name}! Schalte den neuen Pass, exklusive Skins und limitierte Level frei. {points} Jetzt einsteigen und Belohnungen sichern.'},
-    'fr-FR':{tag:'Nouvelle saison "{theme}" en cours sur {name}', desc:'La saison "{theme}" arrive sur {name}. Débloque le nouveau Pass, des skins exclusifs et des niveaux limités. {points} Rejoins-nous et récupère tes récompenses.'},
-    'es-ES':{tag:'Nueva temporada "{theme}" en {name}', desc:'¡La temporada "{theme}" ya está disponible en {name}! Desbloquea el nuevo Pase, skins exclusivos y niveles limitados. {points} Únete ya y reclama tus recompensas.'},
-    'pt-BR':{tag:'Nova temporada "{theme}" no {name}', desc:'A nova temporada "{theme}" chegou ao {name}! Desbloqueie o Passe, skins exclusivas e fases por tempo limitado. {points} Entre agora e garanta suas recompensas.'},
-  },
-  new_event:{
-    'zh-CN':{tag:'{name}「{theme}」限时活动开启', desc:'{name} 限时活动「{theme}」上线！参与即可解锁独家奖励与限定挑战。{points} 立即加入，活动结束前别错过。'},
-    'en-US':{tag:'"{theme}" Limited-Time Event begins in {name}', desc:'Join the "{theme}" event in {name}. Take on exclusive challenges and grab limited rewards. {points} Jump in before the event ends.'},
-    'ja-JP':{tag:'{name}「{theme}」期間限定イベント開催', desc:'{name} で「{theme}」イベント開催中。限定ミッションに挑戦して特別報酬をゲット。{points} 終了前に今すぐ参加しよう。'},
-    'ko-KR':{tag:'{name} "{theme}" 기간 한정 이벤트 시작', desc:'{name}에서 "{theme}" 이벤트가 진행 중입니다. 한정 미션에 도전하고 특별한 보상을 받으세요. {points} 종료 전 지금 참여하세요.'},
-    'zh-TW':{tag:'{name}「{theme}」限時活動開跑', desc:'{name} 限時活動「{theme}」開跑！參加即可解鎖獨家獎勵與限定挑戰。{points} 立即加入，別錯過。'},
-    'de-DE':{tag:'Limitiertes Event "{theme}" in {name} gestartet', desc:'Nimm am Event "{theme}" in {name} teil. Meistere exklusive Herausforderungen und sichere dir limitierte Belohnungen. {points} Sei dabei, bevor das Event endet.'},
-    'fr-FR':{tag:'Événement limité "{theme}" sur {name}', desc:'Participe à l\'événement "{theme}" sur {name}. Relève des défis exclusifs et obtiens des récompenses limitées. {points} Connecte-toi avant la fin.'},
-    'es-ES':{tag:'Evento limitado "{theme}" en {name}', desc:'Participa en el evento "{theme}" de {name}. Supera desafíos exclusivos y consigue recompensas limitadas. {points} Únete antes de que termine.'},
-    'pt-BR':{tag:'Evento por tempo limitado "{theme}" no {name}', desc:'Participe do evento "{theme}" no {name}. Encare desafios exclusivos e leve recompensas limitadas. {points} Entre antes do fim.'},
-  },
-  new_content:{
-    'zh-CN':{tag:'{name} 全新「{theme}」上线', desc:'{name} 新内容「{theme}」正式登场！体验全新玩法、角色与场景。{points} 现在登录即可解锁。'},
-    'en-US':{tag:'Brand-new "{theme}" added to {name}', desc:'New content "{theme}" is now live in {name}. Explore fresh gameplay, characters and scenes. {points} Log in to unlock everything.'},
-    'ja-JP':{tag:'{name} 新コンテンツ「{theme}」追加', desc:'{name} に新コンテンツ「{theme}」が登場。新しいゲームプレイ、キャラ、ステージを楽しもう。{points} 今すぐログインして解放。'},
-    'ko-KR':{tag:'{name} 신규 콘텐츠 "{theme}" 추가', desc:'{name}에 신규 콘텐츠 "{theme}"이 추가되었습니다. 새로운 플레이, 캐릭터, 무대를 경험하세요. {points} 지금 로그인해 잠금 해제하세요.'},
-    'zh-TW':{tag:'{name} 全新「{theme}」登場', desc:'{name} 新內容「{theme}」正式登場！體驗全新玩法、角色與場景。{points} 立即登入即可解鎖。'},
-    'de-DE':{tag:'Neuer Inhalt "{theme}" in {name}', desc:'Der neue Inhalt "{theme}" ist in {name} verfügbar. Entdecke frisches Gameplay, neue Charaktere und Schauplätze. {points} Logge dich ein, um alles freizuschalten.'},
-    'fr-FR':{tag:'Nouveau contenu "{theme}" sur {name}', desc:'Le contenu "{theme}" arrive sur {name}. Découvre un nouveau gameplay, des personnages et des décors inédits. {points} Connecte-toi pour tout débloquer.'},
-    'es-ES':{tag:'Nuevo contenido "{theme}" en {name}', desc:'Ya disponible "{theme}" en {name}. Descubre nueva jugabilidad, personajes y escenarios. {points} Inicia sesión para desbloquearlo todo.'},
-    'pt-BR':{tag:'Novo conteúdo "{theme}" no {name}', desc:'O conteúdo "{theme}" chegou ao {name}. Curta novos modos, personagens e cenários. {points} Entre agora para desbloquear tudo.'},
-  },
-  bundle:{
-    'zh-CN':{tag:'{name}「{theme}」超值礼包限时上架', desc:'{name} 限时礼包「{theme}」现已上架。{points} 一次入手多重福利，活动期间快来领取。'},
-    'en-US':{tag:'Limited-Time "{theme}" Bundle in {name}', desc:'The "{theme}" bundle is available for a limited time in {name}. {points} Grab multiple rewards in one go before it\'s gone.'},
-    'ja-JP':{tag:'{name}「{theme}」お得パック期間限定', desc:'{name} で「{theme}」パックが期間限定で登場。{points} まとめてお得に入手するチャンス、お見逃しなく。'},
-    'ko-KR':{tag:'{name} "{theme}" 한정 패키지', desc:'{name}에서 "{theme}" 패키지를 기간 한정으로 만나보세요. {points} 한 번에 다양한 혜택을 받아가세요.'},
-    'zh-TW':{tag:'{name}「{theme}」超值禮包限時上架', desc:'{name} 限時禮包「{theme}」上架囉。{points} 一次入手多重福利，活動期間快來領取。'},
-    'de-DE':{tag:'Limitiertes "{theme}"-Paket in {name}', desc:'Das "{theme}"-Paket ist für kurze Zeit in {name} verfügbar. {points} Sichere dir mehrere Belohnungen auf einen Schlag.'},
-    'fr-FR':{tag:'Pack "{theme}" limité sur {name}', desc:'Le pack "{theme}" est dispo en édition limitée sur {name}. {points} Récupère plusieurs récompenses d\'un coup avant la fin.'},
-    'es-ES':{tag:'Pack "{theme}" limitado en {name}', desc:'El pack "{theme}" llega a {name} por tiempo limitado. {points} Llévate varias recompensas de una sola vez.'},
-    'pt-BR':{tag:'Pacote "{theme}" por tempo limitado em {name}', desc:'O pacote "{theme}" chegou ao {name} por tempo limitado. {points} Garanta várias recompensas de uma vez só.'},
-  },
-  anniversary:{
-    'zh-CN':{tag:'{name}「{theme}」周年庆典开启', desc:'感谢一路同行！{name} 周年庆「{theme}」上线，与全球玩家共同庆祝。{points} 登录即可领取庆典专属奖励。'},
-    'en-US':{tag:'{name} Anniversary: "{theme}" celebrations', desc:'Thanks for being with us! Celebrate the "{theme}" anniversary of {name} with players worldwide. {points} Log in for exclusive anniversary rewards.'},
-    'ja-JP':{tag:'{name}「{theme}」周年記念開催', desc:'いつも遊んでくれてありがとう！{name} の周年「{theme}」を世界中のプレイヤーと祝おう。{points} ログインで限定報酬をゲット。'},
-    'ko-KR':{tag:'{name} 주년 "{theme}" 축제', desc:'함께해 주셔서 감사합니다! {name}의 주년 "{theme}"을 전 세계 플레이어와 함께 축하해요. {points} 로그인하고 한정 보상을 받으세요.'},
-    'zh-TW':{tag:'{name}「{theme}」週年慶典開跑', desc:'感謝一路同行！{name} 週年慶「{theme}」上線，與全球玩家一同慶祝。{points} 登入即可領取慶典專屬獎勵。'},
-    'de-DE':{tag:'{name} Jubiläum: "{theme}"', desc:'Danke, dass du dabei bist! Feiere das "{theme}"-Jubiläum von {name} mit Spielern weltweit. {points} Logge dich für exklusive Belohnungen ein.'},
-    'fr-FR':{tag:'Anniversaire {name}: "{theme}"', desc:'Merci d\'être avec nous ! Célèbre l\'anniversaire "{theme}" de {name} avec des joueurs du monde entier. {points} Connecte-toi pour des récompenses exclusives.'},
-    'es-ES':{tag:'Aniversario de {name}: "{theme}"', desc:'¡Gracias por acompañarnos! Celebra el aniversario "{theme}" de {name} junto a jugadores de todo el mundo. {points} Inicia sesión y recibe recompensas exclusivas.'},
-    'pt-BR':{tag:'Aniversário do {name}: "{theme}"', desc:'Obrigado por estar com a gente! Comemore o aniversário "{theme}" do {name} com jogadores do mundo todo. {points} Entre e receba recompensas exclusivas.'},
-  },
-  comeback:{
-    'zh-CN':{tag:'欢迎回归 {name}「{theme}」', desc:'想念你！{name} 为回归玩家准备了「{theme}」专属福利。{points} 立即回到游戏，领取你的归来礼包。'},
-    'en-US':{tag:'Welcome back to {name}: "{theme}"', desc:'We missed you! {name} is offering "{theme}" rewards just for returning players. {points} Come back and claim your comeback bundle today.'},
-    'ja-JP':{tag:'おかえりなさい {name}「{theme}」', desc:'会いたかった！{name} では復帰プレイヤー専用の「{theme}」報酬を用意。{points} 今すぐ戻って復帰パックを受け取ろう。'},
-    'ko-KR':{tag:'{name}로 돌아온 당신을 위해 "{theme}"', desc:'보고 싶었어요! {name}이 복귀 플레이어를 위해 "{theme}" 보상을 준비했습니다. {points} 지금 돌아와 복귀 패키지를 받으세요.'},
-    'zh-TW':{tag:'歡迎回歸 {name}「{theme}」', desc:'想念你！{name} 為回歸玩家準備了「{theme}」專屬福利。{points} 立即回到遊戲，領取你的回歸禮包。'},
-    'de-DE':{tag:'Willkommen zurück in {name}: "{theme}"', desc:'Wir haben dich vermisst! {name} bietet "{theme}"-Belohnungen für Rückkehrer. {points} Komm zurück und sichere dir dein Comeback-Paket.'},
-    'fr-FR':{tag:'Bon retour sur {name} : "{theme}"', desc:'Tu nous as manqué ! {name} propose des récompenses "{theme}" aux joueurs de retour. {points} Reviens et récupère ton pack de retour.'},
-    'es-ES':{tag:'Bienvenido de vuelta a {name}: "{theme}"', desc:'¡Te echamos de menos! {name} ofrece recompensas "{theme}" para jugadores que vuelven. {points} Vuelve y reclama tu pack de regreso.'},
-    'pt-BR':{tag:'Bem-vindo de volta ao {name}: "{theme}"', desc:'Sentimos sua falta! {name} preparou recompensas "{theme}" para quem está voltando. {points} Volte e garanta seu pacote de regresso.'},
-  },
+/* ---------- CSV ---------- */
+function csvEsc(v){const s=v==null?'':String(v);return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function buildCsv(rows){const out=[['Language Code','Tagline','Description'].join(',')];for(const r of rows)out.push([r.code||'',r.tag||'',r.desc||''].map(csvEsc).join(','));return '﻿'+out.join('\r\n');}
+function download(name,content,type='text/csv;charset=utf-8'){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),800);}
+
+/* ---------- 国旗 ---------- */
+const LANG2GEO={'en-US':'US','en-GB':'GB','ja-JP':'JP','ko-KR':'KR','zh-TW':'TW','de-DE':'DE','fr-FR':'FR','es-ES':'ES','pt-BR':'BR','it-IT':'IT','ru-RU':'RU','th-TH':'TH','vi-VN':'VN','id-ID':'ID','tr-TR':'TR'};
+function flag(cc){if(!cc||cc.length!==2)return'🏳️';return cc.toUpperCase().replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt(0)));}
+
+/* ---------- storage ---------- */
+const K_REG='playops.registry';
+function loadLS(k,fb){try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}}
+function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+/* ---------- 缩略图生成 ---------- */
+function svgThumb(text,c1,c2,emoji){
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${c1}'/><stop offset='1' stop-color='${c2}'/></linearGradient></defs><rect width='320' height='180' fill='url(#g)'/><text x='20' y='52' font-size='34'>${emoji}</text><text x='20' y='150' font-family='Segoe UI,sans-serif' font-size='24' font-weight='700' fill='#ffffff'>${text}</text></svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
+function compressImage(file,maxW=420){
+  return new Promise((res)=>{
+    const img=new Image();img.onload=()=>{
+      const sc=Math.min(1,maxW/img.width);const w=Math.round(img.width*sc),h=Math.round(img.height*sc);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      try{res(cv.toDataURL('image/jpeg',0.72));}catch{res('');}
+    };img.onerror=()=>res('');img.src=URL.createObjectURL(file);
+  });
+}
+
+/* ---------- 示例数据 ---------- */
+function seedData(){
+  return [
+    {id:'s1',project:'Rebel Glam',campaign:'夏季浪潮沙滩派对更新',type:'update',preview:'2026-06-01',start:'2026-06-10',end:'2026-06-30',featured:true,audience:'Gen Z / Dress-up Users',geos:['US','JP','KR','DE'],impressions:450000,cvr:14.2,pic:'You Yirou',thumb:svgThumb('Rebel Glam','#ff7eb3','#ff758c','👗')},
+    {id:'s2',project:'Rebel Glam',campaign:'仲夏抽卡狂欢节',type:'event',preview:'2026-05-20',start:'2026-05-25',end:'2026-06-08',featured:false,audience:'付费抽卡用户',geos:['US','JP','TW'],impressions:320000,cvr:9.8,pic:'Cheng Ying',thumb:svgThumb('Rebel Glam','#a18cd1','#fbc2eb','🎰')},
+    {id:'s3',project:'Puzzle Bloom',campaign:'春日花园周年庆',type:'festival',preview:'2026-03-15',start:'2026-03-20',end:'2026-04-05',featured:true,audience:'休闲解谜玩家',geos:['US','DE','FR','KR'],impressions:610000,cvr:18.5,pic:'You Yirou',thumb:svgThumb('Puzzle Bloom','#43e97b','#38f9d7','🌸')},
+    {id:'s4',project:'Speed Racer X',campaign:'S3 霓虹赛季通行证',type:'season',preview:'2026-04-25',start:'2026-05-01',end:'2026-05-31',featured:false,audience:'竞速核心玩家',geos:['US','KR','BR'],impressions:280000,cvr:7.4,pic:'Liang Hao',thumb:svgThumb('Speed Racer X','#4facfe','#00f2fe','🏎️')},
+    {id:'s5',project:'Mythic Saga',campaign:'诸神黄昏限时副本',type:'event',preview:'2026-06-05',start:'2026-06-12',end:'2026-06-26',featured:true,audience:'RPG 重度玩家',geos:['JP','KR','TW','US'],impressions:540000,cvr:16.1,pic:'Cheng Ying',thumb:svgThumb('Mythic Saga','#30cfd0','#330867','⚔️')},
+    {id:'s6',project:'Cozy Cafe',campaign:'夏日冰品上新',type:'festival',preview:'2026-06-15',start:'2026-06-20',end:'2026-07-10',featured:false,audience:'模拟经营玩家',geos:['US','JP','DE'],impressions:190000,cvr:6.2,pic:'Wang Lin',thumb:svgThumb('Cozy Cafe','#f6d365','#fda085','🍧')},
+  ];
+}
+function getRegistry(){let r=loadLS(K_REG,null);if(!r){r=seedData();saveLS(K_REG,r);}return r;}
+function setRegistry(r){saveLS(K_REG,r);}
+
+/* ---------- 工具 ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m,ms=2200){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms);}
+function quarterOf(dateStr){if(!dateStr)return'';const d=new Date(dateStr);if(isNaN(d))return'';return d.getFullYear()+'-Q'+(Math.floor(d.getMonth()/3)+1);}
+function fmtNum(n){return Number(n||0).toLocaleString('en-US');}
+const TYPE_LABEL={event:'限时活动',update:'版本更新',festival:'节日活动',season:'新赛季',bundle:'礼包',comeback:'回流'};
+const TYPE_CLS={update:'update',event:'event',festival:'festival'};
+
+/* ==================================================================
+ *  STATE
+ * ================================================================== */
+const state={
+  view:'engine',
+  points:[],
+  imageData:'',
+  copy:{tag:'',desc:''},
+  selectedLangs:['en-US','ja-JP','ko-KR','de-DE'],
+  translations:[],
+  csv:'',
+  tab:'table',
 };
 
-function joinPoints(points, langCode){
-  if(!points.length) return '';
-  const map = {
-    'zh-CN':p=>'亮点：'+p.join('、')+'。',
-    'zh-TW':p=>'亮點：'+p.join('、')+'。',
-    'en-US':p=>'Highlights: '+p.join(', ')+'.',
-    'en-GB':p=>'Highlights: '+p.join(', ')+'.',
-    'ja-JP':p=>'見どころ：'+p.join('、')+'。',
-    'ko-KR':p=>'하이라이트: '+p.join(', ')+'.',
-    'de-DE':p=>'Highlights: '+p.join(', ')+'.',
-    'fr-FR':p=>'Temps forts : '+p.join(', ')+'.',
-    'es-ES':p=>'Lo destacado: '+p.join(', ')+'.',
-    'es-419':p=>'Lo destacado: '+p.join(', ')+'.',
-    'pt-BR':p=>'Destaques: '+p.join(', ')+'.',
-    'pt-PT':p=>'Destaques: '+p.join(', ')+'.',
-    'it-IT':p=>'In evidenza: '+p.join(', ')+'.',
-    'ru-RU':p=>'Главное: '+p.join(', ')+'.',
-    'tr-TR':p=>'Öne çıkanlar: '+p.join(', ')+'.',
-    'th-TH':p=>'ไฮไลต์: '+p.join(', ')+'.',
-    'vi-VN':p=>'Điểm nổi bật: '+p.join(', ')+'.',
-    'id-ID':p=>'Sorotan: '+p.join(', ')+'.',
-    'ms-MY':p=>'Sorotan: '+p.join(', ')+'.',
-  };
-  const fn = map[langCode] || map['en-US'];
-  return fn(points);
-}
-function fillSlot(str, ctx){
-  return str.replaceAll('{name}', ctx.appName||'')
-            .replaceAll('{theme}', ctx.theme||'')
-            .replaceAll('{points}', joinPoints(ctx.points||[], 'zh-CN'));
-}
-function fallbackTranslate(text, langCode, glossary){
-  let out = String(text||'');
-  for(const term of glossary||[]){
-    const t = term[langCode];
-    if(t && term.src && out.includes(term.src)) out = out.split(term.src).join(t);
-  }
-  return out;
-}
-function makeText(type, langCode, ctx){
-  const map = T[type] || T.new_event;
-  const slot = map[langCode] || map['en-US'] || map['zh-CN'];
-  const fill = (str) => str.replaceAll('{name}', ctx.appName||'Your App')
-                           .replaceAll('{theme}', ctx.theme||'New Update')
-                           .replaceAll('{points}', joinPoints(ctx.points||[], langCode));
-  return { tag: fill(slot.tag), desc: fill(slot.desc) };
-}
-function localize(ctx, langCodes, glossary){
-  const type = ctx.activityType || 'new_event';
-  const out = [];
-  const zhBase = T[type]?.['zh-CN'];
-  const baseTag = ctx.sourceTag || (zhBase ? fillSlot(zhBase.tag, ctx) : '');
-  const baseDesc = ctx.sourceDesc || (zhBase ? fillSlot(zhBase.desc, ctx) : '');
-  for(const code of langCodes){
-    let tag, desc;
-    const byTemplate = !!(T[type] && T[type][code]);
-    if(byTemplate){ const m = makeText(type, code, ctx); tag=m.tag; desc=m.desc; }
-    else { tag = fallbackTranslate(baseTag, code, glossary); desc = fallbackTranslate(baseDesc, code, glossary); }
-    let trimmed = false;
-    if(countChars(tag) > LIMITS.tagline){ tag = smartShrink(tag, LIMITS.tagline); trimmed = true; }
-    if(countChars(desc) > LIMITS.description){ desc = smartShrink(desc, LIMITS.description); trimmed = true; }
-    out.push({
-      code,
-      name: LANGUAGES.find(l=>l.code===code)?.name || code,
-      tag, desc,
-      tagLen: countChars(tag),
-      descLen: countChars(desc),
-      byTemplate, trimmed,
-      ok: countChars(tag)<=LIMITS.tagline && countChars(desc)<=LIMITS.description,
-    });
-  }
-  return out;
-}
-
-/* ---------- csv.js ---------- */
-function csvEscape(v){
-  const s = v==null?'':String(v);
-  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
-}
-function buildCsv(rows){
-  const header = ['Language Code','Tagline','Description'];
-  const lines = [header.map(csvEscape).join(',')];
-  for(const r of rows) lines.push([r.code||'', r.tag||'', r.desc||''].map(csvEscape).join(','));
-  return '﻿' + lines.join('\r\n');
-}
-function downloadFile(filename, content, type='text/csv;charset=utf-8'){
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url), 1000);
-}
-
-/* ---------- storage.js ---------- */
-const K_HIST='liveops.history', K_GLOSS='liveops.glossary', K_KPI='liveops.kpi';
-function loadLS(key, fb){ try{ const r=localStorage.getItem(key); return r?JSON.parse(r):fb; }catch{ return fb; } }
-function saveLS(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
-function getHistory(){ return loadLS(K_HIST, []); }
-function addHistory(entry){
-  const list = getHistory();
-  const item = { id:'a_'+Date.now().toString(36), createdAt:new Date().toISOString(), ...entry };
-  list.unshift(item); if(list.length>50) list.length=50;
-  saveLS(K_HIST, list); return item;
-}
-function deleteHistory(id){ saveLS(K_HIST, getHistory().filter(x=>x.id!==id)); }
-function getGlossary(defaults){
-  const list = loadLS(K_GLOSS, null);
-  if(!list){ saveLS(K_GLOSS, defaults||[]); return defaults||[]; }
-  return list;
-}
-function setGlossary(list){ saveLS(K_GLOSS, list); }
-function getKpi(){ return loadLS(K_KPI, []); }
-function setKpiLS(rows){ saveLS(K_KPI, rows); }
-
-/* ---------- image-audit.js ---------- */
-function readImage(file){
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    img.onload = ()=>resolve(img);
-    img.onerror = reject;
-    img.src = URL.createObjectURL(file);
-  });
-}
-function inspectCanvas(img){
-  const W=256, H=Math.round(W*img.height/img.width);
-  const cv=document.createElement('canvas');
-  cv.width=W; cv.height=H;
-  const ctx=cv.getContext('2d', { willReadFrequently:true });
-  ctx.drawImage(img,0,0,W,H);
-  const data=ctx.getImageData(0,0,W,H).data;
-  const gray=new Float32Array(W*H);
-  for(let i=0,p=0;i<data.length;i+=4,p++) gray[p]=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
-  let edgeStrong=0,sum=0,sum2=0;
-  for(let y=1;y<H-1;y++){
-    for(let x=1;x<W-1;x++){
-      const i=y*W+x;
-      const gx=gray[i+1]-gray[i-1], gy=gray[i+W]-gray[i-W];
-      const g=Math.abs(gx)+Math.abs(gy);
-      if(g>60) edgeStrong++;
-      sum+=gray[i]; sum2+=gray[i]*gray[i];
-    }
-  }
-  const N=(W-2)*(H-2);
-  const mean=sum/N;
-  const variance=Math.max(0, sum2/N - mean*mean);
-  return {
-    width:img.width, height:img.height,
-    aspectRatio:img.width/img.height,
-    edgeDensity: edgeStrong/N,
-    brightness: mean/255,
-    contrast: Math.sqrt(variance)/255,
-  };
-}
-async function auditImage(file){
-  const base = [{
-    id:'filesize', title:'文件大小',
-    desc:'建议单文件 ≤ 5MB，控制台对推广素材有上传限制。',
-    state: file.size<=5*1024*1024 ? 'pass':'warn',
-    tag: (file.size/1024).toFixed(0)+' KB',
-  }];
-  let img;
-  try{ img = await readImage(file); }
-  catch{
-    return {
-      items:[...base, { id:'load', title:'图片解析', state:'fail', desc:'无法解析图片，请检查格式。', tag:'失败' }],
-      featured:{ state:'fail', msg:'图片解析失败，无法进入 Featured 评估。' },
-    };
-  }
-  const s = inspectCanvas(img);
-  const aspectOk = Math.abs(s.aspectRatio-4/3)<0.15 || Math.abs(s.aspectRatio-16/9)<0.15 || Math.abs(s.aspectRatio-2/1)<0.15;
-  const sizeOk = img.width>=1080;
-  const items=[
-    ...base,
-    { id:'dim', title:'尺寸与比例',
-      desc:'推荐 1200×600 / 4:3 / 16:9 比例，宽度 ≥ 1080 px 才能进入精选位。',
-      state:(sizeOk && aspectOk)?'pass':(sizeOk?'warn':'fail'),
-      tag:`${img.width}×${img.height} (${s.aspectRatio.toFixed(2)})` },
-    { id:'text_ratio', title:'文字 / 图标占比',
-      desc:'强边缘密度可反映文字与图标占比，过高会被判为信息冗余。',
-      state: s.edgeDensity<0.06?'pass':(s.edgeDensity<0.10?'warn':'fail'),
-      tag:(s.edgeDensity*100).toFixed(1)+'%' },
-    { id:'contrast', title:'对比度',
-      desc:'主体与背景对比度 ≥ 0.18，确保小尺寸缩略图下仍可识别。',
-      state: s.contrast>=0.18?'pass':'warn',
-      tag: s.contrast.toFixed(2) },
-    { id:'brightness', title:'亮度',
-      desc:'整体亮度建议在 0.25 ~ 0.80 之间，避免全黑 / 过曝。',
-      state:(s.brightness>=0.25 && s.brightness<=0.80)?'pass':'warn',
-      tag: s.brightness.toFixed(2) },
-    { id:'fake_button', title:'无「点击下载」虚假按钮',
-      desc:'请人工确认：图片中不能有模仿 Google Play 系统下载按钮的元素。',
-      state:'todo', tag:'需人工确认' },
-    { id:'no_price', title:'无硬性价格 / 折扣百分比',
-      desc:'请人工确认：图片不要直接出现「$ / ¥ / 50% OFF」等具体价格折扣。',
-      state:'todo', tag:'需人工确认' },
-    { id:'no_promo_icon', title:'无促销利益点贴图',
-      desc:'请人工确认：避免大量「红包、奖杯、礼盒」等促销利益点贴图堆叠。',
-      state:'todo', tag:'需人工确认' },
-  ];
-  const auto = items.filter(i=>!['fake_button','no_price','no_promo_icon'].includes(i.id));
-  const fails = auto.filter(i=>i.state==='fail').length;
-  const warns = auto.filter(i=>i.state==='warn').length;
-  let featured;
-  if(fails>0) featured={ state:'fail', msg:'❌ 暂不符合 Google Play Featured 推荐位标准，请优先修复红色项。' };
-  else if(warns>1) featured={ state:'warn', msg:'⚠ 接近 Featured 标准，建议优化黄色项以提升曝光概率。' };
-  else featured={ state:'pass', msg:'✅ 符合 Google Play Featured 推荐位的客观规则（尺寸/比例/对比/文字密度）。' };
-  return { items, featured };
-}
-
-/* ---------- generate.js ---------- */
-function generateChineseCopy(ctx){
-  const { tag, desc } = makeText(ctx.activityType||'new_event', 'zh-CN', {
-    appName: ctx.appName||'你的应用',
-    theme: ctx.theme||'新活动',
-    points: ctx.points||[],
-  });
-  return { tag: smartShrink(tag, LIMITS.tagline), desc: smartShrink(desc, LIMITS.description) };
+/* ==================================================================
+ *  导航
+ * ================================================================== */
+function switchView(v){
+  state.view=v;
+  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+  $$('.view').forEach(s=>s.classList.toggle('active',s.dataset.view===v));
+  $$('[data-topbar]').forEach(t=>t.style.display=t.dataset.topbar===v?'':'none');
+  if(v==='registry')renderRegistry();
+  $('.main').scrollTo({top:0,behavior:'smooth'});
 }
 
 /* ==================================================================
- *  app.js · UI 编排
- *  ================================================================== */
-const $ = (s, r=document)=>r.querySelector(s);
-const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
-
-const state = {
-  step:1, step1Ready:false,
-  imageFile:null, audit:null,
-  copy:{tag:'',desc:''},
-  riskFindings:[], riskOk:false,
-  selectedLangs:['en-US','ja-JP','ko-KR','zh-TW','de-DE','fr-FR','es-ES'],
-  translations:[],
-  glossary: getGlossary(DEFAULT_GLOSSARY),
-  kpi: getKpi(),
-  csv:'',
-};
-
-const sellingPoints = [];
-
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-function toast(msg, ms=2000){
-  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), ms);
+ *  ENGINE
+ * ================================================================== */
+function renderPoints(){
+  $('#pointChips').innerHTML=state.points.map((p,i)=>`<span class="chip">${esc(p)}<button data-i="${i}">×</button></span>`).join('');
+  $$('#pointChips button').forEach(b=>b.onclick=()=>{state.points.splice(+b.dataset.i,1);renderPoints();});
 }
-function setStep(n){
-  state.step=n;
-  $$('.step').forEach(el=>{
-    const i=+el.dataset.step;
-    el.classList.toggle('is-active', i===n);
-    el.classList.toggle('is-done', i<n);
-  });
-  $$('.panel').forEach(el=>el.classList.toggle('is-active', +el.dataset.panel===n));
-  window.scrollTo({top:0, behavior:'smooth'});
-}
-
-/* ---- Step 1 ---- */
-function renderChips(){
-  $('#sellingChips').innerHTML = sellingPoints.map((p,i)=>
-    `<span class="chip">${escapeHtml(p)}<button data-i="${i}">×</button></span>`).join('');
-  $$('#sellingChips button').forEach(b=>b.addEventListener('click', ()=>{
-    sellingPoints.splice(+b.dataset.i, 1); renderChips(); checkStep1();
-  }));
-  checkStep1();
-}
-function checkStep1(){
-  const ok = !!$('#inAppName').value.trim() && !!$('#inTheme').value.trim() && sellingPoints.length>=1;
-  state.step1Ready = ok;
-  $('#toStep2').disabled = !ok;
-  $('#step1Status').textContent = ok ? '✓ 已就绪，可进入下一步生成文案' : '至少填写：应用名称、活动主题、1 个核心卖点。';
-  return ok;
-}
-function collectCtx(){
-  return {
-    appName: $('#inAppName').value.trim(),
-    theme: $('#inTheme').value.trim(),
-    activityType: $('#inType').value,
-    startDate: $('#inStart').value,
-    endDate: $('#inEnd').value,
-    points:[...sellingPoints],
-    audience: $('#inAudience').value.trim(),
-    mode: ($$('input[name="mode"]').find(r=>r.checked)?.value) || 'single',
-  };
-}
-function bindStep1(){
-  $('#inAppName').addEventListener('input', checkStep1);
-  $('#inTheme').addEventListener('input', checkStep1);
-  const sp = $('#inSellingPoint');
-  sp.addEventListener('keydown', e=>{
-    if(e.key!=='Enter') return;
-    e.preventDefault();
-    const v = sp.value.trim();
-    if(!v) return;
-    if(sellingPoints.length>=5){ toast('最多 5 个核心卖点'); return; }
-    if(!sellingPoints.includes(v)) sellingPoints.push(v);
-    sp.value=''; renderChips();
-  });
-  const dz=$('#dropzone'), input=$('#inImage');
-  dz.addEventListener('click', ()=>input.click());
-  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('is-drag'); });
-  dz.addEventListener('dragleave', ()=>dz.classList.remove('is-drag'));
-  dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('is-drag'); const f=e.dataTransfer.files?.[0]; if(f) handleImageFile(f); });
-  input.addEventListener('change', ()=>{ const f=input.files?.[0]; if(f) handleImageFile(f); });
-  $('#toStep2').addEventListener('click', async ()=>{ if(!checkStep1()) return; await proceedToStep2(); });
-}
-function handleImageFile(file){
-  if(!file.type.startsWith('image/')){ toast('仅支持图片文件'); return; }
-  state.imageFile = file;
-  $('#preview').src = URL.createObjectURL(file);
-  $('#dropzone').classList.add('has-img');
-  $('#imgMeta').textContent = `${file.name} · ${(file.size/1024).toFixed(0)} KB`;
-}
-
-/* ---- Step 2 ---- */
-async function proceedToStep2(){
-  const ctx = collectCtx();
-  const c = generateChineseCopy(ctx);
-  state.copy.tag = c.tag; state.copy.desc = c.desc;
-  $('#outTagline').value = c.tag; $('#outDesc').value = c.desc;
-  refreshCounters();
-  await runAudit();
-  setStep(2);
-}
-async function runAudit(){
-  const wrap = $('#auditList'), featured = $('#featuredBadge');
-  if(!state.imageFile){
-    wrap.innerHTML = `<div class="audit-item"><span class="dot todo"></span>
-      <div><div class="title">未上传图片</div>
-      <div class="desc">仅做文案合规，不影响后续流程。建议补充图片以争取 Featured 推荐位。</div></div>
-      <span class="tag">跳过</span></div>`;
-    featured.className='featured';
-    featured.innerHTML='<strong>图片未上传</strong> · 跳过 Featured 评估';
-    state.audit=null; return;
-  }
-  wrap.innerHTML = '<div class="audit-item"><span class="dot todo"></span><div><div class="title">分析中…</div></div><span class="tag">…</span></div>';
-  try{
-    state.audit = await auditImage(state.imageFile);
-    wrap.innerHTML = state.audit.items.map(it=>`
-      <div class="audit-item ${it.state}">
-        <span class="dot ${it.state}"></span>
-        <div>
-          <div class="title">${escapeHtml(it.title)}</div>
-          <div class="desc">${escapeHtml(it.desc)}</div>
-        </div>
-        <span class="tag">${escapeHtml(it.tag)}</span>
-      </div>`).join('');
-    featured.className='featured is-'+state.audit.featured.state;
-    featured.innerHTML = `<strong>Featured 推荐位评估：</strong> ${escapeHtml(state.audit.featured.msg)}`;
-  }catch(e){
-    wrap.innerHTML = `<div class="audit-item fail"><span class="dot fail"></span>
-      <div><div class="title">分析失败</div><div class="desc">${escapeHtml(e?.message||'未知错误')}</div></div>
-      <span class="tag">错误</span></div>`;
-  }
+function ctxOf(){
+  return {project:$('#inProject').value.trim()||'Rebel Glam',campaign:$('#inCampaign').value.trim(),type:$('#inType').value,points:[...state.points]};
 }
 function refreshCounters(){
-  const tag=$('#outTagline').value, desc=$('#outDesc').value;
-  const tLen=countChars(tag), dLen=countChars(desc);
-  const tCls=classifyLength(tLen,LIMITS.tagline), dCls=classifyLength(dLen,LIMITS.description);
-  const c1=$('#cntTagline'), c2=$('#cntDesc');
-  c1.textContent=`${tLen} / ${LIMITS.tagline}`;
-  c2.textContent=`${dLen} / ${LIMITS.description}`;
-  c1.className='counter'+(tCls==='over'?' over':tCls==='warn'?' warn':'');
-  c2.className='counter'+(dCls==='over'?' over':dCls==='warn'?' warn':'');
+  const t=countChars($('#outTag').value),d=countChars($('#outDesc').value);
+  const c1=$('#cntTag'),c2=$('#cntDesc');
+  c1.textContent=`${t} / ${LIMITS.tagline}`;c2.textContent=`${d} / ${LIMITS.description}`;
+  const k1=classifyLen(t,LIMITS.tagline),k2=classifyLen(d,LIMITS.description);
+  c1.className='counter'+(k1==='over'?' over':k1==='warn'?' warn':'');
+  c2.className='counter'+(k2==='over'?' over':k2==='warn'?' warn':'');
 }
-function bindStep2(){
-  $('#outTagline').addEventListener('input', ()=>{ state.copy.tag=$('#outTagline').value; refreshCounters(); });
-  $('#outDesc').addEventListener('input', ()=>{ state.copy.desc=$('#outDesc').value; refreshCounters(); });
-  $('#regenBtn').addEventListener('click', ()=>{
-    const c = generateChineseCopy(collectCtx());
-    state.copy=c; $('#outTagline').value=c.tag; $('#outDesc').value=c.desc;
-    refreshCounters(); toast('已基于素材重新生成');
+function runScan(){
+  const ctx=ctxOf();
+  const findings=[];const seen=new Set();
+  for(const f of [...scan($('#outTag').value,ctx),...scan($('#outDesc').value,ctx)]){if(seen.has(f.id))continue;seen.add(f.id);findings.push(f);}
+  const sc={high:0,med:0,low:0};findings.forEach(f=>sc[f.level]++);
+  const b=$('#compBadges');
+  if(!findings.length){b.innerHTML='<span class="cbadge ok">✓ 全部通过</span>';}
+  else{b.innerHTML=(sc.high?`<span class="cbadge h">${sc.high} 高危</span>`:'')+(sc.med?`<span class="cbadge m">${sc.med} 中危</span>`:'')+(sc.low?`<span class="cbadge l">${sc.low} 提示</span>`:'');}
+  const list=$('#compList');
+  if(!findings.length){list.innerHTML=`<div class="risk low" style="border-left-color:var(--green);background:#f4fbf7"><div class="rh"><span style="color:var(--green-deep)">✅ 未发现违规命中</span></div><div class="rb">已扫描虚假按钮、价格折扣、夸张宣称、占位符等 11 项规则，全部通过。</div></div>`;}
+  else{const lvl={high:'高风险 · 阻塞',med:'中风险',low:'低风险 · 建议'};list.innerHTML=findings.map(f=>`<div class="risk ${f.level}"><div class="rh"><span>${esc(f.name)}</span><span style="font-size:11px;opacity:.8">${lvl[f.level]}</span></div><div class="rb">${esc(f.hint)}${f.snippet?` · 命中：<code>${esc(f.snippet)}</code>`:''}</div></div>`).join('');}
+  return {findings,blocked:sc.high>0};
+}
+function renderLangPills(){
+  $('#langPills').innerHTML=LANGUAGES.map(l=>{
+    const on=state.selectedLangs.includes(l.code);
+    return `<label class="pill ${on?'on':''}" data-code="${l.code}"><input type="checkbox" ${on?'checked':''}/><span class="flag">${flag(LANG2GEO[l.code])}</span><span>${esc(l.name)}</span><span class="code">${l.code}</span></label>`;
+  }).join('');
+  $$('#langPills .pill').forEach(p=>p.onclick=e=>{
+    e.preventDefault();const code=p.dataset.code;
+    if(state.selectedLangs.includes(code))state.selectedLangs=state.selectedLangs.filter(c=>c!==code);
+    else state.selectedLangs.push(code);
+    renderLangPills();
   });
-  $('#shrinkBtn').addEventListener('click', ()=>{
-    $('#outTagline').value = smartShrink($('#outTagline').value, LIMITS.tagline);
-    $('#outDesc').value = smartShrink($('#outDesc').value, LIMITS.description);
-    state.copy.tag=$('#outTagline').value; state.copy.desc=$('#outDesc').value;
-    refreshCounters(); toast('已精简到上限内');
-  });
-  $('#toStep3').addEventListener('click', ()=>proceedToStep3());
 }
-
-/* ---- Step 3 ---- */
-function proceedToStep3(){ setStep(3); runRiskGate(); }
-function updateMeter(mSel, bSel, hSel, len, limit){
-  const ratio = Math.min(1, len/limit);
-  const fill = $(bSel);
-  $(mSel).textContent = `${len} / ${limit}`;
-  fill.style.width = (ratio*100).toFixed(1)+'%';
-  fill.className = 'fill'+(len>limit?' over':(ratio>0.92?' warn':''));
-  const h = $(hSel);
-  if(len===0){ h.textContent='尚未填写。'; h.className='hint'; }
-  else if(len>limit){ h.textContent=`超出 ${len-limit} 字符，禁止进入下一步。点击「自动精简」可一键修复。`; h.className='hint over'; }
-  else{ h.textContent=`剩余 ${limit-len} 字符 · 符合 Google 字符计算规则。`; h.className='hint'; }
-}
-function runRiskGate(){
-  const tag = state.copy.tag || $('#outTagline').value;
-  const desc = state.copy.desc || $('#outDesc').value;
-  const tLen = countChars(tag), dLen = countChars(desc);
-  updateMeter('#m1','#b1','#h1',tLen,LIMITS.tagline);
-  updateMeter('#m2','#b2','#h2',dLen,LIMITS.description);
-  const lenOk = tLen<=LIMITS.tagline && dLen<=LIMITS.description && tLen>0 && dLen>0;
-  const ctx = collectCtx();
-  const findings = [...scan(tag, ctx), ...scan(desc, ctx)];
-  const seen = new Set(); const uniq=[];
-  for(const f of findings){ if(seen.has(f.id)) continue; seen.add(f.id); uniq.push(f); }
-  state.riskFindings = uniq;
-  renderRisk(uniq);
-  const { blocked } = summarize(uniq);
-  state.riskOk = lenOk && !blocked;
-  $('#toStep4').disabled = !state.riskOk;
-  $('#step3Status').textContent = state.riskOk
-    ? '✓ 已通过双重校验，可进入多语本地化'
-    : (!lenOk ? '字数超限：请先点击「自动精简」' : '存在高风险命中，需先修复才能进入翻译');
-}
-function renderRisk(findings){
-  const wrap = $('#riskReport');
-  if(!findings.length){
-    wrap.innerHTML = `<div class="risk-item pass">
-      <div class="head"><strong>✅ 未发现命中</strong><span class="lvl">通过</span></div>
-      <div class="body">已扫描虚假按钮、价格百分比、夸张宣称、占位符等共 11 项规则，全部通过。</div>
-    </div>`;
-    return;
-  }
-  const lvlLabel = { high:'高风险 · 阻塞', med:'中风险 · 影响通过率', low:'低风险 · 建议优化' };
-  wrap.innerHTML = findings.map(f=>`
-    <div class="risk-item ${f.level}">
-      <div class="head"><strong>${escapeHtml(f.name)}</strong><span class="lvl">${escapeHtml(lvlLabel[f.level])}</span></div>
-      <div class="body">${escapeHtml(f.hint)}${f.snippet ? ` · 命中：<code>${escapeHtml(f.snippet)}</code>` : ''}</div>
-    </div>`).join('');
-}
-function bindStep3(){
-  $('#autoShrink').addEventListener('click', ()=>{
-    state.copy.tag = smartShrink(state.copy.tag||$('#outTagline').value, LIMITS.tagline);
-    state.copy.desc = smartShrink(state.copy.desc||$('#outDesc').value, LIMITS.description);
-    $('#outTagline').value=state.copy.tag; $('#outDesc').value=state.copy.desc;
-    refreshCounters(); runRiskGate(); toast('字数已精简到上限内');
-  });
-  $('#rescanBtn').addEventListener('click', ()=>{ runRiskGate(); toast('已重新扫描'); });
-  $('#toStep4').addEventListener('click', ()=>proceedToStep4());
-}
-
-/* ---- Step 4 ---- */
-function renderLangGrid(){
-  $('#langGrid').innerHTML = LANGUAGES.map(l=>`
-    <label class="${state.selectedLangs.includes(l.code)?'checked':''}">
-      <input type="checkbox" value="${l.code}" ${state.selectedLangs.includes(l.code)?'checked':''}/>
-      <span class="name">${escapeHtml(l.name)}</span>
-      <span class="code">${l.code}</span>
-    </label>`).join('');
-  $$('#langGrid input').forEach(cb=>cb.addEventListener('change', ()=>{
-    const code = cb.value;
-    if(cb.checked){ if(!state.selectedLangs.includes(code)) state.selectedLangs.push(code); }
-    else state.selectedLangs = state.selectedLangs.filter(c=>c!==code);
-    cb.parentElement.classList.toggle('checked', cb.checked);
-  }));
-}
-function renderTermTable(){
-  const tbody = $('#termTable tbody');
-  tbody.innerHTML = state.glossary.map((t,i)=>`
-    <tr>
-      <td><input data-i="${i}" data-k="src" value="${escapeHtml(t.src||'')}"/></td>
-      <td><input data-i="${i}" data-k="en-US" value="${escapeHtml(t['en-US']||'')}"/></td>
-      <td><input data-i="${i}" data-k="ja-JP" value="${escapeHtml(t['ja-JP']||'')}"/></td>
-      <td><input data-i="${i}" data-k="ko-KR" value="${escapeHtml(t['ko-KR']||'')}"/></td>
-      <td><button class="btn ghost sm" data-del="${i}">删</button></td>
-    </tr>`).join('');
-  $$('#termTable input').forEach(inp=>inp.addEventListener('input', ()=>{
-    const i=+inp.dataset.i;
-    state.glossary[i][inp.dataset.k]=inp.value;
-    setGlossary(state.glossary);
-  }));
-  $$('#termTable [data-del]').forEach(b=>b.addEventListener('click', ()=>{
-    state.glossary.splice(+b.dataset.del,1);
-    setGlossary(state.glossary);
-    renderTermTable();
-  }));
-}
-function proceedToStep4(){ setStep(4); renderLangGrid(); renderTermTable(); }
-function runLocalization(){
-  if(!state.selectedLangs.length){ toast('请至少选择 1 种目标语言'); return; }
-  const ctx = collectCtx();
-  ctx.sourceTag = state.copy.tag; ctx.sourceDesc = state.copy.desc;
-  state.translations = localize(ctx, state.selectedLangs, state.glossary);
-  renderI18nTable();
-  const allOk = state.translations.every(t=>t.ok);
-  $('#toStep5').disabled = !allOk;
-  toast(allOk ? '本地化完成，可生成 CSV' : '部分语言需进一步调整');
-}
-function renderI18nTable(){
-  const tbody = $('#i18nTable tbody');
-  tbody.innerHTML = state.translations.map((r,i)=>{
-    const tagCls = r.tagLen>LIMITS.tagline?'over':(r.tagLen>LIMITS.tagline*0.92?'warn':'');
-    const descCls = r.descLen>LIMITS.description?'over':(r.descLen>LIMITS.description*0.92?'warn':'');
-    const stClass = r.ok ? (r.byTemplate?(r.trimmed?'warn':'ok'):'warn') : 'fail';
-    const stText = r.ok ? (r.byTemplate?(r.trimmed?'已精简':'原生模板'):'术语兜底') : '超长';
+function renderI18n(){
+  const tb=$('#i18nBody');
+  if(!state.translations.length){tb.innerHTML=`<tr><td colspan="4" class="empty" style="padding:34px"><div class="ei">🌍</div>选择语言后点击「一键本地化」生成多语文案</td></tr>`;return;}
+  tb.innerHTML=state.translations.map(r=>{
+    const tc=r.tagLen>LIMITS.tagline?'over':(r.tagLen>LIMITS.tagline*0.92?'warn':'');
+    const dc=r.descLen>LIMITS.description?'over':(r.descLen>LIMITS.description*0.92?'warn':'');
+    let tag,txt;
+    if(!r.ok){tag='over';txt='超长';}
+    else if(r.byTpl&&!r.trimmed){tag='ok';txt='达标';}
+    else{tag='aligned';txt='已对齐';}
     return `<tr>
-      <td class="langcell">${escapeHtml(r.name)}<br><span class="muted">${r.code}</span></td>
-      <td><textarea rows="2" data-i="${i}" data-k="tag">${escapeHtml(r.tag)}</textarea></td>
-      <td><span class="lenbadge ${tagCls}">${r.tagLen}/${LIMITS.tagline}</span></td>
-      <td><textarea rows="3" data-i="${i}" data-k="desc">${escapeHtml(r.desc)}</textarea></td>
-      <td><span class="lenbadge ${descCls}">${r.descLen}/${LIMITS.description}</span></td>
-      <td><span class="statebadge ${stClass}">${stText}</span></td>
+      <td class="lc">${flag(LANG2GEO[r.code])} ${r.code}<span class="lname">${esc(r.name)}</span></td>
+      <td class="cell-txt">${esc(r.tag)}<div class="len ${tc}">${r.tagLen}/${LIMITS.tagline}</div></td>
+      <td class="cell-txt">${esc(r.desc)}<div class="len ${dc}">${r.descLen}/${LIMITS.description}</div></td>
+      <td><span class="tag ${tag}">${txt}</span></td>
     </tr>`;
   }).join('');
-  $$('#i18nTable textarea').forEach(ta=>ta.addEventListener('input', ()=>{
-    const i=+ta.dataset.i, k=ta.dataset.k;
-    state.translations[i][k]=ta.value;
-    state.translations[i][k+'Len']=countChars(ta.value);
-    state.translations[i].ok = state.translations[i].tagLen<=LIMITS.tagline && state.translations[i].descLen<=LIMITS.description;
-    renderI18nTable();
-    $('#toStep5').disabled = !state.translations.every(t=>t.ok);
-  }));
 }
-function bindStep4(){
-  $('#langAll').addEventListener('click', ()=>{ state.selectedLangs=LANGUAGES.map(l=>l.code); renderLangGrid(); });
-  $('#langCore').addEventListener('click', ()=>{ state.selectedLangs=LANGUAGES.filter(l=>l.core).map(l=>l.code); renderLangGrid(); });
-  $('#langNone').addEventListener('click', ()=>{ state.selectedLangs=[]; renderLangGrid(); });
-  $('#addTerm').addEventListener('click', ()=>{
-    const src = $('#termSrc').value.trim();
-    if(!src){ toast('请填写源词'); return; }
-    state.glossary.push({
-      src,
-      'en-US': $('#termEn').value.trim(),
-      'ja-JP': $('#termJa').value.trim(),
-      'ko-KR': $('#termKo').value.trim(),
-    });
-    setGlossary(state.glossary);
-    $('#termSrc').value=$('#termEn').value=$('#termJa').value=$('#termKo').value='';
-    renderTermTable();
+function renderCsv(){
+  state.csv=buildCsv(state.translations);
+  $('#csvBox').textContent=state.translations.length?state.csv:'— 暂无数据 —';
+}
+function bindEngine(){
+  $('#inProject').oninput=()=>{};
+  ['inProject','inCampaign','inType'].forEach(id=>$('#'+id).addEventListener('input',()=>{}));
+  const pi=$('#inPoint');
+  pi.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const v=pi.value.trim();if(!v)return;if(state.points.length>=5){toast('最多 5 个核心卖点');return;}if(!state.points.includes(v))state.points.push(v);pi.value='';renderPoints();});
+
+  const dz=$('#dropzone'),fi=$('#inImage');
+  dz.onclick=()=>fi.click();
+  dz.ondragover=e=>{e.preventDefault();dz.classList.add('drag');};
+  dz.ondragleave=()=>dz.classList.remove('drag');
+  dz.ondrop=e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files?.[0];if(f)handleImg(f);};
+  fi.onchange=()=>{const f=fi.files?.[0];if(f)handleImg(f);};
+
+  $('#genBtn').onclick=()=>{
+    const ctx=ctxOf();
+    const c=genNative(ctx);
+    state.copy=c;$('#outTag').value=c.tag;$('#outDesc').value=c.desc;
+    refreshCounters();runScan();toast('已生成符合指南的母语文案');
+  };
+  $('#outTag').addEventListener('input',()=>{state.copy.tag=$('#outTag').value;refreshCounters();});
+  $('#outDesc').addEventListener('input',()=>{state.copy.desc=$('#outDesc').value;refreshCounters();});
+  $('#shrinkBtn').onclick=()=>{$('#outTag').value=smartShrink($('#outTag').value,LIMITS.tagline);$('#outDesc').value=smartShrink($('#outDesc').value,LIMITS.description);state.copy.tag=$('#outTag').value;state.copy.desc=$('#outDesc').value;refreshCounters();runScan();toast('已精简到上限内');};
+  $('#rescanBtn').onclick=()=>{runScan();toast('已重新扫描');};
+
+  $('#langCore').onclick=()=>{state.selectedLangs=LANGUAGES.filter(l=>l.core).map(l=>l.code);renderLangPills();};
+  $('#langClear').onclick=()=>{state.selectedLangs=[];renderLangPills();};
+  $('#translateBtn').onclick=()=>{
+    if(!state.selectedLangs.length){toast('请至少选择 1 种语言');return;}
+    if(!$('#outTag').value.trim()){toast('请先生成或填写母语文案');return;}
+    const r=runScan();
+    if(r.blocked){toast('⚠ 存在高风险命中，请先修复再本地化');}
+    const ctx=ctxOf();ctx.sourceTag=$('#outTag').value;ctx.sourceDesc=$('#outDesc').value;
+    state.translations=localize(ctx,state.selectedLangs);
+    renderI18n();renderCsv();
+    toast('已完成 '+state.translations.length+' 种语言本地化');
+  };
+  $('#csvBtn').onclick=()=>{
+    if(!state.translations.length){toast('请先执行本地化');return;}
+    const name=(ctxOf().project.toLowerCase().replace(/\s+/g,'_'))+'_promo_'+new Date().toISOString().slice(0,10)+'.csv';
+    download(name,state.csv||buildCsv(state.translations));toast('CSV 已导出');
+  };
+  $('#archiveBtn').onclick=archiveActivity;
+  renderPoints();renderLangPills();renderI18n();renderCsv();refreshCounters();runScan();
+}
+async function handleImg(file){
+  if(!file.type.startsWith('image/')){toast('仅支持图片文件');return;}
+  $('#preview').src=URL.createObjectURL(file);
+  $('#dropzone').classList.add('has');
+  $('#imgMeta').textContent=`${file.name} · ${(file.size/1024).toFixed(0)} KB`;
+  state.imageData=await compressImage(file);
+}
+async function archiveActivity(){
+  const ctx=ctxOf();
+  if(!ctx.campaign){toast('请填写「活动名称」后再归档');return;}
+  const reg=getRegistry();
+  const geos=[...new Set(state.selectedLangs.map(c=>LANG2GEO[c]).filter(Boolean))];
+  const thumb=state.imageData||svgThumb(ctx.project,'#1A73E8','#00A86B','🎮');
+  reg.unshift({
+    id:'a_'+Date.now().toString(36),
+    project:ctx.project,campaign:ctx.campaign,type:ctx.type,
+    preview:$('#inPreview').value,start:$('#inStart').value,end:$('#inEnd').value,
+    featured:$('#inFeatured').checked,
+    audience:$('#inAudience').value.trim()||'全量用户',
+    geos:geos.length?geos:['US'],
+    impressions:0,cvr:0,pic:$('#inPic').value.trim()||'—',
+    thumb,
+    copy:{...state.copy},translations:state.translations.map(t=>({...t})),
   });
-  $('#runTranslate').addEventListener('click', runLocalization);
-  $('#toStep5').addEventListener('click', ()=>proceedToStep5());
+  setRegistry(reg);
+  toast('✓ 已归档到活动看板：'+ctx.campaign);
 }
 
-/* ---- Step 5 ---- */
-function proceedToStep5(){ setStep(5); renderCsvPreview(); }
-function renderCsvPreview(){
-  const csv = buildCsv(state.translations);
-  $('#csvPreview').textContent = csv;
-  state.csv = csv;
+/* ==================================================================
+ *  REGISTRY
+ * ================================================================== */
+function populateFilters(){
+  const reg=getRegistry();
+  const qs=[...new Set(reg.map(r=>quarterOf(r.start)).filter(Boolean))].sort().reverse();
+  const geos=[...new Set(reg.flatMap(r=>r.geos||[]))].sort();
+  const pics=[...new Set(reg.map(r=>r.pic).filter(p=>p&&p!=='—'))].sort();
+  const setOpts=(sel,arr,fmt)=>{const cur=sel.value;sel.innerHTML=sel.children[0].outerHTML+arr.map(v=>`<option value="${esc(v)}">${fmt?fmt(v):esc(v)}</option>`).join('');sel.value=cur;};
+  setOpts($('#fQuarter'),qs);
+  setOpts($('#fGeo'),geos,v=>flag(v)+' '+v);
+  setOpts($('#fPic'),pics);
 }
-function bindStep5(){
-  $('#dlCsv').addEventListener('click', ()=>{
-    const name = ($('#inAppName').value.trim().toLowerCase().replace(/\s+/g,'_')||'app') + '_promo_' + new Date().toISOString().slice(0,10) + '.csv';
-    downloadFile(name, state.csv || buildCsv(state.translations));
-    toast('CSV 已下载');
+function filteredRegistry(){
+  let reg=getRegistry();
+  const q=$('#fQuarter').value,g=$('#fGeo').value,p=$('#fPic').value,f=$('#fFeat').value,s=$('#fSearch').value.trim().toLowerCase();
+  return reg.filter(r=>{
+    if(q&&quarterOf(r.start)!==q)return false;
+    if(g&&!(r.geos||[]).includes(g))return false;
+    if(p&&r.pic!==p)return false;
+    if(f==='yes'&&!r.featured)return false;
+    if(f==='no'&&r.featured)return false;
+    if(s&&!((r.project||'').toLowerCase().includes(s)||(r.campaign||'').toLowerCase().includes(s)))return false;
+    return true;
   });
-  $('#copyCsv').addEventListener('click', async ()=>{
-    try{ await navigator.clipboard.writeText(state.csv || buildCsv(state.translations)); toast('已复制 CSV 内容'); }
-    catch{ toast('复制失败，请手动选取'); }
-  });
-  $('#toStep6').addEventListener('click', ()=>proceedToStep6());
 }
-
-/* ---- Step 6 ---- */
-function proceedToStep6(){ setStep(6); renderHistoryTable(); renderTracking(); renderKpiTable(); }
-function renderHistoryTable(){
-  const list = getHistory();
-  const tbody = $('#histTable tbody');
-  if(!list.length){
-    tbody.innerHTML = `<tr><td colspan="6" class="muted">暂无记录。完成本次活动后，点击「归档本次活动」即可保存。</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = list.map(h=>`<tr>
-    <td>${new Date(h.createdAt).toLocaleString()}</td>
-    <td>${escapeHtml(h.ctx?.appName||'')}</td>
-    <td>${escapeHtml(h.ctx?.theme||'')}</td>
-    <td>${escapeHtml(h.ctx?.activityType||'')}</td>
-    <td>${(h.translations||[]).map(t=>t.code).join(', ')}</td>
-    <td><button class="btn ghost sm" data-load="${h.id}">载入</button>
-        <button class="btn ghost sm" data-del-h="${h.id}">删</button></td>
+function renderStats(rows){
+  const total=rows.length;
+  const feat=rows.filter(r=>r.featured).length;
+  const imp=rows.reduce((a,r)=>a+(+r.impressions||0),0);
+  const cvrs=rows.filter(r=>+r.cvr>0);
+  const avgCvr=cvrs.length?(cvrs.reduce((a,r)=>a+(+r.cvr||0),0)/cvrs.length):0;
+  $('#statLine').innerHTML=`
+    <div class="stat"><div class="v">${total}</div><div class="l">活动总数</div></div>
+    <div class="stat"><div class="v" style="color:#f5a623">${feat}</div><div class="l">⭐ 特推活动</div></div>
+    <div class="stat"><div class="v blue">${fmtNum(imp)}</div><div class="l">累计曝光量</div></div>
+    <div class="stat"><div class="v green">+${avgCvr.toFixed(1)}%</div><div class="l">平均转化率</div></div>`;
+}
+function renderRegistry(){
+  populateFilters();
+  const rows=filteredRegistry();
+  renderStats(rows);
+  if(state.tab==='table')renderTable(rows);
+  else if(state.tab==='gallery')renderGallery(rows);
+  else renderGantt(rows);
+}
+function renderTable(rows){
+  const tb=$('#regBody');
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="15" class="empty"><div class="ei">📭</div>没有匹配的活动记录</td></tr>`;return;}
+  tb.innerHTML=rows.map(r=>`<tr>
+    <td><img class="thumb" src="${r.thumb}" data-full="${r.thumb}" alt=""/></td>
+    <td class="proj">${esc(r.project)}</td>
+    <td class="camp">${esc(r.campaign)}</td>
+    <td><span class="type-tag ${TYPE_CLS[r.type]||''}">${TYPE_LABEL[r.type]||r.type}</span></td>
+    <td>${quarterOf(r.start)||'—'}</td>
+    <td>${r.preview||'—'}</td>
+    <td>${r.start||'—'}</td>
+    <td>${r.end||'—'}</td>
+    <td><span class="star ${r.featured?'on':'off'}">${r.featured?'★':'☆'}</span></td>
+    <td>${esc(r.audience||'—')}</td>
+    <td><span class="geos">${(r.geos||[]).map(g=>`<span class="geo-chip" title="${g}">${flag(g)}</span>`).join('')}</span></td>
+    <td class="imp">${r.impressions?fmtNum(r.impressions):'—'}</td>
+    <td class="cvr">${+r.cvr>0?'+'+(+r.cvr).toFixed(1)+'%':'—'}</td>
+    <td><span class="pic"><span class="avatar">${esc((r.pic||'?').slice(0,1))}</span>${esc(r.pic||'—')}</span></td>
+    <td><button class="icon-btn" data-load="${r.id}" title="载入编辑">✎</button><button class="icon-btn" data-del="${r.id}" title="删除">🗑</button></td>
   </tr>`).join('');
-  $$('#histTable [data-del-h]').forEach(b=>b.addEventListener('click', ()=>{
-    deleteHistory(b.dataset.delH); renderHistoryTable(); toast('已删除该记录');
-  }));
-  $$('#histTable [data-load]').forEach(b=>b.addEventListener('click', ()=>{
-    const h = getHistory().find(x=>x.id===b.dataset.load);
-    if(h) loadHistory(h);
-  }));
+  bindThumbs();bindRowActions();
 }
-function loadHistory(h){
-  const ctx = h.ctx || {};
-  $('#inAppName').value = ctx.appName||'';
-  $('#inTheme').value = ctx.theme||'';
-  $('#inType').value = ctx.activityType||'new_event';
-  $('#inStart').value = ctx.startDate||'';
-  $('#inEnd').value = ctx.endDate||'';
-  $('#inAudience').value = ctx.audience||'';
-  sellingPoints.length=0;
-  for(const p of (ctx.points||[])) sellingPoints.push(p);
-  renderChips();
-  state.copy={tag:h.copy?.tag||'', desc:h.copy?.desc||''};
-  $('#outTagline').value = state.copy.tag;
-  $('#outDesc').value = state.copy.desc;
-  refreshCounters();
-  state.translations = h.translations || [];
-  state.selectedLangs = (h.translations||[]).map(t=>t.code);
-  toast('已载入历史活动，可继续编辑');
-  setStep(2);
+function renderGallery(rows){
+  const w=$('#galleryWrap');
+  if(!rows.length){w.innerHTML=`<div class="empty" style="grid-column:1/-1"><div class="ei">📭</div>没有匹配的活动记录</div>`;return;}
+  w.innerHTML=rows.map(r=>`<div class="gcard" data-load="${r.id}">
+    <div class="cover-wrap"><img class="cover" src="${r.thumb}" alt=""/>${r.featured?'<span class="feat">⭐ 特推</span>':''}</div>
+    <div class="gbody">
+      <div class="gp">${esc(r.project)}</div>
+      <div class="gc">${esc(r.campaign)}</div>
+      <div class="gmeta">
+        <div class="gmtag"><div class="mv blue">${r.impressions?fmtNum(r.impressions):'—'}</div><div class="ml">曝光量</div></div>
+        <div class="gmtag"><div class="mv green">${+r.cvr>0?'+'+(+r.cvr).toFixed(1)+'%':'—'}</div><div class="ml">转化率 CVR</div></div>
+      </div>
+      <div class="gfoot"><span>${(r.geos||[]).map(g=>flag(g)).join(' ')}</span><span>${quarterOf(r.start)||''} · ${esc(r.pic||'')}</span></div>
+    </div>
+  </div>`).join('');
+  $$('#galleryWrap .gcard').forEach(c=>c.onclick=()=>loadToEngine(c.dataset.load));
 }
-function renderTracking(){
-  const ctx = collectCtx();
-  const langs = state.translations.map(t=>t.code).join(', ');
-  const promoId = (ctx.appName + '_' + ctx.theme).replace(/\s+/g,'_');
-  $('#trackingOut').textContent =
-`📋 LiveOps 跨岗位标准需求单 v1.0
-=================================================
-[基础信息]
-  应用 / 游戏：${ctx.appName}
-  活动主题：${ctx.theme}
-  活动类型：${ctx.activityType}
-  上线时间：${ctx.startDate||'待定'} ~ ${ctx.endDate||'待定'}
-  目标人群：${ctx.audience||'全量用户'}
-  上架模式：${ctx.mode==='multi'?'多活动综合':'单品上架'}
-  覆盖语言：${langs||'尚未本地化'}
-
-[运营 / Marketing]
-  - 谷歌后台路径：Promotional Content → New Promotion → Upload CSV
-  - 必传素材：海报图（≥1080px，4:3 或 16:9）、CSV（Language Code/Tagline/Description）
-  - 提审前确认：风控扫描全部通过 + 所有语言字数达标
-
-[研发 / Engineering]
-  事件埋点 KEY：
-    liveops_impression     // 商店推广曝光
-    liveops_card_click     // 商店推广点击
-    liveops_install        // 来自推广的安装
-    liveops_open_in_app    // 来自推广的首次打开
-    liveops_engage_action  // 活动期内核心动作（领取/参与）
-  事件公共属性：
-    promo_id="${promoId}"
-    promo_type="${ctx.activityType}"
-    promo_lang=<en-US|ja-JP|...>
-    promo_variant=<A|B>  (用于 A/B 测试)
-
-[设计 / Design]
-  - 1 张海报主视觉：1200×600 / PNG / 文字占比 ≤ 6%
-  - 若需 A/B：再提供 1 张差异化主视觉
-  - 禁止：仿系统下载按钮、价格/折扣百分比、过度促销利益点贴图
-
-[本地化 / Localization]
-  - 全量目标语言：${langs}
-  - 术语对齐：使用工具内置 Glossary（如赛季 / 通行证 / 礼包）
-  - 提交前必须做字符二次校验，德语 / 西语等长语种避免穿舱
-`;
-}
-function makeEmptyKpi(){ return { date:'', impression:'', click:'', cvr:'', install:'', comeback:'', d1:'', d7:'', note:'' }; }
-function renderKpiTable(){
-  const tbody = $('#kpiTable tbody');
-  if(!state.kpi.length){ state.kpi=[makeEmptyKpi()]; setKpiLS(state.kpi); }
-  tbody.innerHTML = state.kpi.map((r,i)=>{
-    const fields = ['date','impression','click','cvr','install','comeback','d1','d7','note'];
-    return `<tr>${fields.map(f=>`<td><input data-i="${i}" data-k="${f}" ${f==='date'?'type="date"':''} value="${escapeHtml(r[f]??'')}"/></td>`).join('')}<td><button class="btn ghost sm" data-kdel="${i}">删</button></td></tr>`;
+function renderGantt(rows){
+  const inner=$('#ganttInner');
+  const valid=rows.filter(r=>r.start&&r.end);
+  if(!valid.length){inner.innerHTML=`<div class="empty"><div class="ei">📅</div>没有可排期的活动（需填写开始 / 结束时间）</div>`;return;}
+  const dates=[];valid.forEach(r=>{dates.push(new Date(r.preview||r.start),new Date(r.start),new Date(r.end));});
+  let min=new Date(Math.min(...dates)),max=new Date(Math.max(...dates));
+  min.setDate(min.getDate()-3);max.setDate(max.getDate()+3);
+  const span=(max-min)/86400000;
+  const dayW=Math.max(7,Math.min(14,820/span));
+  const trackW=Math.round(span*dayW);
+  const pct=d=>((new Date(d)-min)/86400000)/span*100;
+  // month ticks
+  let ticks='';const cur=new Date(min.getFullYear(),min.getMonth(),1);
+  while(cur<=max){const left=Math.max(0,pct(cur));ticks+=`<div class="gantt-tick" style="left:${left}%">${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}</div>`;cur.setMonth(cur.getMonth()+1);}
+  let gridLines='';const cur2=new Date(min.getFullYear(),min.getMonth(),1);
+  while(cur2<=max){gridLines+=`<span style="left:${Math.max(0,pct(cur2))}%"></span>`;cur2.setMonth(cur2.getMonth()+1);}
+  const rowsHtml=valid.map(r=>{
+    const pv=Math.max(0,pct(r.preview||r.start)),st=pct(r.start),en=pct(r.end);
+    const prevW=Math.max(0,st-pv),liveW=Math.max(1.2,en-st);
+    const evt=(r.type==='event'||r.type==='festival')?'evt':'';
+    const tip=encodeURIComponent(JSON.stringify({c:r.campaign,p:r.project,pv:r.preview||'—',st:r.start,en:r.end,geos:r.geos||[]}));
+    return `<div class="gantt-row">
+      <div class="gantt-label"><div class="gp">${esc(r.project)}</div><div class="gc">${esc(r.campaign)}</div></div>
+      <div class="gantt-track"><div class="gantt-grid">${gridLines}</div>
+        <div class="gbar ${evt}" style="left:${pv}%;width:${prevW+liveW}%" data-tip="${tip}">
+          <div class="seg-prev" style="width:${(prevW/(prevW+liveW)*100)||0}%"></div>
+          <div class="seg-live" style="width:${(liveW/(prevW+liveW)*100)||100}%">${TYPE_LABEL[r.type]||''}</div>
+        </div>
+      </div></div>`;
   }).join('');
-  $$('#kpiTable input').forEach(inp=>inp.addEventListener('input', ()=>{
-    state.kpi[+inp.dataset.i][inp.dataset.k]=inp.value;
-    setKpiLS(state.kpi);
-  }));
-  $$('#kpiTable [data-kdel]').forEach(b=>b.addEventListener('click', ()=>{
-    state.kpi.splice(+b.dataset.kdel, 1); setKpiLS(state.kpi); renderKpiTable();
-  }));
-}
-function bindStep6(){
-  $('#addKpi').addEventListener('click', ()=>{ state.kpi.push(makeEmptyKpi()); setKpiLS(state.kpi); renderKpiTable(); });
-  $('#exportKpi').addEventListener('click', ()=>{
-    const headers = ['Date','Impression','Click','StoreCVR','Install','Comeback','D1Retention','D7Retention','Note'];
-    const rows = [headers.join(',')];
-    for(const r of state.kpi){
-      rows.push([r.date,r.impression,r.click,r.cvr,r.install,r.comeback,r.d1,r.d7,r.note]
-        .map(v=>v==null?'':String(v))
-        .map(v=>/[,"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v).join(','));
-    }
-    downloadFile('liveops_kpi_'+new Date().toISOString().slice(0,10)+'.csv', '﻿'+rows.join('\r\n'));
-    toast('KPI CSV 已导出');
-  });
-  $('#copyTracking').addEventListener('click', async ()=>{
-    try{ await navigator.clipboard.writeText($('#trackingOut').textContent); toast('已复制需求单'); }
-    catch{ toast('复制失败，请手动选取'); }
-  });
-  $('#archiveBtn').addEventListener('click', ()=>{
-    const item = addHistory({
-      ctx: collectCtx(),
-      copy: { ...state.copy },
-      translations: state.translations.map(t=>({ ...t })),
-      audit: state.audit?.featured || null,
-    });
-    renderHistoryTable(); refreshDrawer();
-    toast('已归档：'+(item.ctx.appName+' · '+item.ctx.theme));
-  });
+  inner.style.minWidth=(230+trackW)+'px';
+  inner.innerHTML=`<div class="gantt-headrow"><div class="gantt-corner">项目 / 活动</div><div class="gantt-axis">${ticks}</div></div>${rowsHtml}`;
+  bindGanttTips();
 }
 
-/* ---- Top navigation ---- */
-function openDrawer(id){ $('#'+id).classList.add('is-open'); }
-function closeDrawer(id){ $('#'+id).classList.remove('is-open'); }
-function refreshDrawer(){
-  const list = getHistory();
-  $('#drawerHistoryBody').innerHTML = list.length
-    ? list.map(h=>`<div style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
-        <div><strong>${escapeHtml(h.ctx?.appName||'')}</strong> · ${escapeHtml(h.ctx?.theme||'')}</div>
-        <div class="muted">${new Date(h.createdAt).toLocaleString()} · ${(h.translations||[]).length} 个语言</div>
-      </div>`).join('')
-    : '<p class="muted">暂无活动记录。</p>';
-  $('#drawerGlossaryBody').innerHTML = state.glossary.length
-    ? '<table><thead><tr><th>源词</th><th>en-US</th><th>ja-JP</th><th>ko-KR</th></tr></thead><tbody>' +
-      state.glossary.map(t=>`<tr><td>${escapeHtml(t.src)}</td><td>${escapeHtml(t['en-US']||'')}</td><td>${escapeHtml(t['ja-JP']||'')}</td><td>${escapeHtml(t['ko-KR']||'')}</td></tr>`).join('') +
-      '</tbody></table>'
-    : '<p class="muted">术语库为空，请在 Step 4 添加。</p>';
-  const kpi = getKpi();
-  $('#drawerTrackingBody').innerHTML = kpi.length
-    ? '<table><thead><tr><th>日期</th><th>曝光</th><th>点击</th><th>CVR</th><th>安装</th></tr></thead><tbody>' +
-      kpi.map(r=>`<tr><td>${escapeHtml(r.date||'')}</td><td>${escapeHtml(r.impression||'')}</td><td>${escapeHtml(r.click||'')}</td><td>${escapeHtml(r.cvr||'')}</td><td>${escapeHtml(r.install||'')}</td></tr>`).join('') +
-      '</tbody></table>'
-    : '<p class="muted">尚无 KPI 数据，请在 Step 6 录入。</p>';
+/* thumbnails modal */
+function bindThumbs(){
+  $$('.reg-table .thumb').forEach(t=>t.onclick=()=>{$('#modalImg').src=t.dataset.full;$('#imgModal').classList.add('show');});
 }
-function bindTopnav(){
-  $('#navHistory').addEventListener('click', ()=>{ refreshDrawer(); openDrawer('drawerHistory'); });
-  $('#navGlossary').addEventListener('click', ()=>{ refreshDrawer(); openDrawer('drawerGlossary'); });
-  $('#navTracking').addEventListener('click', ()=>{ refreshDrawer(); openDrawer('drawerTracking'); });
-  $$('.x').forEach(b=>b.addEventListener('click', ()=>closeDrawer(b.dataset.close)));
-  $$('.btn.back').forEach(b=>b.addEventListener('click', ()=>setStep(+b.dataset.back)));
-  $$('.step').forEach(el=>el.addEventListener('click', ()=>{
-    const target = +el.dataset.step;
-    if(target<=state.step+1) setStep(target);
-  }));
+function bindRowActions(){
+  $$('#regBody [data-del]').forEach(b=>b.onclick=()=>{
+    if(!confirm('确定删除该活动记录？'))return;
+    setRegistry(getRegistry().filter(x=>x.id!==b.dataset.del));renderRegistry();toast('已删除');
+  });
+  $$('#regBody [data-load]').forEach(b=>b.onclick=()=>loadToEngine(b.dataset.load));
+}
+function loadToEngine(id){
+  const r=getRegistry().find(x=>x.id===id);if(!r)return;
+  $('#inProject').value=r.project||'';$('#inCampaign').value=r.campaign||'';$('#inType').value=r.type||'event';
+  $('#inPreview').value=r.preview||'';$('#inStart').value=r.start||'';$('#inEnd').value=r.end||'';
+  $('#inAudience').value=r.audience||'';$('#inPic').value=r.pic||'';$('#inFeatured').checked=!!r.featured;
+  state.points=[];renderPoints();
+  state.copy={tag:r.copy?.tag||'',desc:r.copy?.desc||''};
+  $('#outTag').value=state.copy.tag;$('#outDesc').value=state.copy.desc;refreshCounters();runScan();
+  state.translations=r.translations||[];
+  state.selectedLangs=(r.geos||[]).map(g=>Object.keys(LANG2GEO).find(k=>LANG2GEO[k]===g)).filter(Boolean);
+  if(!state.selectedLangs.length)state.selectedLangs=['en-US'];
+  renderLangPills();renderI18n();renderCsv();
+  if(r.thumb){$('#preview').src=r.thumb;$('#dropzone').classList.add('has');state.imageData=r.thumb;}
+  switchView('engine');toast('已载入「'+r.campaign+'」到生产引擎');
+}
+let gtipEl;
+function bindGanttTips(){
+  gtipEl=$('#gtip');
+  $$('.gbar').forEach(bar=>{
+    bar.onmousemove=e=>{
+      const d=JSON.parse(decodeURIComponent(bar.dataset.tip));
+      gtipEl.innerHTML=`<div class="ttl">${esc(d.p)} · ${esc(d.c)}</div>
+        <div class="grow"><span class="muted2">预览</span><b>${d.pv}</b></div>
+        <div class="grow"><span class="muted2">正式期</span><b>${d.st} → ${d.en}</b></div>
+        <div style="margin-top:6px;border-top:1px solid #2a3550;padding-top:5px"><div class="muted2" style="margin-bottom:3px">各国家覆盖排期</div>${d.geos.map(g=>`<div class="grow"><span>${flag(g)} ${g}</span><b>${d.st} → ${d.en}</b></div>`).join('')}</div>`;
+      gtipEl.classList.add('show');
+      let x=e.clientX+14,y=e.clientY+14;
+      if(x+290>innerWidth)x=e.clientX-290;
+      gtipEl.style.left=x+'px';gtipEl.style.top=y+'px';
+    };
+    bar.onmouseleave=()=>gtipEl.classList.remove('show');
+  });
+}
+function bindRegistry(){
+  $$('.tab').forEach(t=>t.onclick=()=>{
+    state.tab=t.dataset.tab;
+    $$('.tab').forEach(x=>x.classList.toggle('active',x===t));
+    $$('.tabpanel').forEach(p=>p.classList.toggle('active',p.dataset.tab===state.tab));
+    renderRegistry();
+  });
+  ['fQuarter','fGeo','fPic','fFeat'].forEach(id=>$('#'+id).onchange=renderRegistry);
+  $('#fSearch').oninput=renderRegistry;
+  $('#seedBtn').onclick=()=>{if(confirm('重置为示例数据？当前归档将被覆盖。')){setRegistry(seedData());renderRegistry();toast('已重置示例数据');}};
+  $('#goEngine').onclick=()=>switchView('engine');
+  $('#imgModal').onclick=()=>$('#imgModal').classList.remove('show');
 }
 
-/* ---- init ---- */
+/* ==================================================================
+ *  INIT
+ * ================================================================== */
 function init(){
-  bindStep1(); bindStep2(); bindStep3();
-  bindStep4(); bindStep5(); bindStep6();
-  bindTopnav();
-  renderChips(); checkStep1();
+  $$('.nav-item').forEach(n=>n.onclick=()=>switchView(n.dataset.view));
+  bindEngine();
+  bindRegistry();
 }
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded',init);
 </script>
 </body>
 </html>

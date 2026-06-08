@@ -447,6 +447,79 @@
     .merge-grid { grid-template-columns: 1fr; }
     .merge-result-grid { grid-template-columns: 1fr; }
   }
+
+  /* === Explain modal === */
+  .explain-section { margin-bottom: 14px; }
+  .explain-label {
+    font-size: 12px; font-weight: 500; color: #1E293B;
+    margin-bottom: 6px; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .explain-label .meta {
+    font-weight: normal; color: #94A3B8; font-size: 11px;
+  }
+  .explain-code {
+    background: #1E293B; color: #F1F5F9;
+    border-radius: 6px; padding: 10px 12px;
+    font-family: 'JetBrains Mono','Menlo',monospace;
+    font-size: 11px; line-height: 1.55;
+    max-height: 180px; overflow: auto;
+    white-space: pre-wrap; word-break: break-word;
+    margin: 0;
+  }
+  .explain-result {
+    background: #F8FAFC; border: 1px solid #E2E8F0;
+    border-radius: 8px; padding: 14px 16px;
+    font-size: 13px; line-height: 1.7; color: #1E293B;
+    min-height: 80px;
+  }
+  .explain-result h3, .explain-result h4 {
+    font-size: 13px; color: #4F46E5; font-weight: 600;
+    margin-top: 14px; margin-bottom: 6px;
+  }
+  .explain-result h3:first-child, .explain-result h4:first-child { margin-top: 0; }
+  .explain-result p { margin-bottom: 8px; }
+  .explain-result ul, .explain-result ol {
+    padding-left: 22px; margin-bottom: 8px;
+  }
+  .explain-result li { margin-bottom: 3px; }
+  .explain-result code {
+    background: #EEF2FF; color: #4338CA;
+    padding: 1px 5px; border-radius: 3px;
+    font-family: 'JetBrains Mono',monospace;
+    font-size: 11.5px;
+  }
+  .explain-result pre {
+    background: #1E293B; color: #F1F5F9;
+    padding: 10px 12px; border-radius: 6px;
+    font-family: 'JetBrains Mono',monospace;
+    font-size: 11px; line-height: 1.55;
+    overflow-x: auto; margin: 6px 0;
+  }
+  .explain-result pre code {
+    background: transparent; color: inherit; padding: 0;
+  }
+  .explain-result strong, .explain-result b {
+    color: #1E293B; font-weight: 600;
+  }
+  .explain-loading-row {
+    display: flex; align-items: center; gap: 8px;
+    color: #64748B; font-size: 13px;
+  }
+  .explain-actions {
+    display: flex; gap: 6px;
+  }
+  .explain-actions button {
+    background: #fff; border: 1px solid #E2E8F0; color: #1E293B;
+    padding: 5px 12px; border-radius: 5px; cursor: pointer;
+    font-family: inherit; font-size: 12px;
+  }
+  .explain-actions button:hover {
+    background: #EEF2FF; border-color: #6366F1; color: #4F46E5;
+  }
+  .explain-actions button:disabled {
+    background: #F1F5F9; color: #94A3B8; cursor: not-allowed;
+  }
 </style>
 </head>
 <body>
@@ -457,6 +530,7 @@
     <span class="hint">Ctrl+Enter 立即刷新</span>
     <button id="btn-refresh" class="primary" title="立即刷新预览并存快照 (Ctrl+Enter)">▶ 刷新</button>
     <button id="btn-merge" title="AI 对比合并两段代码">🤖 AI 合并</button>
+    <button id="btn-explain" title="选中一段代码，AI 解释它的功能 (Ctrl+Q)">🤔 解释</button>
     <button id="btn-snapshot" title="标记当前代码为一个历史快照">📌 标记</button>
     <button id="btn-history" title="查看历史快照可回退">🕘 历史 <span id="history-count"></span></button>
     <button id="btn-open" title="在新标签页打开当前代码">🔗 新窗口</button>
@@ -488,12 +562,54 @@
 
 <footer>
   <div>
-    快捷键：<kbd>Ctrl</kbd>+<kbd>Enter</kbd> 刷新+存快照 ·
+    快捷键：<kbd>Ctrl</kbd>+<kbd>Enter</kbd> 刷新 ·
+    <kbd>Ctrl</kbd>+<kbd>Q</kbd> 解释选中 ·
     <kbd>Tab</kbd> 缩进 ·
-    自动保存 + 粘贴自动存快照
+    粘贴自动存快照
   </div>
-  <div>v1.2 · 单文件沙盒 + AI 合并</div>
+  <div>v1.3 · 沙盒 + AI 合并 + 解释</div>
 </footer>
+
+<div class="modal-mask" id="explain-modal">
+  <div class="modal" style="width: min(720px, calc(100vw - 32px));">
+    <div class="modal-head">
+      <h2>🤔 代码解释 <span style="color:#94A3B8;font-weight:normal;font-size:12px;">基于 Gemini</span></h2>
+      <button class="close" id="explain-close" title="关闭 (Esc)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding: 14px 18px;">
+        <div class="explain-section">
+          <div class="explain-label">
+            <span>📌 被选中的代码</span>
+            <span class="meta"><span id="explain-len">0</span> 字符 · <span id="explain-src">主编辑器</span></span>
+          </div>
+          <pre class="explain-code" id="explain-selected"></pre>
+        </div>
+        <div class="explain-section">
+          <div class="explain-label">
+            <span>🧠 AI 解释</span>
+            <span class="explain-actions">
+              <button id="explain-retry" title="重新让 AI 解释一次">↻ 重试</button>
+              <button id="explain-copy" title="复制解释文本">📋 复制</button>
+            </span>
+          </div>
+          <div class="explain-result" id="explain-result">
+            <div id="explain-loading" class="explain-loading-row" style="display:none;">
+              <span class="merge-loading" style="border-color:#64748B;border-top-color:transparent;"></span>
+              <span>Gemini 思考中…</span>
+            </div>
+            <div id="explain-text"></div>
+          </div>
+        </div>
+        <div id="explain-error" class="merge-error" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span id="explain-status" style="font-size:11px;color:#64748B;">就绪</span>
+      <span style="font-size:11px;color:#94A3B8;">快捷键 Ctrl+Q · 没选时解释整段代码</span>
+    </div>
+  </div>
+</div>
 
 <div class="modal-mask" id="merge-modal">
   <div class="modal merge">
@@ -1146,6 +1262,11 @@
       if (t) t.code = textarea.value;
       saveState();
     }
+    // Ctrl/Cmd+Q: explain selected code
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
+      e.preventDefault();
+      triggerExplain();
+    }
   });
 
   document.getElementById('btn-refresh').addEventListener('click', () => {
@@ -1209,6 +1330,169 @@
     if (t) t.code = '';
     saveState();
     render();
+  });
+
+  // ==========================================================
+  // === AI Explain Module ====================================
+  // ==========================================================
+  const explainModal = document.getElementById('explain-modal');
+  let lastExplainRaw = '';
+  let lastExplainInput = { selected: '', context: '' };
+
+  async function explainCode(selected, fullContext) {
+    const ctxSection = (fullContext && fullContext !== selected)
+      ? `\n所在的完整代码上下文（仅供参考，不要解释整个上下文，重点是上面"选中的代码"）：
+\`\`\`
+${fullContext.length > 8000 ? fullContext.slice(0, 8000) + '\n... (后面省略)' : fullContext}
+\`\`\`
+`
+      : '';
+    const prompt = `你是一位资深前端工程师。用通俗易懂的中文解释下面这段代码的功能和用途。
+
+选中的代码：
+\`\`\`
+${selected}
+\`\`\`
+${ctxSection}
+请按以下结构解释（每节简洁有信息量，不要凑字）：
+
+## 🎯 干啥的
+一两句话总结核心功能
+
+## ⚙️ 怎么工作
+关键步骤 / 逻辑，分点列出
+
+## 🛠 用了什么
+涉及的 HTML / CSS / JS 特性、API、库
+
+## 📖 典型用途
+在什么场景下会用到这段代码
+
+## ⚠️ 注意点
+（如果有：坑、边界情况、性能、兼容性。没有就跳过本节）
+
+要求：
+- 用 Markdown 格式
+- 面向不太熟悉这段代码的人，但不要废话
+- 如果选中的就是单行/极简代码，可以省略不适用的章节
+- 代码示例用反引号或 \`\`\` 包裹`;
+    return callGemini(prompt);
+  }
+
+  function renderMarkdown(md) {
+    if (!md) return '';
+    // Extract code blocks first to protect them from other replacements
+    const blocks = [];
+    let html = md.replace(/```(\w+)?\n?([\s\S]*?)```/g, (m, lang, code) => {
+      const i = blocks.length;
+      blocks.push(`<pre><code>${esc(code.replace(/\n$/, ''))}</code></pre>`);
+      return ` BLOCK${i} `;
+    });
+    // Inline code
+    const inlineCodes = [];
+    html = html.replace(/`([^`\n]+)`/g, (m, code) => {
+      const i = inlineCodes.length;
+      inlineCodes.push(`<code>${esc(code)}</code>`);
+      return ` INLINE${i} `;
+    });
+    // Escape remaining HTML
+    html = esc(html);
+    // Headings
+    html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^###\s+(.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^##\s+(.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^#\s+(.+)$/gm, '<h3>$1</h3>');
+    // Bold / italic (basic)
+    html = html.replace(/\*\*([^\*\n]+)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/(^|[^\*])\*([^\*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+    // Lists: lines starting with - or *
+    html = html.replace(/^[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    // Wrap consecutive <li>s
+    html = html.replace(/(<li>[\s\S]*?<\/li>(?:\n|$))+/g, m => `<ul>${m.replace(/\n/g,'')}</ul>`);
+    // Paragraphs: blocks separated by blank lines
+    html = html.split(/\n{2,}/).map(p => {
+      const trimmed = p.trim();
+      if (!trimmed) return '';
+      if (/^<(h\d|ul|ol|pre|li|p)/.test(trimmed)) return trimmed;
+      return `<p>${trimmed.replace(/\n/g, '<br>')}</p>`;
+    }).join('\n');
+    // Restore code blocks and inline codes
+    html = html.replace(/ BLOCK(\d+) /g, (m, i) => blocks[+i]);
+    html = html.replace(/ INLINE(\d+) /g, (m, i) => inlineCodes[+i]);
+    return html;
+  }
+
+  function openExplain(selected, fullContext, source) {
+    lastExplainInput = { selected, context: fullContext };
+    document.getElementById('explain-selected').textContent = selected;
+    document.getElementById('explain-len').textContent = selected.length;
+    document.getElementById('explain-src').textContent = source || '主编辑器';
+    document.getElementById('explain-text').innerHTML = '';
+    document.getElementById('explain-loading').style.display = 'flex';
+    document.getElementById('explain-error').style.display = 'none';
+    document.getElementById('explain-status').textContent = 'Gemini 思考中…';
+    explainModal.classList.add('open');
+    runExplain();
+  }
+
+  async function runExplain() {
+    document.getElementById('explain-text').innerHTML = '';
+    document.getElementById('explain-loading').style.display = 'flex';
+    document.getElementById('explain-error').style.display = 'none';
+    try {
+      let text = await explainCode(lastExplainInput.selected, lastExplainInput.context);
+      text = text.replace(/^```(?:markdown|md)?\s*\n/i, '').replace(/\n```\s*$/i, '');
+      lastExplainRaw = text;
+      document.getElementById('explain-loading').style.display = 'none';
+      document.getElementById('explain-text').innerHTML = renderMarkdown(text);
+      document.getElementById('explain-status').textContent = '完成 · ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById('explain-loading').style.display = 'none';
+      document.getElementById('explain-error').style.display = 'block';
+      document.getElementById('explain-error').textContent = '⚠ ' + e.message;
+      document.getElementById('explain-status').textContent = '失败';
+    }
+  }
+
+  function closeExplain() { explainModal.classList.remove('open'); }
+
+  function triggerExplain() {
+    const selStart = textarea.selectionStart;
+    const selEnd = textarea.selectionEnd;
+    let selected;
+    if (selStart === selEnd) {
+      if (!textarea.value.trim()) {
+        alert('编辑器是空的。先粘点代码进去，或选中一段，再按 🤔 解释。');
+        return;
+      }
+      if (textarea.value.length > 2000) {
+        if (!confirm('没选中代码段，要解释整个文件吗？\n整段代码 ' + textarea.value.length + ' 字符，AI 可能只能给整体性解释。\n\n建议先选中一段你想了解的代码，再点解释。')) return;
+      }
+      selected = textarea.value;
+    } else {
+      selected = textarea.value.slice(selStart, selEnd);
+    }
+    openExplain(selected, textarea.value, '主编辑器');
+  }
+
+  document.getElementById('btn-explain').addEventListener('click', triggerExplain);
+  document.getElementById('explain-close').addEventListener('click', closeExplain);
+  document.getElementById('explain-retry').addEventListener('click', runExplain);
+  document.getElementById('explain-copy').addEventListener('click', async () => {
+    if (!lastExplainRaw) return;
+    try {
+      await navigator.clipboard.writeText(lastExplainRaw);
+      document.getElementById('explain-status').textContent = '已复制 Markdown 解释';
+    } catch (e) {
+      alert('复制失败：' + e.message);
+    }
+  });
+  explainModal.addEventListener('click', (e) => {
+    if (e.target === explainModal) closeExplain();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && explainModal.classList.contains('open')) closeExplain();
   });
 
   // ==========================================================

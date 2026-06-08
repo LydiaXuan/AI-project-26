@@ -216,6 +216,237 @@
     header h1 { font-size: 13px; }
     .history-item { flex-wrap: wrap; }
   }
+
+  /* === AI Merge Modal === */
+  .modal.merge { width: min(1100px, calc(100vw - 32px)); }
+
+  .merge-apikey {
+    padding: 14px 18px; background: #FFFBEB;
+    border-bottom: 1px solid #FCD34D;
+    font-size: 12px; color: #78350F;
+  }
+  .merge-apikey h3 { font-size: 13px; margin-bottom: 6px; color: #92400E; }
+  .merge-apikey a { color: #4F46E5; text-decoration: underline; }
+  .merge-apikey-row { display: flex; gap: 8px; margin-top: 8px; }
+  .merge-apikey-row input {
+    flex: 1; padding: 7px 10px; border: 1px solid #E2E8F0;
+    border-radius: 6px; font-family: inherit; font-size: 12px;
+    outline: 0;
+  }
+  .merge-apikey-row input:focus { border-color: #4F46E5; }
+  .merge-apikey-row button {
+    background: #4F46E5; color: #fff; border: 0;
+    padding: 7px 14px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 12px;
+  }
+  .merge-apikey-row button:hover { background: #4338CA; }
+
+  .merge-body { padding: 14px 18px; }
+  .merge-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+  .merge-col {
+    background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;
+    padding: 10px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .merge-col.col-b { background: #F0FDF4; border-color: #D1FAE5; }
+  .merge-col-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2px;
+  }
+  .merge-col-title { font-weight: 600; font-size: 13px; color: #1E293B; }
+  .merge-col-actions { display: flex; gap: 4px; }
+  .merge-col-actions button {
+    background: #fff; border: 1px solid #E2E8F0; color: #64748B;
+    padding: 3px 8px; border-radius: 5px; font-size: 11px;
+    cursor: pointer; font-family: inherit;
+  }
+  .merge-col-actions button:hover {
+    background: #EEF2FF; border-color: #6366F1; color: #4F46E5;
+  }
+  .merge-col textarea {
+    width: 100%; min-height: 140px; max-height: 240px;
+    padding: 8px 10px; border: 1px solid #E2E8F0; border-radius: 6px;
+    font-family: 'JetBrains Mono','Menlo','Consolas',monospace;
+    font-size: 12px; line-height: 1.5; resize: vertical;
+    outline: 0; background: #fff;
+  }
+  .merge-col textarea:focus { border-color: #4F46E5; }
+
+  .merge-caps-title {
+    font-size: 11px; color: #64748B; padding: 0 2px;
+    text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
+  }
+  .merge-cap-cat {
+    margin-bottom: 6px;
+  }
+  .merge-cap-cat-name {
+    font-size: 11px; font-weight: 500; color: #475569;
+    margin-bottom: 4px;
+  }
+  .merge-cap-options {
+    display: flex; flex-wrap: wrap; gap: 4px;
+  }
+  .merge-cap-pill {
+    background: #fff; border: 1px solid #E2E8F0; color: #64748B;
+    padding: 3px 9px; border-radius: 12px; font-size: 11px;
+    cursor: pointer; user-select: none; font-family: inherit;
+    transition: all .12s;
+  }
+  .merge-cap-pill:hover { border-color: #6366F1; color: #4F46E5; }
+  .merge-cap-pill.on {
+    background: #4F46E5; color: #fff; border-color: #4F46E5;
+  }
+  .col-b .merge-cap-pill.on { background: #10B981; border-color: #10B981; }
+
+  .merge-section-label {
+    display: block; font-size: 12px; font-weight: 500;
+    color: #1E293B; margin-bottom: 6px; margin-top: 14px;
+  }
+  #merge-instructions {
+    width: 100%; min-height: 60px; padding: 8px 10px;
+    border: 1px solid #E2E8F0; border-radius: 6px;
+    font-family: inherit; font-size: 12px; line-height: 1.5;
+    resize: vertical; outline: 0; background: #fff;
+  }
+  #merge-instructions:focus { border-color: #4F46E5; }
+
+  .merge-run-row {
+    margin-top: 16px; display: flex; justify-content: center; gap: 8px;
+  }
+  .merge-primary-btn {
+    background: #4F46E5; color: #fff; border: 0;
+    padding: 9px 22px; border-radius: 8px;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background .15s;
+  }
+  .merge-primary-btn:hover { background: #4338CA; }
+  .merge-primary-btn:disabled {
+    background: #CBD5E1; cursor: not-allowed;
+  }
+
+  .merge-result {
+    margin-top: 18px; border-top: 1px solid #E2E8F0; padding-top: 14px;
+  }
+  .merge-result-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .merge-struct-card {
+    background: #F8FAFC; border: 1px solid #E2E8F0;
+    border-radius: 8px; padding: 10px;
+  }
+  .merge-struct-card.from-b { background: #F0FDF4; border-color: #D1FAE5; }
+  .merge-struct-card h4 {
+    font-size: 12px; color: #1E293B; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .merge-struct-card ul {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .merge-struct-card li {
+    background: #fff; padding: 6px 8px; border-radius: 5px;
+    font-size: 11px; line-height: 1.5;
+    border: 1px solid #F1F5F9;
+  }
+  .merge-struct-card li b {
+    color: #4F46E5; display: block; margin-bottom: 2px;
+    font-family: 'JetBrains Mono',monospace; font-size: 11px;
+  }
+  .from-b .merge-struct-card li b { color: #10B981; }
+
+  .merge-guide {
+    background: #FFFBEB; border: 1px solid #FCD34D;
+    border-radius: 8px; padding: 10px; margin-bottom: 12px;
+  }
+  .merge-guide h4 {
+    font-size: 12px; color: #92400E; margin-bottom: 6px;
+  }
+  .merge-guide-step {
+    background: #fff; border-radius: 6px; padding: 8px;
+    margin-bottom: 6px; font-size: 11px; line-height: 1.5;
+  }
+  .merge-guide-step:last-child { margin-bottom: 0; }
+  .merge-guide-step .step-title {
+    font-weight: 600; color: #1E293B; margin-bottom: 3px;
+  }
+  .merge-guide-step .step-meta {
+    color: #64748B; font-size: 10px; margin-bottom: 4px;
+  }
+
+  .merge-code-out {
+    background: #1E293B; color: #F1F5F9;
+    border-radius: 8px; padding: 12px;
+    font-family: 'JetBrains Mono','Menlo',monospace;
+    font-size: 12px; line-height: 1.55;
+    max-height: 280px; overflow: auto;
+    white-space: pre-wrap; word-break: break-word;
+    margin-bottom: 8px;
+  }
+  .merge-advice {
+    background: #EEF2FF; border-left: 3px solid #4F46E5;
+    padding: 8px 12px; font-size: 12px; color: #1E293B;
+    border-radius: 0 6px 6px 0; margin-bottom: 12px;
+  }
+
+  .merge-result-actions {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .merge-result-actions button {
+    background: #fff; border: 1px solid #E2E8F0; color: #1E293B;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 12px;
+  }
+  .merge-result-actions button:hover {
+    background: #EEF2FF; border-color: #6366F1; color: #4F46E5;
+  }
+  .merge-result-actions button.primary {
+    background: #4F46E5; color: #fff; border-color: #4F46E5;
+  }
+  .merge-result-actions button.primary:hover {
+    background: #4338CA; border-color: #4338CA;
+  }
+
+  .merge-iter {
+    margin-top: 14px; padding-top: 12px; border-top: 1px dashed #E2E8F0;
+  }
+  .merge-iter-row {
+    display: flex; gap: 8px; align-items: stretch;
+  }
+  .merge-iter-row textarea {
+    flex: 1; min-height: 50px; padding: 7px 10px;
+    border: 1px solid #E2E8F0; border-radius: 6px;
+    font-family: inherit; font-size: 12px; resize: vertical;
+    outline: 0;
+  }
+  .merge-iter-row textarea:focus { border-color: #4F46E5; }
+  .merge-iter-row button {
+    background: #4F46E5; color: #fff; border: 0;
+    padding: 0 18px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .merge-iter-row button:hover { background: #4338CA; }
+  .merge-iter-row button:disabled { background: #CBD5E1; cursor: not-allowed; }
+
+  .merge-error {
+    background: #FEF2F2; border: 1px solid #FCA5A5;
+    color: #991B1B; padding: 8px 12px; border-radius: 6px;
+    font-size: 12px; margin-top: 8px;
+  }
+  .merge-loading {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid #fff; border-top-color: transparent;
+    border-radius: 50%; animation: spin .8s linear infinite;
+    margin-right: 6px; vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    .merge-grid { grid-template-columns: 1fr; }
+    .merge-result-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -225,6 +456,7 @@
   <div class="toolbar">
     <span class="hint">Ctrl+Enter 立即刷新</span>
     <button id="btn-refresh" class="primary" title="立即刷新预览并存快照 (Ctrl+Enter)">▶ 刷新</button>
+    <button id="btn-merge" title="AI 对比合并两段代码">🤖 AI 合并</button>
     <button id="btn-snapshot" title="标记当前代码为一个历史快照">📌 标记</button>
     <button id="btn-history" title="查看历史快照可回退">🕘 历史 <span id="history-count"></span></button>
     <button id="btn-open" title="在新标签页打开当前代码">🔗 新窗口</button>
@@ -260,8 +492,111 @@
     <kbd>Tab</kbd> 缩进 ·
     自动保存 + 粘贴自动存快照
   </div>
-  <div>v1.1 · 单文件沙盒</div>
+  <div>v1.2 · 单文件沙盒 + AI 合并</div>
 </footer>
+
+<div class="modal-mask" id="merge-modal">
+  <div class="modal merge">
+    <div class="modal-head">
+      <h2>🤖 AI 代码对比合并 <span style="color:#94A3B8;font-weight:normal;font-size:12px;">基于 Gemini</span></h2>
+      <div style="display:flex;gap:6px;">
+        <button class="close" id="merge-key-toggle" title="配置 / 更换 API Key">⚙ API Key</button>
+        <button class="close" id="merge-close" title="关闭 (Esc)">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="merge-apikey" id="merge-apikey-section" style="display:none;">
+        <h3>⚙ 配置 Gemini API Key</h3>
+        <div>
+          访问 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> 免费获取（首次使用，存浏览器本地，不会上传到任何服务器）
+        </div>
+        <div class="merge-apikey-row">
+          <input type="password" id="merge-apikey-input" placeholder="粘贴 API Key (AIza...)" autocomplete="off">
+          <button id="merge-apikey-save">保存</button>
+          <button id="merge-apikey-clear" style="background:#fff;color:#64748B;border:1px solid #E2E8F0;">清除</button>
+        </div>
+      </div>
+      <div class="merge-body">
+        <div class="merge-grid">
+          <div class="merge-col col-a">
+            <div class="merge-col-head">
+              <span class="merge-col-title">📘 代码 A（基础）</span>
+              <span class="merge-col-actions">
+                <button data-merge-action="use-current" data-target="A" title="把沙盒里的当前代码填进来">⬆ 当前</button>
+                <button data-merge-action="from-snapshot" data-target="A" title="从快照里选一个">🕘 快照</button>
+                <button data-merge-action="clear" data-target="A">清空</button>
+              </span>
+            </div>
+            <textarea id="merge-code-a" placeholder="粘贴代码 A（基础代码）..." spellcheck="false"></textarea>
+            <div class="merge-caps-title">从 A 采用的能力：</div>
+            <div class="merge-caps" id="merge-caps-a"></div>
+          </div>
+          <div class="merge-col col-b">
+            <div class="merge-col-head">
+              <span class="merge-col-title">📗 代码 B（参考）</span>
+              <span class="merge-col-actions">
+                <button data-merge-action="use-current" data-target="B" title="把沙盒里的当前代码填进来">⬆ 当前</button>
+                <button data-merge-action="from-snapshot" data-target="B" title="从快照里选一个">🕘 快照</button>
+                <button data-merge-action="clear" data-target="B">清空</button>
+              </span>
+            </div>
+            <textarea id="merge-code-b" placeholder="粘贴代码 B（参考代码，可留空，只用 A）..." spellcheck="false"></textarea>
+            <div class="merge-caps-title">从 B 采用的能力：</div>
+            <div class="merge-caps" id="merge-caps-b"></div>
+          </div>
+        </div>
+        <label class="merge-section-label">📝 额外需求 / 优化说明（可选）</label>
+        <textarea id="merge-instructions" placeholder="例如：让按钮带过渡动画 / 把表单改成多步骤 / 把数据换成 mock JSON" spellcheck="false"></textarea>
+
+        <div class="merge-run-row">
+          <button id="merge-run-btn" class="merge-primary-btn">✨ 开始 AI 合并分析</button>
+        </div>
+
+        <div id="merge-error" class="merge-error" style="display:none;"></div>
+
+        <div id="merge-result" class="merge-result" style="display:none;">
+          <div class="merge-section-label" style="margin-top:0;">🎯 合并结果</div>
+          <div class="merge-result-grid">
+            <div class="merge-struct-card">
+              <h4>📘 来自 A 的部分</h4>
+              <ul id="merge-struct-a"></ul>
+            </div>
+            <div class="merge-struct-card from-b">
+              <h4>📗 来自 B 的部分</h4>
+              <ul id="merge-struct-b"></ul>
+            </div>
+          </div>
+          <div class="merge-guide" id="merge-guide-wrap" style="display:none;">
+            <h4>🔧 合并指南</h4>
+            <div id="merge-guide-list"></div>
+          </div>
+          <div class="merge-section-label" style="margin-top:8px;">📦 合并后的完整代码</div>
+          <pre class="merge-code-out" id="merge-code-out"></pre>
+          <div class="merge-advice" id="merge-advice" style="display:none;"></div>
+          <div class="merge-result-actions">
+            <button id="merge-apply-tab" class="primary" title="把合并后的代码放进沙盒的新 tab，立即预览">→ 发送到新 tab</button>
+            <button id="merge-apply-replace" title="替换当前 tab 的代码">↻ 替换当前 tab</button>
+            <button id="merge-copy" title="复制合并后的代码">📋 复制</button>
+            <button id="merge-snapshot" title="把合并结果存为当前 tab 的快照">💾 存为快照</button>
+            <button id="merge-download" title="另存为 .html 文件">💾 另存为</button>
+          </div>
+
+          <div class="merge-iter">
+            <label class="merge-section-label" style="margin-top:0;">💬 继续调整（基于上面的合并结果再改）</label>
+            <div class="merge-iter-row">
+              <textarea id="merge-iter-input" placeholder="例如：把背景改成深色 / 加一个返回顶部按钮" spellcheck="false"></textarea>
+              <button id="merge-iter-btn">▶ 提交修改</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span id="merge-status" style="font-size:11px;color:#64748B;">就绪</span>
+      <span style="font-size:11px;color:#94A3B8;">代码与 API Key 都存浏览器本地</span>
+    </div>
+  </div>
+</div>
 
 <div class="modal-mask" id="history-modal">
   <div class="modal">
@@ -874,6 +1209,485 @@
     if (t) t.code = '';
     saveState();
     render();
+  });
+
+  // ==========================================================
+  // === AI Merge Module ======================================
+  // ==========================================================
+  const GEMINI_KEY = 'preview-sandbox-gemini-key';
+  const MERGE_STATE_KEY = 'preview-sandbox-merge-v1';
+  const GEMINI_MODEL = 'gemini-2.5-pro';
+
+  const CAPABILITY_CATEGORIES = [
+    { name: '结构类', options: ['UI结构', '组件结构', '页面布局'] },
+    { name: '视觉类', options: ['样式', '动画', '视觉风格'] },
+    { name: '逻辑类', options: ['核心功能逻辑', '数据处理逻辑', '表单逻辑'] },
+    { name: '交互类', options: ['事件绑定', '交互流程', '状态变化'] },
+    { name: '数据类', options: ['状态管理', '数据结构', '接口调用'] },
+    { name: '工程类', options: ['代码风格', '模块划分', '类型定义'] },
+  ];
+
+  let mergeState = loadMergeState();
+  let mergeBusy = false;
+  let lastMergeResult = null;
+
+  function loadMergeState() {
+    try {
+      const raw = localStorage.getItem(MERGE_STATE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return { codeA:'', codeB:'', capsA:[], capsB:[], instructions:'', iterInput:'' };
+  }
+  function saveMergeState() {
+    try { localStorage.setItem(MERGE_STATE_KEY, JSON.stringify(mergeState)); } catch (e) {}
+  }
+  function getApiKey() { return localStorage.getItem(GEMINI_KEY) || ''; }
+  function setApiKey(k) { localStorage.setItem(GEMINI_KEY, k); }
+  function clearApiKey() { localStorage.removeItem(GEMINI_KEY); }
+
+  async function callGemini(prompt, responseSchema) {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error('请先点右上角 ⚙ API Key 配置 Gemini Key');
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const body = {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: responseSchema
+        ? { responseMimeType: 'application/json', responseSchema }
+        : {}
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      let errMsg = `API 错误 ${res.status}`;
+      try {
+        const errData = await res.json();
+        if (errData.error?.message) errMsg += `: ${errData.error.message}`;
+      } catch (e) {}
+      throw new Error(errMsg);
+    }
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Gemini 没有返回内容');
+    if (responseSchema) {
+      try { return JSON.parse(text); }
+      catch (e) {
+        const m = text.match(/```json\s*([\s\S]+?)\s*```/);
+        if (m) return JSON.parse(m[1]);
+        throw new Error('Gemini 返回的不是合法 JSON');
+      }
+    }
+    return text;
+  }
+
+  async function processCodeWithCapabilities(codeA, codeB, capsA, capsB, instructions) {
+    const prompt = `你是一个资深前端工程师。根据用户选择的"能力维度"合并/重组两段 HTML 代码。
+
+代码 A（基础）:
+\`\`\`
+${codeA || '（空）'}
+\`\`\`
+
+代码 B（参考）:
+\`\`\`
+${codeB || '（空）'}
+\`\`\`
+
+从代码 A 采用的能力: ${capsA.length ? capsA.join('、') : '（无）'}
+从代码 B 采用的能力: ${capsB.length ? capsB.join('、') : '（无）'}
+额外需求: ${instructions || '（无）'}
+
+任务：
+1. 精准重组：
+   - 若 A 和 B 都有代码：按能力选择把 A 的指定部分和 B 的指定部分融合。例如 A 选"核心功能逻辑"+B 选"UI结构、样式"，则最终代码具备 A 的功能 + B 的外观。
+   - 若只有 A：保留 A 的指定能力，按"额外需求"优化。
+   - 若只有 B：保留 B 的指定能力，按"额外需求"优化。
+   - 若都空：按"额外需求"从零生成。
+2. 逻辑闭环：合并后的代码必须可直接运行，处理好变量冲突、依赖、事件绑定。
+3. 输出完整 HTML（含 <!DOCTYPE>、<html>、<head>、<body>），所有 CSS / JS inline 到这一个文件里，方便直接放进 iframe 预览。
+
+返回 JSON：
+- structureA: [{block, meaning}]  描述最终代码中来自 A 的部分（block=代码块标识或简要片段，meaning=作用解释）
+- structureB: [{block, meaning}]  描述最终代码中来自 B 的部分
+- replacementGuide: [{title, action, targetLocationA, sourceCodeB, explanation, howToPaste}] 关键合并点说明
+- mergedCode: 字符串，完整可运行的 HTML
+- finalAdvice: 字符串，注意事项 / 优化建议`;
+    const schema = {
+      type: 'OBJECT',
+      properties: {
+        structureA: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+          block: { type: 'STRING' }, meaning: { type: 'STRING' }
+        }, required: ['block','meaning'] }},
+        structureB: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+          block: { type: 'STRING' }, meaning: { type: 'STRING' }
+        }, required: ['block','meaning'] }},
+        replacementGuide: { type: 'ARRAY', items: { type: 'OBJECT', properties: {
+          title: { type: 'STRING' }, action: { type: 'STRING' },
+          targetLocationA: { type: 'STRING' }, sourceCodeB: { type: 'STRING' },
+          explanation: { type: 'STRING' }, howToPaste: { type: 'STRING' }
+        }, required: ['title','action','explanation'] }},
+        mergedCode: { type: 'STRING' },
+        finalAdvice: { type: 'STRING' },
+      },
+      required: ['structureA','structureB','mergedCode','finalAdvice']
+    };
+    return callGemini(prompt, schema);
+  }
+
+  async function updateCodeWithInstructions(baseCode, instructions) {
+    const prompt = `你是一个资深前端工程师。基于以下完整 HTML 代码做修改：
+
+\`\`\`
+${baseCode}
+\`\`\`
+
+修改要求：
+${instructions}
+
+直接返回**完整、可直接运行**的修改后 HTML（含 <!DOCTYPE>、<html> 等），CSS/JS 全部 inline。除代码外不要任何说明、不要 markdown 代码块包裹。`;
+    return await callGemini(prompt);
+  }
+
+  // === Merge UI rendering ===
+  const mergeModal = document.getElementById('merge-modal');
+  const mergeCodeA = document.getElementById('merge-code-a');
+  const mergeCodeB = document.getElementById('merge-code-b');
+  const mergeInstr = document.getElementById('merge-instructions');
+  const mergeStatus = document.getElementById('merge-status');
+  const mergeRunBtn = document.getElementById('merge-run-btn');
+  const mergeError = document.getElementById('merge-error');
+  const mergeResult = document.getElementById('merge-result');
+  const mergeCodeOut = document.getElementById('merge-code-out');
+  const mergeIterInput = document.getElementById('merge-iter-input');
+  const mergeIterBtn = document.getElementById('merge-iter-btn');
+
+  function renderCapsPanel(target) {
+    const wrap = document.getElementById('merge-caps-' + target.toLowerCase());
+    const selected = target === 'A' ? mergeState.capsA : mergeState.capsB;
+    wrap.innerHTML = '';
+    CAPABILITY_CATEGORIES.forEach(cat => {
+      const catDiv = document.createElement('div');
+      catDiv.className = 'merge-cap-cat';
+      const catName = document.createElement('div');
+      catName.className = 'merge-cap-cat-name';
+      catName.textContent = cat.name;
+      catDiv.appendChild(catName);
+      const opts = document.createElement('div');
+      opts.className = 'merge-cap-options';
+      cat.options.forEach(opt => {
+        const pill = document.createElement('button');
+        pill.className = 'merge-cap-pill' + (selected.includes(opt) ? ' on' : '');
+        pill.textContent = opt;
+        pill.onclick = () => {
+          const arr = target === 'A' ? mergeState.capsA : mergeState.capsB;
+          const idx = arr.indexOf(opt);
+          if (idx === -1) arr.push(opt); else arr.splice(idx, 1);
+          saveMergeState();
+          renderCapsPanel(target);
+        };
+        opts.appendChild(pill);
+      });
+      catDiv.appendChild(opts);
+      wrap.appendChild(catDiv);
+    });
+  }
+
+  function openMerge() {
+    mergeModal.classList.add('open');
+    // Restore values
+    mergeCodeA.value = mergeState.codeA || '';
+    mergeCodeB.value = mergeState.codeB || '';
+    mergeInstr.value = mergeState.instructions || '';
+    mergeIterInput.value = mergeState.iterInput || '';
+    renderCapsPanel('A');
+    renderCapsPanel('B');
+    updateApiKeyVisibility();
+    mergeError.style.display = 'none';
+    if (lastMergeResult) renderMergeResult(lastMergeResult);
+  }
+  function closeMerge() {
+    mergeModal.classList.remove('open');
+  }
+  function updateApiKeyVisibility() {
+    const sec = document.getElementById('merge-apikey-section');
+    sec.style.display = getApiKey() ? 'none' : 'block';
+  }
+
+  function renderMergeResult(result) {
+    lastMergeResult = result;
+    mergeResult.style.display = 'block';
+    // Structure A & B
+    const renderList = (id, arr) => {
+      const ul = document.getElementById(id);
+      ul.innerHTML = '';
+      (arr || []).forEach(it => {
+        const li = document.createElement('li');
+        const block = (it.block || '').slice(0, 200);
+        li.innerHTML = `<b>${esc(block)}</b><span>${esc(it.meaning || '')}</span>`;
+        ul.appendChild(li);
+      });
+      if (!arr || arr.length === 0) {
+        ul.innerHTML = '<li style="color:#94A3B8;font-style:italic;">（无）</li>';
+      }
+    };
+    renderList('merge-struct-a', result.structureA);
+    renderList('merge-struct-b', result.structureB);
+
+    // Guide
+    const guideWrap = document.getElementById('merge-guide-wrap');
+    const guideList = document.getElementById('merge-guide-list');
+    guideList.innerHTML = '';
+    if (result.replacementGuide && result.replacementGuide.length) {
+      guideWrap.style.display = 'block';
+      result.replacementGuide.forEach((g, i) => {
+        const div = document.createElement('div');
+        div.className = 'merge-guide-step';
+        div.innerHTML = `
+          <div class="step-title">${i+1}. ${esc(g.title || '')}</div>
+          <div class="step-meta">${esc(g.action || '')}${g.targetLocationA ? ' · 位置：' + esc(g.targetLocationA) : ''}</div>
+          <div>${esc(g.explanation || '')}</div>
+          ${g.howToPaste ? `<div style="margin-top:3px;color:#64748B;">📋 ${esc(g.howToPaste)}</div>` : ''}
+        `;
+        guideList.appendChild(div);
+      });
+    } else {
+      guideWrap.style.display = 'none';
+    }
+
+    // Merged code
+    mergeCodeOut.textContent = result.mergedCode || '';
+
+    // Advice
+    const adviceEl = document.getElementById('merge-advice');
+    if (result.finalAdvice) {
+      adviceEl.style.display = 'block';
+      adviceEl.textContent = '💡 ' + result.finalAdvice;
+    } else {
+      adviceEl.style.display = 'none';
+    }
+  }
+
+  function setMergeBusy(busy, msg) {
+    mergeBusy = busy;
+    mergeRunBtn.disabled = busy;
+    mergeIterBtn.disabled = busy;
+    mergeRunBtn.innerHTML = busy ? '<span class="merge-loading"></span>分析中…' : '✨ 开始 AI 合并分析';
+    mergeIterBtn.innerHTML = busy ? '<span class="merge-loading"></span>处理中' : '▶ 提交修改';
+    mergeStatus.textContent = msg || (busy ? '正在调用 Gemini…' : '就绪');
+  }
+  function showMergeError(msg) {
+    mergeError.style.display = 'block';
+    mergeError.textContent = '⚠ ' + msg;
+  }
+  function clearMergeError() {
+    mergeError.style.display = 'none';
+  }
+
+  // === Wiring ===
+  document.getElementById('btn-merge').addEventListener('click', openMerge);
+  document.getElementById('merge-close').addEventListener('click', closeMerge);
+  mergeModal.addEventListener('click', (e) => {
+    if (e.target === mergeModal) closeMerge();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mergeModal.classList.contains('open')) closeMerge();
+  });
+
+  // API key toggle
+  document.getElementById('merge-key-toggle').addEventListener('click', () => {
+    const sec = document.getElementById('merge-apikey-section');
+    sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+    if (sec.style.display === 'block') {
+      document.getElementById('merge-apikey-input').value = getApiKey();
+    }
+  });
+  document.getElementById('merge-apikey-save').addEventListener('click', () => {
+    const v = document.getElementById('merge-apikey-input').value.trim();
+    if (!v) { alert('请输入 API Key'); return; }
+    setApiKey(v);
+    document.getElementById('merge-apikey-section').style.display = 'none';
+    mergeStatus.textContent = 'API Key 已保存';
+  });
+  document.getElementById('merge-apikey-clear').addEventListener('click', () => {
+    if (!confirm('清除已保存的 API Key？')) return;
+    clearApiKey();
+    document.getElementById('merge-apikey-input').value = '';
+    mergeStatus.textContent = 'API Key 已清除';
+  });
+
+  // Persist textarea changes
+  mergeCodeA.addEventListener('input', () => { mergeState.codeA = mergeCodeA.value; saveMergeState(); });
+  mergeCodeB.addEventListener('input', () => { mergeState.codeB = mergeCodeB.value; saveMergeState(); });
+  mergeInstr.addEventListener('input', () => { mergeState.instructions = mergeInstr.value; saveMergeState(); });
+  mergeIterInput.addEventListener('input', () => { mergeState.iterInput = mergeIterInput.value; saveMergeState(); });
+
+  // Action buttons (use current / from snapshot / clear)
+  document.querySelectorAll('[data-merge-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.mergeAction;
+      const target = btn.dataset.target;
+      const ta = target === 'A' ? mergeCodeA : mergeCodeB;
+      if (action === 'use-current') {
+        ta.value = textarea.value;
+        if (target === 'A') mergeState.codeA = ta.value; else mergeState.codeB = ta.value;
+        saveMergeState();
+      } else if (action === 'clear') {
+        if (ta.value && !confirm('清空代码 ' + target + '？')) return;
+        ta.value = '';
+        if (target === 'A') mergeState.codeA = ''; else mergeState.codeB = '';
+        saveMergeState();
+      } else if (action === 'from-snapshot') {
+        const tab = activeTab();
+        if (!tab.snapshots || !tab.snapshots.length) {
+          alert('当前 tab 还没有任何快照');
+          return;
+        }
+        const options = tab.snapshots.map((s, i) => `${i+1}. ${s.autoName} (${fmtTime(s.timestamp)}) - ${s.label || s.kind}`).join('\n');
+        const pick = prompt('选哪个快照？输入序号：\n\n' + options, '1');
+        if (!pick) return;
+        const idx = parseInt(pick) - 1;
+        if (isNaN(idx) || idx < 0 || idx >= tab.snapshots.length) {
+          alert('序号无效');
+          return;
+        }
+        ta.value = tab.snapshots[idx].code || '';
+        if (target === 'A') mergeState.codeA = ta.value; else mergeState.codeB = ta.value;
+        saveMergeState();
+      }
+    });
+  });
+
+  // Run analysis
+  mergeRunBtn.addEventListener('click', async () => {
+    if (mergeBusy) return;
+    clearMergeError();
+    if (!mergeCodeA.value.trim() && !mergeCodeB.value.trim() && !mergeInstr.value.trim()) {
+      showMergeError('至少填写代码 A、代码 B 或需求说明中的一项');
+      return;
+    }
+    setMergeBusy(true);
+    try {
+      const result = await processCodeWithCapabilities(
+        mergeCodeA.value, mergeCodeB.value,
+        mergeState.capsA, mergeState.capsB,
+        mergeInstr.value
+      );
+      renderMergeResult(result);
+      mergeStatus.textContent = '完成 · ' + new Date().toLocaleTimeString();
+      // Auto-scroll to result
+      setTimeout(() => mergeResult.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    } catch (e) {
+      showMergeError(e.message);
+      mergeStatus.textContent = '失败';
+    } finally {
+      setMergeBusy(false);
+    }
+  });
+
+  // Iterative update
+  mergeIterBtn.addEventListener('click', async () => {
+    if (mergeBusy) return;
+    if (!lastMergeResult || !lastMergeResult.mergedCode) {
+      showMergeError('请先运行一次合并分析');
+      return;
+    }
+    const instr = mergeIterInput.value.trim();
+    if (!instr) { showMergeError('请输入修改要求'); return; }
+    clearMergeError();
+    setMergeBusy(true);
+    try {
+      let newCode = await updateCodeWithInstructions(lastMergeResult.mergedCode, instr);
+      // Strip possible markdown fences just in case
+      newCode = newCode.replace(/^```(?:html)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+      lastMergeResult.mergedCode = newCode;
+      mergeCodeOut.textContent = newCode;
+      mergeIterInput.value = '';
+      mergeState.iterInput = '';
+      saveMergeState();
+      mergeStatus.textContent = '已更新 · ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      showMergeError(e.message);
+    } finally {
+      setMergeBusy(false);
+    }
+  });
+
+  // Result actions
+  document.getElementById('merge-apply-tab').addEventListener('click', () => {
+    if (!lastMergeResult?.mergedCode) return;
+    // Save current first
+    const cur = activeTab();
+    if (cur) cur.code = textarea.value;
+    // Create new tab with merged code
+    const n = state.tabs.length + 1;
+    const newTab = {
+      id: Date.now() + Math.random(),
+      name: `AI 合并 ${n}`,
+      code: lastMergeResult.mergedCode,
+      snapshots: [], groups: [], snapCounter: 0,
+    };
+    state.tabs.push(newTab);
+    state.activeId = newTab.id;
+    textarea.value = newTab.code;
+    saveState();
+    renderTabs();
+    render();
+    snapshot('manual', 'AI 合并结果');
+    updateHistoryCount();
+    closeMerge();
+  });
+  document.getElementById('merge-apply-replace').addEventListener('click', () => {
+    if (!lastMergeResult?.mergedCode) return;
+    if (!confirm('用合并结果替换当前 tab 的代码？(会先存一个备份快照)')) return;
+    snapshot('manual', '合并替换前备份');
+    textarea.value = lastMergeResult.mergedCode;
+    const t = activeTab(); if (t) t.code = textarea.value;
+    snapshot('manual', 'AI 合并结果');
+    saveState();
+    render();
+    closeMerge();
+  });
+  document.getElementById('merge-copy').addEventListener('click', async () => {
+    if (!lastMergeResult?.mergedCode) return;
+    try {
+      await navigator.clipboard.writeText(lastMergeResult.mergedCode);
+      mergeStatus.textContent = '已复制到剪贴板';
+    } catch (e) {
+      showMergeError('复制失败: ' + e.message);
+    }
+  });
+  document.getElementById('merge-snapshot').addEventListener('click', () => {
+    if (!lastMergeResult?.mergedCode) return;
+    const tab = activeTab();
+    tab.snapCounter = (tab.snapCounter || 0) + 1;
+    tab.snapshots.unshift({
+      id: 's-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
+      code: lastMergeResult.mergedCode,
+      kind: 'manual',
+      label: 'AI 合并结果',
+      autoName: '快照 #' + tab.snapCounter,
+      timestamp: Date.now(),
+      groupId: null,
+    });
+    saveState();
+    updateHistoryCount();
+    mergeStatus.textContent = '已存为快照';
+  });
+  document.getElementById('merge-download').addEventListener('click', () => {
+    if (!lastMergeResult?.mergedCode) return;
+    const blob = new Blob([lastMergeResult.mergedCode], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    a.download = `ai-merged-${stamp}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
 
   // --- Init ---

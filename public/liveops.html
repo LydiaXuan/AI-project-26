@@ -58,17 +58,20 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:var(-
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
 /* ============== card ============== */
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm)}
-.card-pad{padding:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-sm);display:flex;flex-direction:column}
+.card-pad{padding:18px;flex:1;display:flex;flex-direction:column}
 .card-h{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--border-soft)}
 .card-h h3{font-size:14px}
 .card-h .step-no{width:22px;height:22px;border-radius:50%;background:var(--blue-soft);color:var(--blue-deep);font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-right:9px}
-.section-title{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;margin:0 0 12px}
+.section-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;margin:0 0 11px;color:var(--ink-soft)}
+.section-title::before{content:'';display:inline-block;width:3px;height:13px;background:var(--blue);border-radius:2px}
+.divider{height:1px;background:var(--border-soft);margin:18px 0}
 
-/* ============== engine layout ============== */
-.engine-grid{display:grid;grid-template-columns:35% 65%;gap:18px;align-items:start}
-@media (max-width:1080px){.engine-grid{grid-template-columns:1fr}}
-.stack{display:flex;flex-direction:column;gap:18px}
+/* engine 3-column */
+.engine-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:stretch}
+@media (max-width:1140px){.engine-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.engine-grid{grid-template-columns:1fr}}
+.engine-bottom{margin-top:18px}
 
 /* ============== fields ============== */
 .field{margin-bottom:13px}
@@ -83,7 +86,6 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .counter.warn{color:var(--amber)}
 .counter.over{color:var(--red)}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 .muted{color:var(--muted);font-size:12px}
 .row{display:flex;align-items:center;gap:8px}
 .row.gap{gap:10px}.row.between{justify-content:space-between}.row.end{justify-content:flex-end}.row.wrap{flex-wrap:wrap}
@@ -108,6 +110,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .btn{border:1px solid var(--border);background:#fff;color:var(--ink);padding:9px 16px;font:inherit;font-size:13px;font-weight:500;border-radius:var(--r-sm);cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:7px;justify-content:center}
 .btn:hover{border-color:#cbd5e3;background:var(--th-bg)}
 .btn.sm{padding:6px 12px;font-size:12px}
+.btn.xs{padding:4px 9px;font-size:11px}
 .btn.block{width:100%}
 .btn.green{background:linear-gradient(135deg,#00b673,#009160);color:#fff;border:0;box-shadow:0 4px 12px rgba(0,168,107,.28)}
 .btn.green:hover{filter:brightness(1.05);background:linear-gradient(135deg,#00b673,#009160)}
@@ -119,7 +122,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .btn.green:disabled:hover,.btn.blue:disabled:hover{filter:none}
 
 /* compliance strip */
-.compliance{margin-top:12px;border:1px solid var(--border-soft);border-radius:var(--r-sm);overflow:hidden}
+.compliance{margin-top:auto;border:1px solid var(--border-soft);border-radius:var(--r-sm);overflow:hidden}
 .comp-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--th-bg);font-size:12px}
 .comp-badges{display:flex;gap:6px}
 .cbadge{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600}
@@ -127,7 +130,7 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .cbadge.m{background:var(--amber-soft);color:var(--amber)}
 .cbadge.l{background:var(--blue-soft);color:var(--blue-deep)}
 .cbadge.ok{background:var(--green-soft);color:var(--green-deep)}
-.comp-list{max-height:165px;overflow-y:auto}
+.comp-list{max-height:185px;overflow-y:auto}
 .risk{padding:9px 12px;border-top:1px solid var(--border-soft);font-size:12px;border-left:3px solid transparent}
 .risk.high{border-left-color:var(--red);background:#fff6f6}
 .risk.med{border-left-color:var(--amber);background:#fffcf3}
@@ -135,14 +138,52 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .risk .rh{display:flex;justify-content:space-between;font-weight:600;gap:8px}
 .risk .rb{color:var(--ink-soft);margin-top:3px;line-height:1.45}
 
-/* pill tags (language) */
-.pills{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 4px}
-.pill{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--border);border-radius:999px;font-size:12.5px;cursor:pointer;user-select:none;transition:all .12s;background:#fff}
-.pill:hover{border-color:#cbd5e3}
-.pill input{display:none}
-.pill .flag{font-size:14px}
-.pill.on{background:var(--green-soft);border-color:#7fd3b3;color:var(--green-deep);font-weight:600}
-.pill .code{font-family:ui-monospace,monospace;font-size:11px;opacity:.85}
+/* ===== language picker (new) ===== */
+.lang-block{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:14px}
+@media (max-width:880px){.lang-block{grid-template-columns:1fr}}
+.lang-side{display:flex;flex-direction:column}
+
+.preset-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.preset-chips{display:flex;flex-wrap:wrap;gap:7px;min-height:34px}
+.preset-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 6px 7px 12px;background:#fff;border:1px solid var(--border);border-radius:999px;font-size:12px;cursor:pointer;transition:all .14s;user-select:none}
+.preset-chip:hover{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.preset-chip .pn{font-size:10px;background:var(--border-soft);color:var(--ink-soft);padding:1px 7px;border-radius:999px;font-weight:600}
+.preset-chip:hover .pn{background:#fff}
+.preset-chip .pdel{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;padding:0 4px}
+.preset-chip .pdel:hover{color:var(--red)}
+.preset-empty{font-size:11px;color:var(--muted);padding:8px 12px;background:var(--th-bg);border-radius:var(--r-sm);border:1px dashed var(--border)}
+
+.preset-save{display:flex;gap:8px;margin-top:10px;padding-top:11px;border-top:1px dashed var(--border-soft)}
+.preset-save input{flex:1;font-size:12.5px}
+.preset-save .btn{white-space:nowrap}
+
+.sel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sel-count{font-weight:600;color:var(--ink)}
+.sel-count em{font-style:normal;color:var(--green-deep);font-size:15px;margin-right:3px}
+.sel-chips{display:flex;flex-wrap:wrap;gap:7px;padding:11px;background:var(--th-bg);border:1px solid var(--border-soft);border-radius:var(--r-sm);min-height:54px;max-height:184px;overflow-y:auto;align-content:flex-start}
+.sel-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 5px 5px 10px;background:#fff;border:1px solid var(--border);border-radius:999px;font-size:12px;transition:border .12s}
+.sel-chip:hover{border-color:var(--green)}
+.sel-chip .flag{font-size:14px}
+.sel-chip .sname{color:var(--ink);font-weight:500}
+.sel-chip .scode{color:var(--muted);font-family:ui-monospace,monospace;font-size:10.5px}
+.sel-chip .rmbtn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:all .12s}
+.sel-chip .rmbtn:hover{background:var(--red-soft);color:var(--red)}
+.sel-empty{font-size:12px;color:var(--muted);align-self:center;margin:auto}
+
+.combo-search{position:relative}
+.combo-search input{padding-left:32px;font-size:13px}
+.combo-search::before{content:'🔍';position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted);pointer-events:none}
+.lang-options{margin-top:8px;border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;max-height:206px;overflow-y:auto}
+.lopt{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border-soft);transition:background .12s}
+.lopt:last-child{border-bottom:0}
+.lopt:hover{background:var(--blue-soft)}
+.lopt .flag{font-size:15px}
+.lopt .lcname{flex:1;font-size:13px;color:var(--ink)}
+.lopt .lccode{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)}
+.lopt .lc-add{color:var(--green-deep);font-size:14px;font-weight:700;padding:0 4px}
+.lopt:hover .lc-add{color:var(--green)}
+.lopt.empty{color:var(--muted);font-style:italic;cursor:default;text-align:center;padding:18px;display:block}
+.lopt.empty:hover{background:transparent}
 
 /* preview table */
 .tablewrap{overflow-x:auto;border:1px solid var(--border-soft);border-radius:var(--r-sm)}
@@ -153,7 +194,7 @@ tbody tr:last-child td{border-bottom:0}
 tbody tr:hover{background:#fbfcfe}
 .i18n-table td.lc{font-family:ui-monospace,monospace;font-weight:600;white-space:nowrap;color:var(--ink)}
 .i18n-table td.lc .lname{display:block;font-family:inherit;font-weight:400;color:var(--muted);font-size:11px;margin-top:2px}
-.i18n-table .cell-txt{max-width:340px}
+.i18n-table .cell-txt{max-width:360px;white-space:normal}
 .len{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:4px}
 .len.warn{color:var(--amber)}.len.over{color:var(--red)}
 .tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
@@ -163,7 +204,7 @@ tbody tr:hover{background:#fbfcfe}
 .tag.gray{background:var(--border-soft);color:var(--ink-soft)}
 
 /* csv preview */
-.csvbox{margin-top:12px;background:#0f1626;color:#d7e0ef;border-radius:var(--r-sm);padding:13px 14px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.5px;line-height:1.6;max-height:160px;overflow:auto;white-space:pre}
+.csvbox{margin-top:10px;background:#0f1626;color:#d7e0ef;border-radius:var(--r-sm);padding:13px 14px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11.5px;line-height:1.6;max-height:180px;overflow:auto;white-space:pre}
 
 /* ============== registry ============== */
 .filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -250,27 +291,23 @@ tbody tr:hover{background:#fbfcfe}
 .gbar.evt .seg-prev{background:#aee6cf}
 
 /* tooltip */
-.gtip{position:fixed;z-index:50;background:#0f1626;color:#e7edefff;border-radius:8px;padding:10px 12px;font-size:11.5px;line-height:1.6;box-shadow:0 8px 28px rgba(0,0,0,.3);pointer-events:none;opacity:0;transition:opacity .12s;max-width:280px}
+.gtip{position:fixed;z-index:50;background:#0f1626;color:#e7edef;border-radius:8px;padding:10px 12px;font-size:11.5px;line-height:1.6;box-shadow:0 8px 28px rgba(0,0,0,.3);pointer-events:none;opacity:0;transition:opacity .12s;max-width:280px}
 .gtip.show{opacity:1}
 .gtip b{color:#fff}
 .gtip .ttl{font-weight:700;margin-bottom:5px;font-size:12.5px}
 .gtip .grow{display:flex;justify-content:space-between;gap:14px}
 .gtip .muted2{color:#9fb0c9}
 
-/* empty */
+/* empty / toast / modal */
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty .ei{font-size:40px;margin-bottom:12px;opacity:.5}
-
-/* toast + modal */
 .toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,90px);background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13px;box-shadow:0 10px 30px rgba(16,30,54,.3);z-index:60;opacity:0;transition:all .24s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .modal{position:fixed;inset:0;background:rgba(15,22,38,.55);display:none;align-items:center;justify-content:center;z-index:70;padding:24px}
 .modal.show{display:flex}
 .modal img{max-width:90vw;max-height:86vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 
-@media (max-width:760px){
-  .sidebar{display:none}
-}
+@media (max-width:760px){.sidebar{display:none}}
 </style>
 </head>
 <body>
@@ -280,12 +317,10 @@ tbody tr:hover{background:#fbfcfe}
   <div class="brand">
     <div class="brand-row">
       <div class="brand-logo">P</div>
-      <div>
-        <div class="brand-name">PlayOps Pro</div>
-      </div>
+      <div><div class="brand-name">PlayOps Pro</div></div>
     </div>
     <div class="brand-sub">
-      <span class="ver-badge">v2.1 Stable</span>
+      <span class="ver-badge">v2.2 Stable</span>
       <span class="brand-tag">推广内容运营平台</span>
     </div>
   </div>
@@ -293,175 +328,187 @@ tbody tr:hover{background:#fbfcfe}
     <div class="nav-label">工作区</div>
     <div class="nav-item active" data-view="engine">
       <span class="ico">🎮</span>
-      <span>内容生产引擎
-        <span class="sub">素材输入 · AI 生成 · 多语本地化</span>
-      </span>
+      <span>内容生产引擎<span class="sub">素材输入 · AI 生成 · 多语本地化</span></span>
     </div>
     <div class="nav-item" data-view="registry">
       <span class="ico">📊</span>
-      <span>活动历史与指标看板
-        <span class="sub">LiveOps Registry</span>
-      </span>
+      <span>活动历史与指标看板<span class="sub">LiveOps Registry</span></span>
     </div>
   </nav>
-  <div class="sidebar-foot">
-    严格贴合 Google Play 推广内容审核规范<br>数据保存在本地浏览器，不上传服务器
-  </div>
+  <div class="sidebar-foot">严格贴合 Google Play 推广内容审核规范<br>数据保存在本地浏览器，不上传服务器</div>
 </aside>
 
 <!-- ============ MAIN ============ -->
 <div class="main">
 
-  <!-- ===== VIEW: ENGINE ===== -->
+  <!-- ===== topbars ===== -->
   <div class="topbar" data-topbar="engine">
     <div>
       <h2>内容生产引擎</h2>
-      <div class="crumb">Creation Engine · 输入 → 智能生成 → 风控 → 本地化 → 导出</div>
+      <div class="crumb">Creation Engine · 三栏并行 → 多语言本地化 → 一键 CSV 导出</div>
     </div>
     <div class="topbar-actions">
       <a class="btn ghost sm" href="https://support.google.com/googleplay/android-developer/answer/12929944?hl=zh-Hans" target="_blank" rel="noopener">📘 内容质量指南</a>
     </div>
   </div>
 
+  <!-- ===== VIEW: ENGINE ===== -->
   <section class="view active" data-view="engine">
+
+    <!-- Row 1: 3 vertical cards -->
     <div class="engine-grid">
 
-      <!-- ===== LEFT 35% ===== -->
-      <div class="stack">
-        <!-- 1. 素材输入 -->
-        <div class="card">
-          <div class="card-h"><h3><span class="step-no">1</span>素材输入与视觉审计</h3></div>
-          <div class="card-pad">
-            <div class="field">
-              <div class="flabel">项目名称</div>
-              <input id="inProject" type="text" placeholder="Rebel Glam" />
-            </div>
-            <div class="field">
-              <div class="flabel">活动名称</div>
-              <input id="inCampaign" type="text" placeholder="例：夏季浪潮沙滩派对更新" />
-            </div>
-            <div class="field">
-              <div class="flabel">活动类型</div>
-              <select id="inType">
-                <option value="event">限时活动</option>
-                <option value="update">版本更新</option>
-                <option value="festival">节日活动</option>
-                <option value="season">新赛季 / 通行证</option>
-                <option value="bundle">礼包 / 优惠</option>
-                <option value="comeback">回流福利</option>
-              </select>
-            </div>
-            <div class="field">
-              <div class="flabel">核心卖点（回车添加 · 最多 5 个）</div>
-              <input id="inPoint" type="text" placeholder="运营灵感：全新 BOSS / 独家皮肤 / 限时礼包" />
-              <div class="chips" id="pointChips"></div>
-            </div>
-            <div class="field">
-              <div class="flabel">视觉图（16:9 海报草图或完成稿）</div>
-              <div class="dropzone" id="dropzone">
-                <input id="inImage" type="file" accept="image/*" hidden />
-                <div class="dz-in">
-                  <div class="dz-ico">☁︎</div>
-                  <div class="dz-t">点击或拖拽上传活动海报</div>
-                  <div class="dz-h">建议 1200×675 · PNG / JPG · ≤ 5MB</div>
-                </div>
-                <img id="preview" alt="" />
-              </div>
-              <div class="muted" id="imgMeta" style="margin-top:6px"></div>
-            </div>
-            <button class="btn green block" id="genBtn" type="button">✨ AI 智能生成符合指南文案</button>
+      <!-- Card 1: 素材 -->
+      <div class="card">
+        <div class="card-h"><h3><span class="step-no">1</span>素材输入与视觉审计</h3></div>
+        <div class="card-pad">
+          <div class="field"><div class="flabel">项目名称</div><input id="inProject" type="text" placeholder="Rebel Glam" /></div>
+          <div class="field"><div class="flabel">活动名称</div><input id="inCampaign" type="text" placeholder="例：夏季浪潮沙滩派对更新" /></div>
+          <div class="field"><div class="flabel">活动类型</div>
+            <select id="inType">
+              <option value="event">限时活动</option>
+              <option value="update">版本更新</option>
+              <option value="festival">节日活动</option>
+              <option value="season">新赛季 / 通行证</option>
+              <option value="bundle">礼包 / 优惠</option>
+              <option value="comeback">回流福利</option>
+            </select>
           </div>
-        </div>
-
-        <!-- 2. 母语合规与字数卡口 -->
-        <div class="card">
-          <div class="card-h"><h3><span class="step-no">2</span>母语合规与字数卡口</h3></div>
-          <div class="card-pad">
-            <div class="field">
-              <div class="flabel">宣传口号 (Tagline) <span class="counter" id="cntTag">0 / 80</span></div>
-              <input id="outTag" type="text" maxlength="160" placeholder="点击上方按钮生成，或手动输入" />
-            </div>
-            <div class="field">
-              <div class="flabel">长说明 (Description) <span class="counter" id="cntDesc">0 / 500</span></div>
-              <textarea id="outDesc" rows="5" maxlength="900" placeholder="点击上方按钮生成，或手动输入"></textarea>
-            </div>
-            <div class="row gap">
-              <button class="btn sm" id="shrinkBtn" type="button">⤓ 自动精简到上限内</button>
-              <button class="btn sm" id="rescanBtn" type="button">↻ 重新扫描合规</button>
-            </div>
-            <div class="compliance">
-              <div class="comp-head">
-                <span>政策红线扫描</span>
-                <span class="comp-badges" id="compBadges"></span>
-              </div>
-              <div class="comp-list" id="compList"></div>
-            </div>
+          <div class="field"><div class="flabel">核心卖点（回车添加 · 最多 5 个）</div>
+            <input id="inPoint" type="text" placeholder="全新 BOSS / 独家皮肤 / 限时礼包" />
+            <div class="chips" id="pointChips"></div>
           </div>
+          <div class="field"><div class="flabel">视觉图（16:9）</div>
+            <div class="dropzone" id="dropzone">
+              <input id="inImage" type="file" accept="image/*" hidden />
+              <div class="dz-in">
+                <div class="dz-ico">☁︎</div>
+                <div class="dz-t">点击或拖拽上传海报</div>
+                <div class="dz-h">建议 1200×675 · PNG/JPG · ≤ 5MB</div>
+              </div>
+              <img id="preview" alt="" />
+            </div>
+            <div class="muted" id="imgMeta" style="margin-top:6px"></div>
+          </div>
+          <button class="btn green block" id="genBtn" type="button" style="margin-top:auto">✨ AI 智能生成符合指南文案</button>
         </div>
+      </div>
 
-        <!-- 活动登记信息（用于看板归档） -->
-        <div class="card">
-          <div class="card-h"><h3><span class="step-no">＋</span>活动登记信息（看板用）</h3></div>
-          <div class="card-pad">
-            <div class="three-col">
-              <div class="field"><div class="flabel">预览时间</div><input id="inPreview" type="date" /></div>
-              <div class="field"><div class="flabel">开始时间</div><input id="inStart" type="date" /></div>
-              <div class="field"><div class="flabel">结束时间</div><input id="inEnd" type="date" /></div>
-            </div>
-            <div class="two-col">
-              <div class="field"><div class="flabel">受众群体</div><input id="inAudience" type="text" placeholder="Gen Z / Dress-up Users" /></div>
-              <div class="field"><div class="flabel">负责人 (PIC)</div><input id="inPic" type="text" placeholder="You Yirou" /></div>
-            </div>
-            <label class="row gap" style="cursor:pointer;font-size:13px;margin-top:4px">
-              <input type="checkbox" id="inFeatured" style="width:auto" /> ⭐ 申请谷歌特推位 (Featured)
-            </label>
+      <!-- Card 2: 文案 + 风控 -->
+      <div class="card">
+        <div class="card-h"><h3><span class="step-no">2</span>母语合规与字数卡口</h3></div>
+        <div class="card-pad">
+          <div class="field"><div class="flabel">宣传口号 (Tagline) <span class="counter" id="cntTag">0 / 80</span></div>
+            <input id="outTag" type="text" maxlength="160" placeholder="点击「AI 生成」或手动输入" />
+          </div>
+          <div class="field"><div class="flabel">长说明 (Description) <span class="counter" id="cntDesc">0 / 500</span></div>
+            <textarea id="outDesc" rows="6" maxlength="900" placeholder="点击「AI 生成」或手动输入"></textarea>
+          </div>
+          <div class="row gap" style="margin-bottom:12px">
+            <button class="btn sm" id="shrinkBtn" type="button">⤓ 自动精简</button>
+            <button class="btn sm" id="rescanBtn" type="button">↻ 重新扫描</button>
+          </div>
+          <div class="compliance">
+            <div class="comp-head"><span>政策红线扫描</span><span class="comp-badges" id="compBadges"></span></div>
+            <div class="comp-list" id="compList"></div>
           </div>
         </div>
       </div>
 
-      <!-- ===== RIGHT 65% ===== -->
-      <div class="stack">
-        <div class="card">
-          <div class="card-h">
-            <h3><span class="step-no">3</span>全球本地化语言后台选配</h3>
-            <div class="row gap">
-              <button class="btn sm" id="langCore" type="button">核心语种</button>
-              <button class="btn sm" id="langClear" type="button">清空</button>
-            </div>
-          </div>
-          <div class="card-pad">
-            <div class="pills" id="langPills"></div>
-            <button class="btn blue block" id="translateBtn" type="button" style="margin-top:8px">🌐 一键执行多语言盲测翻译本地化</button>
-
-            <div style="margin-top:16px">
-              <div class="section-title">📋 多语言预览表格</div>
-              <div class="tablewrap">
-                <table class="i18n-table">
-                  <thead><tr><th>Language Code</th><th>Tagline</th><th>Description</th><th>状态</th></tr></thead>
-                  <tbody id="i18nBody">
-                    <tr><td colspan="4" class="empty" style="padding:34px"><div class="ei">🌍</div>选择语言后点击「一键本地化」生成多语文案</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div style="margin-top:16px">
-              <div class="row between">
-                <div class="section-title" style="margin:0">📤 官方批量上传 CSV 预览</div>
-                <span class="muted">列：Language Code · Tagline · Description</span>
-              </div>
-              <div class="csvbox" id="csvBox">— 暂无数据 —</div>
-            </div>
-
-            <div class="row end gap" style="margin-top:16px">
-              <button class="btn" id="archiveBtn" type="button">💾 保存数据归档</button>
-              <button class="btn green" id="csvBtn" type="button">⬇ 导出官方批量一键上传 CSV</button>
-            </div>
+      <!-- Card 3: 活动登记 -->
+      <div class="card">
+        <div class="card-h"><h3><span class="step-no">3</span>活动登记信息（看板用）</h3></div>
+        <div class="card-pad">
+          <div class="field"><div class="flabel">预览时间</div><input id="inPreview" type="date" /></div>
+          <div class="field"><div class="flabel">开始时间</div><input id="inStart" type="date" /></div>
+          <div class="field"><div class="flabel">结束时间</div><input id="inEnd" type="date" /></div>
+          <div class="field"><div class="flabel">受众群体</div><input id="inAudience" type="text" placeholder="Gen Z / Dress-up Users" /></div>
+          <div class="field"><div class="flabel">负责人 (PIC)</div><input id="inPic" type="text" placeholder="You Yirou" /></div>
+          <label class="row gap" style="cursor:pointer;font-size:13px;margin-top:4px">
+            <input type="checkbox" id="inFeatured" style="width:auto" /> ⭐ 申请谷歌特推位 (Featured)
+          </label>
+          <div style="margin-top:auto;padding-top:14px">
+            <div class="muted" style="line-height:1.55">📌 登记完成后，点击底部「保存数据归档」即可同步到「活动历史看板」，并自动生成排期甘特图。</div>
           </div>
         </div>
       </div>
 
     </div>
+
+    <!-- Row 2: localization + CSV export (full width) -->
+    <div class="engine-bottom">
+      <div class="card">
+        <div class="card-h">
+          <h3>🌐 全球本地化语言配置 · 翻译 · 导出</h3>
+          <span class="muted">下拉搜索任意语言 · 可保存为命名预设</span>
+        </div>
+        <div class="card-pad">
+
+          <div class="lang-block">
+
+            <!-- LEFT: presets + selected -->
+            <div class="lang-side">
+              <div class="preset-head">
+                <div class="section-title" style="margin:0">📁 我的语言预设</div>
+              </div>
+              <div class="preset-chips" id="presetChips"></div>
+              <div class="preset-save">
+                <input id="presetName" type="text" placeholder="预设名称（例：Rebel Glam 全球）" maxlength="40" />
+                <button class="btn sm" id="savePresetBtn" type="button">💾 保存当前为预设</button>
+              </div>
+
+              <div style="margin-top:18px">
+                <div class="sel-head">
+                  <span class="sel-count">已选 <em id="selCount">0</em> / <span id="selTotal"></span> 种语言</span>
+                  <button class="btn ghost xs" id="clearLangsBtn" type="button">清空</button>
+                </div>
+                <div class="sel-chips" id="selChips"></div>
+              </div>
+            </div>
+
+            <!-- RIGHT: searchable combo -->
+            <div class="lang-side">
+              <div class="section-title">➕ 添加语言（共 <span id="langTotal"></span> 种可选）</div>
+              <div class="combo-search">
+                <input id="langSearch" type="text" placeholder="搜索语言代码或名称（如 en, 日, French, 西班牙...）" />
+              </div>
+              <div class="lang-options" id="langOptions"></div>
+              <div class="muted" style="margin-top:8px;line-height:1.55">💡 提示：点击下方任一语言即可加入，已选语言会自动从列表中隐藏。可随时通过左侧 chips 上的 × 移除。</div>
+            </div>
+
+          </div>
+
+          <button class="btn blue block" id="translateBtn" type="button">🌐 一键执行多语言盲测翻译本地化</button>
+
+          <div style="margin-top:18px">
+            <div class="section-title">📋 多语言预览表格</div>
+            <div class="tablewrap">
+              <table class="i18n-table">
+                <thead><tr><th>Language Code</th><th>Tagline</th><th>Description</th><th>状态</th></tr></thead>
+                <tbody id="i18nBody">
+                  <tr><td colspan="4" class="empty" style="padding:34px"><div class="ei">🌍</div>选择语言后点击「一键本地化」生成多语文案</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="margin-top:18px">
+            <div class="row between">
+              <div class="section-title" style="margin:0">📤 官方批量上传 CSV 预览</div>
+              <span class="muted">列：Language Code · Tagline · Description</span>
+            </div>
+            <div class="csvbox" id="csvBox">— 暂无数据 —</div>
+          </div>
+
+          <div class="row end gap" style="margin-top:18px">
+            <button class="btn" id="archiveBtn" type="button">💾 保存数据归档</button>
+            <button class="btn green" id="csvBtn" type="button">⬇ 导出官方批量一键上传 CSV</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ===== VIEW: REGISTRY ===== -->
@@ -477,7 +524,6 @@ tbody tr:hover{background:#fbfcfe}
   </div>
 
   <section class="view" data-view="registry">
-    <!-- filter bar -->
     <div class="filterbar">
       <div class="fb"><label>季度</label><select id="fQuarter"><option value="">全部季度</option></select></div>
       <div class="fb"><label>国家 / 地区</label><select id="fGeo"><option value="">全部地区</option></select></div>
@@ -485,17 +531,12 @@ tbody tr:hover{background:#fbfcfe}
       <div class="fb"><label>是否特推</label><select id="fFeat"><option value="">全部</option><option value="yes">⭐ 仅特推</option><option value="no">非特推</option></select></div>
       <div class="fb search"><label>&nbsp;</label><div style="position:relative"><span class="si">🔍</span><input id="fSearch" type="text" placeholder="搜索项目 / 活动名称…" /></div></div>
     </div>
-
-    <!-- stats -->
     <div class="stat-line" id="statLine"></div>
-
-    <!-- tabs -->
     <div class="tabs">
       <button class="tab active" data-tab="table">▦ 表格视图</button>
       <button class="tab" data-tab="gallery">🖼 画册视图</button>
       <button class="tab" data-tab="gantt">📅 甘特排期</button>
     </div>
-
     <div class="tabpanel active" data-tab="table">
       <div class="card" style="overflow:hidden">
         <div class="tablewrap" style="border:0;border-radius:0">
@@ -510,18 +551,10 @@ tbody tr:hover{background:#fbfcfe}
         </div>
       </div>
     </div>
-
-    <div class="tabpanel" data-tab="gallery">
-      <div class="gallery" id="galleryWrap"></div>
-    </div>
-
+    <div class="tabpanel" data-tab="gallery"><div class="gallery" id="galleryWrap"></div></div>
     <div class="tabpanel" data-tab="gantt">
-      <div class="gantt">
-        <div class="gantt-scroll">
-          <div class="gantt-inner" id="ganttInner"></div>
-        </div>
-      </div>
-      <div class="muted" style="margin-top:10px">浅色段 = 预览期 · 深色段 = 活动正式期（开始 → 结束）。鼠标悬浮查看各国家覆盖排期。</div>
+      <div class="gantt"><div class="gantt-scroll"><div class="gantt-inner" id="ganttInner"></div></div></div>
+      <div class="muted" style="margin-top:10px">浅色段 = 预览期 · 深色段 = 活动正式期。鼠标悬浮查看各国家覆盖排期。</div>
     </div>
   </section>
 
@@ -536,7 +569,7 @@ tbody tr:hover{background:#fbfcfe}
  *  PlayOps Pro · 单文件版（双击即可在浏览器打开）
  * ==================================================================== */
 
-/* ---------- 字符计数（Google UTF-16 规则）---------- */
+/* ---------- 字符计数 ---------- */
 const LIMITS={tagline:80,description:500};
 function countChars(s){return s?Array.from(String(s)).length:0;}
 function classifyLen(n,lim){if(n===0)return'empty';if(n>lim)return'over';if(n>lim*0.92)return'warn';return'ok';}
@@ -552,15 +585,15 @@ function smartShrink(s,lim){
 
 /* ---------- 政策红线 ---------- */
 const RULES=[
-  {id:'fake_button',level:'high',name:'虚假按钮 / 仿系统提示',regex:/(点击下载|立即下载|click\s*to\s*(download|install)|tap\s*to\s*install|download\s*now)/i,hint:'禁止使用「点击下载 / 立即安装」等仿 CTA 按钮字样，谷歌判定为误导。'},
-  {id:'price',level:'high',name:'硬性价格 / 折扣百分比',regex:/(\$\s*\d+|￥\s*\d+|€\s*\d+|\d+\s*(off|折)|\d+\s*%\s*(off|折扣|优惠)?)/i,hint:'不允许文案直接出现价格或硬折扣（如 50% OFF），改用「限时福利 / 超值礼包」。'},
+  {id:'fake_button',level:'high',name:'虚假按钮 / 仿系统提示',regex:/(点击下载|立即下载|click\s*to\s*(download|install)|tap\s*to\s*install|download\s*now)/i,hint:'禁止使用「点击下载 / 立即安装」等仿 CTA 按钮字样。'},
+  {id:'price',level:'high',name:'硬性价格 / 折扣百分比',regex:/(\$\s*\d+|￥\s*\d+|€\s*\d+|\d+\s*(off|折)|\d+\s*%\s*(off|折扣|优惠)?)/i,hint:'不允许文案直接出现价格或硬折扣（如 50% OFF），改用「限时福利」。'},
   {id:'exclusive',level:'high',name:'Google Play 平台虚假声明',regex:/(google\s*play\s*独家|官方推荐|Google\s*精选|google\s*editor'?s?\s*choice)/i,hint:'禁止伪称「Google Play 独家 / 官方推荐 / Editor’s Choice」。'},
   {id:'misleading',level:'high',name:'夸张 / 误导性宣称',regex:/(全球第[一1]|世界第[一1]|宇宙第[一1]|no\.\s*1|number\s*one|best\s*ever|绝对(免费|赢|不输))/i,hint:'避免「全球第一 / No.1 / 绝对免费」等无法证伪的宣称。'},
-  {id:'caps',level:'med',name:'全大写 / 过度标点',test:t=>{if(/!{3,}|\?{3,}|！{3,}|？{3,}/.test(t))return true;const m=t.match(/\b[A-Z]{3,}\b/g);return m&&m.length>=3;},hint:'避免全大写英文段落或连续感叹号，会被判为 spam。'},
-  {id:'urgency',level:'med',name:'紧迫感堆砌词',regex:/(最后机会|仅此一次|错过即止|don'?t\s*miss|last\s*chance|hurry\s*up|act\s*now){2,}/i,hint:'同类紧迫感词控制在 1 处，过度堆砌判为 clickbait。'},
+  {id:'caps',level:'med',name:'全大写 / 过度标点',test:t=>{if(/!{3,}|\?{3,}|！{3,}|？{3,}/.test(t))return true;const m=t.match(/\b[A-Z]{3,}\b/g);return m&&m.length>=3;},hint:'避免全大写英文段落或连续感叹号。'},
+  {id:'urgency',level:'med',name:'紧迫感堆砌词',regex:/(最后机会|仅此一次|错过即止|don'?t\s*miss|last\s*chance|hurry\s*up|act\s*now){2,}/i,hint:'同类紧迫感词控制在 1 处。'},
   {id:'emoji',level:'med',name:'Emoji 过多',test:t=>{const m=t.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu);return m&&m.length>=5;},hint:'单条文案 emoji 建议 ≤ 3 个。'},
-  {id:'reward',level:'med',name:'现金 / 兑现承诺',regex:/(送现金|cash\s*reward|赢取真钱|withdraw\s*real\s*money|拿钱回家)/i,hint:'不可承诺真实金钱奖励，涉博彩 / 现金会被拒审。'},
-  {id:'placeholder',level:'low',name:'占位符未替换',regex:/(\{\{?\s*\w+\s*\}?\}|\[\s*todo\s*\]|xxx{2,})/i,hint:'检测到未替换占位符（{...} / [TODO] / XXX）。'},
+  {id:'reward',level:'med',name:'现金 / 兑现承诺',regex:/(送现金|cash\s*reward|赢取真钱|withdraw\s*real\s*money|拿钱回家)/i,hint:'不可承诺真实金钱奖励。'},
+  {id:'placeholder',level:'low',name:'占位符未替换',regex:/(\{\{?\s*\w+\s*\}?\}|\[\s*todo\s*\]|xxx{2,})/i,hint:'检测到未替换占位符。'},
   {id:'noname',level:'low',name:'未出现应用名',test:(t,c)=>!!c&&!!c.project&&!t.includes(c.project),hint:'建议在文案中至少出现一次项目 / 应用名称。'},
   {id:'nocta',level:'low',name:'缺少行动引导',test:t=>!/(立即|马上|开启|加入|挑战|体验|领取|参与|join|play|try|claim|enjoy)/i.test(t),hint:'加入温和的行动引导动词可提升点击率。'},
 ];
@@ -573,16 +606,45 @@ function scan(text,ctx={}){
   return out;
 }
 
-/* ---------- 语言 & 模板 ---------- */
+/* ---------- 70 种 Google Play 标准语言 ---------- */
 const LANGUAGES=[
-  {code:'en-US',name:'English (US)',core:1},{code:'ja-JP',name:'日本語',core:1},
-  {code:'ko-KR',name:'한국어',core:1},{code:'zh-TW',name:'繁體中文',core:1},
-  {code:'de-DE',name:'Deutsch',core:1},{code:'fr-FR',name:'Français',core:1},
-  {code:'es-ES',name:'Español',core:1},{code:'pt-BR',name:'Português (BR)'},
-  {code:'it-IT',name:'Italiano'},{code:'ru-RU',name:'Русский'},
-  {code:'th-TH',name:'ไทย'},{code:'vi-VN',name:'Tiếng Việt'},
-  {code:'id-ID',name:'Bahasa ID'},{code:'tr-TR',name:'Türkçe'},
+  {code:'en-US',name:'English (US)'},{code:'en-CA',name:'English (CA)'},{code:'en-AU',name:'English (AU)'},
+  {code:'en-GB',name:'English (UK)'},{code:'en-IN',name:'English (IN)'},{code:'es-US',name:'Spanish (US)'},
+  {code:'zh-TW',name:'Chinese (Traditional)'},{code:'zh-CN',name:'Chinese (Simplified)'},
+  {code:'ja-JP',name:'Japanese'},{code:'ko-KR',name:'Korean'},{code:'de-DE',name:'German'},
+  {code:'fr-FR',name:'French'},{code:'fr-CA',name:'French (CA)'},{code:'es-ES',name:'Spanish (ES)'},
+  {code:'es-419',name:'Spanish (LATAM)'},{code:'pt-BR',name:'Portuguese (BR)'},{code:'pt-PT',name:'Portuguese (PT)'},
+  {code:'it-IT',name:'Italian'},{code:'nl-NL',name:'Dutch'},{code:'pl-PL',name:'Polish'},
+  {code:'ru-RU',name:'Russian'},{code:'tr-TR',name:'Turkish'},{code:'ar-SA',name:'Arabic'},
+  {code:'he-IL',name:'Hebrew'},{code:'hi-IN',name:'Hindi'},{code:'id-ID',name:'Indonesian'},
+  {code:'ms-MY',name:'Malay'},{code:'th-TH',name:'Thai'},{code:'vi-VN',name:'Vietnamese'},
+  {code:'fil-PH',name:'Filipino'},{code:'sv-SE',name:'Swedish'},{code:'no-NO',name:'Norwegian'},
+  {code:'da-DK',name:'Danish'},{code:'fi-FI',name:'Finnish'},{code:'cs-CZ',name:'Czech'},
+  {code:'sk-SK',name:'Slovak'},{code:'hu-HU',name:'Hungarian'},{code:'ro-RO',name:'Romanian'},
+  {code:'uk-UA',name:'Ukrainian'},{code:'bg-BG',name:'Bulgarian'},{code:'hr-HR',name:'Croatian'},
+  {code:'el-GR',name:'Greek'},{code:'ca-ES',name:'Catalan'},{code:'lt-LT',name:'Lithuanian'},
+  {code:'lv-LV',name:'Latvian'},{code:'et-EE',name:'Estonian'},{code:'sl-SI',name:'Slovenian'},
+  {code:'sr-RS',name:'Serbian'},{code:'mk-MK',name:'Macedonian'},{code:'sq-AL',name:'Albanian'},
+  {code:'be-BY',name:'Belarusian'},{code:'az-AZ',name:'Azerbaijani'},{code:'kk-KZ',name:'Kazakh'},
+  {code:'hy-AM',name:'Armenian'},{code:'ka-GE',name:'Georgian'},{code:'mn-MN',name:'Mongolian'},
+  {code:'sw-KE',name:'Swahili'},{code:'af-ZA',name:'Afrikaans'},{code:'bn-BD',name:'Bengali'},
+  {code:'ur-PK',name:'Urdu'},{code:'fa-IR',name:'Persian'},{code:'ta-IN',name:'Tamil'},
+  {code:'te-IN',name:'Telugu'},{code:'mr-IN',name:'Marathi'},{code:'gu-IN',name:'Gujarati'},
+  {code:'ml-IN',name:'Malayalam'},{code:'kn-IN',name:'Kannada'},{code:'my-MM',name:'Burmese'},
+  {code:'km-KH',name:'Khmer'},{code:'lo-LA',name:'Lao'},{code:'si-LK',name:'Sinhala'},
 ];
+function getLang(code){return LANGUAGES.find(l=>l.code===code);}
+function getLangName(code){const l=getLang(code);return l?l.name:code;}
+
+/* 语言代码 → 国家/地区 ISO（用于国旗） */
+function lang2geo(code){
+  const map={'es-419':'MX','ar-SA':'SA'}; // 无国家 / 区域代码的特例
+  if(map[code])return map[code];
+  const p=code.split('-');
+  return p.length>=2?p[1].toUpperCase():'';
+}
+function geo2lang(g){for(const l of LANGUAGES){if(lang2geo(l.code)===g)return l.code;}return null;}
+
 const GLOSSARY=[
   {src:'抽卡','en-US':'Summon','ja-JP':'ガチャ','ko-KR':'뽑기'},
   {src:'赛季','en-US':'Season','ja-JP':'シーズン','ko-KR':'시즌'},
@@ -591,62 +653,101 @@ const GLOSSARY=[
   {src:'皮肤','en-US':'Skin','ja-JP':'スキン','ko-KR':'스킨'},
   {src:'限时','en-US':'Limited-Time','ja-JP':'期間限定','ko-KR':'기간 한정'},
 ];
+
 const TPL={
-  event:{'zh-CN':{t:'{p}「{c}」限时活动开启',d:'{p} 限时活动「{c}」上线！参与即可解锁独家奖励与限定挑战。{pts} 立即加入，别错过。'},
+  event:{
+    'zh-CN':{t:'{p}「{c}」限时活动开启',d:'{p} 限时活动「{c}」上线！参与即可解锁独家奖励与限定挑战。{pts} 立即加入。'},
+    'zh-TW':{t:'{p}「{c}」限時活動開跑',d:'{p} 限時活動「{c}」開跑！參加即可解鎖獨家獎勵與限定挑戰。{pts} 立即加入。'},
     'en-US':{t:'"{c}" Limited-Time Event in {p}',d:'Join the "{c}" event in {p}. Take on exclusive challenges and grab limited rewards. {pts} Jump in before it ends.'},
-    'ja-JP':{t:'{p}「{c}」期間限定イベント開催',d:'{p} で「{c}」イベント開催中。限定ミッションに挑戦して特別報酬をゲット。{pts} 今すぐ参加しよう。'},
+    'ja-JP':{t:'{p}「{c}」期間限定イベント開催',d:'{p} で「{c}」イベント開催中。限定ミッションに挑戦して特別報酬をゲット。{pts} 今すぐ参加。'},
     'ko-KR':{t:'{p} "{c}" 기간 한정 이벤트',d:'{p}에서 "{c}" 이벤트 진행 중! 한정 미션에 도전하고 특별 보상을 받으세요. {pts} 지금 참여하세요.'},
-    'zh-TW':{t:'{p}「{c}」限時活動開跑',d:'{p} 限時活動「{c}」開跑！參加即可解鎖獨家獎勵與限定挑戰。{pts} 立即加入，別錯過。'},
-    'de-DE':{t:'Limitiertes Event "{c}" in {p}',d:'Nimm am Event "{c}" in {p} teil. Meistere exklusive Herausforderungen und sichere dir limitierte Belohnungen. {pts} Sei dabei, bevor es endet.'},
-    'fr-FR':{t:'Événement limité "{c}" sur {p}',d:'Participe à l\'événement "{c}" sur {p}. Relève des défis exclusifs et obtiens des récompenses limitées. {pts} Connecte-toi avant la fin.'},
-    'es-ES':{t:'Evento limitado "{c}" en {p}',d:'Participa en el evento "{c}" de {p}. Supera desafíos exclusivos y consigue recompensas limitadas. {pts} Únete antes de que acabe.'}},
-  update:{'zh-CN':{t:'{p} 全新版本「{c}」上线',d:'{p} 新版本「{c}」正式登场！体验全新玩法、角色与场景。{pts} 现在登录即可解锁。'},
+    'de-DE':{t:'Limitiertes Event "{c}" in {p}',d:'Nimm am Event "{c}" in {p} teil. Meistere exklusive Herausforderungen. {pts} Sei dabei, bevor es endet.'},
+    'fr-FR':{t:'Événement limité "{c}" sur {p}',d:'Participe à l\'événement "{c}" sur {p}. Relève des défis exclusifs. {pts} Connecte-toi avant la fin.'},
+    'es-ES':{t:'Evento limitado "{c}" en {p}',d:'Participa en el evento "{c}" de {p}. Supera desafíos exclusivos. {pts} Únete antes de que acabe.'},
+    'pt-BR':{t:'Evento "{c}" por tempo limitado em {p}',d:'Participe do evento "{c}" no {p}. Encare desafios exclusivos e leve recompensas limitadas. {pts} Entre antes do fim.'},
+    'it-IT':{t:'Evento limitato "{c}" su {p}',d:'Partecipa all\'evento "{c}" su {p}. Affronta sfide esclusive e ottieni ricompense a tempo limitato. {pts} Unisciti prima della fine.'},
+    'ru-RU':{t:'Лимитированное событие «{c}» в {p}',d:'Присоединяйся к событию «{c}» в {p}. Выполняй уникальные задания и получай эксклюзивные награды. {pts} Успей до конца события.'},
+    'tr-TR':{t:'{p} "{c}" Sınırlı Süreli Etkinliği',d:'{p} oyununda "{c}" etkinliğine katıl. Özel görevleri tamamla ve sınırlı ödüller kazan. {pts} Etkinlik bitmeden katıl.'},
+    'th-TH':{t:'{p} "{c}" อีเวนต์เวลาจำกัด',d:'เข้าร่วมอีเวนต์ "{c}" ใน {p} ผ่านด่านสุดพิเศษและรับรางวัลพิเศษ {pts} เข้าร่วมก่อนหมดเวลา!'},
+    'vi-VN':{t:'Sự kiện "{c}" có thời hạn trong {p}',d:'Tham gia sự kiện "{c}" tại {p}. Vượt qua thử thách độc quyền và nhận phần thưởng giới hạn. {pts} Tham gia ngay trước khi kết thúc.'},
+    'id-ID':{t:'Event Terbatas "{c}" di {p}',d:'Ikuti event "{c}" di {p}. Hadapi tantangan eksklusif dan raih hadiah terbatas. {pts} Bergabunglah sebelum berakhir.'},
+  },
+  update:{
+    'zh-CN':{t:'{p} 全新版本「{c}」上线',d:'{p} 新版本「{c}」正式登场！体验全新玩法、角色与场景。{pts} 现在登录即可解锁。'},
+    'zh-TW':{t:'{p} 全新版本「{c}」上線',d:'{p} 新版本「{c}」正式登場！體驗全新玩法、角色與場景。{pts} 立即登入即可解鎖。'},
     'en-US':{t:'New Update "{c}" is live in {p}',d:'The "{c}" update is now live in {p}. Explore fresh gameplay, new characters and scenes. {pts} Log in to unlock everything.'},
     'ja-JP':{t:'{p} 新バージョン「{c}」登場',d:'{p} に新アップデート「{c}」が登場。新しいゲームプレイ、キャラ、ステージを楽しもう。{pts} 今すぐログイン。'},
     'ko-KR':{t:'{p} 신규 업데이트 "{c}"',d:'{p}에 "{c}" 업데이트가 적용되었습니다. 새로운 플레이, 캐릭터, 무대를 경험하세요. {pts} 지금 로그인하세요.'},
-    'zh-TW':{t:'{p} 全新版本「{c}」上線',d:'{p} 新版本「{c}」正式登場！體驗全新玩法、角色與場景。{pts} 立即登入即可解鎖。'},
     'de-DE':{t:'Neues Update "{c}" in {p}',d:'Das Update "{c}" ist in {p} verfügbar. Entdecke frisches Gameplay, neue Charaktere und Schauplätze. {pts} Logge dich ein.'},
-    'fr-FR':{t:'Nouvelle mise à jour "{c}" sur {p}',d:'La mise à jour "{c}" arrive sur {p}. Découvre un nouveau gameplay et des personnages inédits. {pts} Connecte-toi pour tout débloquer.'},
-    'es-ES':{t:'Nueva actualización "{c}" en {p}',d:'La actualización "{c}" ya está en {p}. Descubre nueva jugabilidad, personajes y escenarios. {pts} Inicia sesión para desbloquearlo.'}},
-  festival:{'zh-CN':{t:'{p}「{c}」节日庆典开启',d:'{p} 节日活动「{c}」上线，与全球玩家共同庆祝！{pts} 登录即可领取节日专属奖励。'},
-    'en-US':{t:'{p} "{c}" Festival celebrations',d:'Celebrate "{c}" in {p} with players worldwide! {pts} Log in for exclusive festival rewards.'},
-    'ja-JP':{t:'{p}「{c}」フェス開催',d:'{p} で「{c}」フェス開催！世界中のプレイヤーと祝おう。{pts} ログインで限定報酬をゲット。'},
-    'ko-KR':{t:'{p} "{c}" 페스티벌',d:'{p}에서 "{c}" 페스티벌 개최! 전 세계 플레이어와 함께 즐기세요. {pts} 로그인하고 한정 보상을 받으세요.'},
+    'fr-FR':{t:'Nouvelle mise à jour "{c}" sur {p}',d:'La mise à jour "{c}" arrive sur {p}. Découvre un nouveau gameplay et des personnages inédits. {pts} Connecte-toi.'},
+    'es-ES':{t:'Nueva actualización "{c}" en {p}',d:'La actualización "{c}" ya está en {p}. Descubre nueva jugabilidad, personajes y escenarios. {pts} Inicia sesión para desbloquearlo.'},
+    'pt-BR':{t:'Nova atualização "{c}" no {p}',d:'A atualização "{c}" chegou ao {p}. Explore nova jogabilidade, personagens e cenários. {pts} Faça login para desbloquear tudo.'},
+    'it-IT':{t:'Nuovo aggiornamento "{c}" in {p}',d:'L\'aggiornamento "{c}" è disponibile in {p}. Esplora nuovo gameplay, personaggi e scenari. {pts} Accedi per sbloccare tutto.'},
+    'ru-RU':{t:'Новое обновление «{c}» в {p}',d:'Обновление «{c}» доступно в {p}. Открой для себя новый геймплей, персонажей и локации. {pts} Войди в игру, чтобы разблокировать всё.'},
+    'tr-TR':{t:'{p} için yeni güncelleme "{c}"',d:'"{c}" güncellemesi {p} oyununda yayında. Yeni oyun modlarını, karakterleri ve sahneleri keşfet. {pts} Giriş yap ve her şeyi aç.'},
+  },
+  festival:{
+    'zh-CN':{t:'{p}「{c}」节日庆典开启',d:'{p} 节日活动「{c}」上线，与全球玩家共同庆祝！{pts} 登录即可领取节日专属奖励。'},
     'zh-TW':{t:'{p}「{c}」節日慶典開跑',d:'{p} 節日活動「{c}」上線，與全球玩家一同慶祝！{pts} 登入即可領取節日專屬獎勵。'},
+    'en-US':{t:'{p} "{c}" Festival celebrations',d:'Celebrate "{c}" in {p} with players worldwide! {pts} Log in for exclusive festival rewards.'},
+    'ja-JP':{t:'{p}「{c}」フェス開催',d:'{p} で「{c}」フェス開催！世界中のプレイヤーと祝おう。{pts} ログインで限定報酬。'},
+    'ko-KR':{t:'{p} "{c}" 페스티벌',d:'{p}에서 "{c}" 페스티벌 개최! 전 세계 플레이어와 함께 즐기세요. {pts} 로그인하고 한정 보상을 받으세요.'},
     'de-DE':{t:'{p} "{c}" Festival',d:'Feiere "{c}" in {p} mit Spielern weltweit! {pts} Logge dich für exklusive Festival-Belohnungen ein.'},
     'fr-FR':{t:'Festival "{c}" sur {p}',d:'Célèbre "{c}" sur {p} avec des joueurs du monde entier ! {pts} Connecte-toi pour des récompenses exclusives.'},
-    'es-ES':{t:'Festival "{c}" en {p}',d:'¡Celebra "{c}" en {p} con jugadores de todo el mundo! {pts} Inicia sesión y recibe recompensas exclusivas.'}},
-  season:{'zh-CN':{t:'{p} 全新赛季「{c}」开启',d:'{p} 新赛季「{c}」现已上线！全新通行证、专属皮肤、限定关卡等你挑战。{pts} 立即体验。'},
+    'es-ES':{t:'Festival "{c}" en {p}',d:'¡Celebra "{c}" en {p} con jugadores de todo el mundo! {pts} Inicia sesión y recibe recompensas exclusivas.'},
+    'pt-BR':{t:'Festival "{c}" no {p}',d:'Comemore "{c}" no {p} com jogadores do mundo todo! {pts} Faça login para recompensas exclusivas.'},
+  },
+  season:{
+    'zh-CN':{t:'{p} 全新赛季「{c}」开启',d:'{p} 新赛季「{c}」现已上线！全新通行证、专属皮肤、限定关卡等你挑战。{pts} 立即体验。'},
+    'zh-TW':{t:'{p} 全新賽季「{c}」開啟',d:'{p} 新賽季「{c}」上線！全新通行證、專屬造型、限定關卡等你挑戰。{pts} 立即體驗。'},
     'en-US':{t:'New Season "{c}" is live in {p}',d:'The "{c}" season is here in {p}. Unlock the new Pass, exclusive skins and limited levels. {pts} Claim your rewards now.'},
     'ja-JP':{t:'{p} 新シーズン「{c}」開幕',d:'{p} に新シーズン「{c}」登場。新パス、限定スキン、特別ステージが解放。{pts} 今すぐ参加。'},
     'ko-KR':{t:'{p} 신규 시즌 "{c}" 오픈',d:'{p}의 새 시즌 "{c}" 시작! 새 패스, 한정 스킨, 특별 스테이지를 만나보세요. {pts} 지금 참여하세요.'},
-    'zh-TW':{t:'{p} 全新賽季「{c}」開啟',d:'{p} 新賽季「{c}」上線！全新通行證、專屬造型、限定關卡等你挑戰。{pts} 立即體驗。'},
     'de-DE':{t:'Neue Saison "{c}" in {p}',d:'Die Saison "{c}" startet in {p}! Schalte den neuen Pass, exklusive Skins und Level frei. {pts} Sichere dir Belohnungen.'},
     'fr-FR':{t:'Nouvelle saison "{c}" sur {p}',d:'La saison "{c}" arrive sur {p}. Débloque le Pass, des skins exclusifs et des niveaux limités. {pts} Récupère tes récompenses.'},
-    'es-ES':{t:'Nueva temporada "{c}" en {p}',d:'¡La temporada "{c}" llega a {p}! Desbloquea el Pase, skins exclusivos y niveles limitados. {pts} Reclama tus recompensas.'}},
-  bundle:{'zh-CN':{t:'{p}「{c}」超值礼包上架',d:'{p} 限时礼包「{c}」现已上架。{pts} 一次入手多重福利，活动期间快来领取。'},
+    'es-ES':{t:'Nueva temporada "{c}" en {p}',d:'¡La temporada "{c}" llega a {p}! Desbloquea el Pase, skins exclusivos y niveles limitados. {pts} Reclama tus recompensas.'},
+    'pt-BR':{t:'Nova temporada "{c}" no {p}',d:'A temporada "{c}" chegou ao {p}! Desbloqueie o Passe, skins exclusivas e fases limitadas. {pts} Reivindique suas recompensas.'},
+  },
+  bundle:{
+    'zh-CN':{t:'{p}「{c}」超值礼包上架',d:'{p} 限时礼包「{c}」现已上架。{pts} 一次入手多重福利。'},
+    'zh-TW':{t:'{p}「{c}」超值禮包上架',d:'{p} 限時禮包「{c}」上架囉。{pts} 一次入手多重福利。'},
     'en-US':{t:'Limited "{c}" Bundle in {p}',d:'The "{c}" bundle is available for a limited time in {p}. {pts} Grab multiple rewards in one go.'},
-    'ja-JP':{t:'{p}「{c}」お得パック登場',d:'{p} で「{c}」パックが期間限定登場。{pts} まとめてお得に入手、お見逃しなく。'},
-    'ko-KR':{t:'{p} "{c}" 한정 패키지',d:'{p}에서 "{c}" 패키지를 기간 한정으로 만나보세요. {pts} 한 번에 다양한 혜택을 받으세요.'},
-    'zh-TW':{t:'{p}「{c}」超值禮包上架',d:'{p} 限時禮包「{c}」上架囉。{pts} 一次入手多重福利，活動期間快來領取。'},
+    'ja-JP':{t:'{p}「{c}」お得パック登場',d:'{p} で「{c}」パックが期間限定登場。{pts} まとめてお得に入手。'},
+    'ko-KR':{t:'{p} "{c}" 한정 패키지',d:'{p}에서 "{c}" 패키지를 기간 한정으로 만나보세요. {pts} 한 번에 다양한 혜택을.'},
     'de-DE':{t:'Limitiertes "{c}"-Paket in {p}',d:'Das "{c}"-Paket ist kurzzeitig in {p} verfügbar. {pts} Sichere dir mehrere Belohnungen auf einmal.'},
     'fr-FR':{t:'Pack "{c}" limité sur {p}',d:'Le pack "{c}" est dispo en édition limitée sur {p}. {pts} Récupère plusieurs récompenses d\'un coup.'},
-    'es-ES':{t:'Pack "{c}" limitado en {p}',d:'El pack "{c}" llega a {p} por tiempo limitado. {pts} Llévate varias recompensas de una vez.'}},
-  comeback:{'zh-CN':{t:'欢迎回归 {p}「{c}」',d:'想念你！{p} 为回归玩家准备了「{c}」专属福利。{pts} 立即回到游戏，领取归来礼包。'},
+    'es-ES':{t:'Pack "{c}" limitado en {p}',d:'El pack "{c}" llega a {p} por tiempo limitado. {pts} Llévate varias recompensas de una vez.'},
+    'pt-BR':{t:'Pacote "{c}" limitado em {p}',d:'O pacote "{c}" chegou ao {p} por tempo limitado. {pts} Garanta várias recompensas de uma vez.'},
+  },
+  comeback:{
+    'zh-CN':{t:'欢迎回归 {p}「{c}」',d:'想念你！{p} 为回归玩家准备了「{c}」专属福利。{pts} 立即回到游戏，领取归来礼包。'},
+    'zh-TW':{t:'歡迎回歸 {p}「{c}」',d:'想念你！{p} 為回歸玩家準備了「{c}」專屬福利。{pts} 立即回到遊戲，領取回歸禮包。'},
     'en-US':{t:'Welcome back to {p}: "{c}"',d:'We missed you! {p} offers "{c}" rewards for returning players. {pts} Come back and claim your comeback bundle.'},
     'ja-JP':{t:'おかえり {p}「{c}」',d:'会いたかった！{p} は復帰プレイヤー専用「{c}」報酬を用意。{pts} 今すぐ戻って受け取ろう。'},
     'ko-KR':{t:'{p}로 돌아온 당신께 "{c}"',d:'보고 싶었어요! {p}이 복귀 플레이어를 위해 "{c}" 보상을 준비했어요. {pts} 지금 돌아와 받으세요.'},
-    'zh-TW':{t:'歡迎回歸 {p}「{c}」',d:'想念你！{p} 為回歸玩家準備了「{c}」專屬福利。{pts} 立即回到遊戲，領取回歸禮包。'},
     'de-DE':{t:'Willkommen zurück in {p}: "{c}"',d:'Wir haben dich vermisst! {p} bietet "{c}"-Belohnungen für Rückkehrer. {pts} Komm zurück und sichere dir dein Paket.'},
     'fr-FR':{t:'Bon retour sur {p} : "{c}"',d:'Tu nous as manqué ! {p} propose des récompenses "{c}" aux joueurs de retour. {pts} Reviens et récupère ton pack.'},
-    'es-ES':{t:'Bienvenido de vuelta a {p}: "{c}"',d:'¡Te echamos de menos! {p} ofrece recompensas "{c}" para quienes vuelven. {pts} Vuelve y reclama tu pack.'}},
+    'es-ES':{t:'Bienvenido de vuelta a {p}: "{c}"',d:'¡Te echamos de menos! {p} ofrece recompensas "{c}" para quienes vuelven. {pts} Vuelve y reclama tu pack.'},
+    'pt-BR':{t:'Bem-vindo de volta ao {p}: "{c}"',d:'Sentimos sua falta! {p} oferece recompensas "{c}" para quem está voltando. {pts} Volte e reivindique seu pacote.'},
+  },
+};
+
+const PTS_FMT={
+  'zh-CN':'亮点：{x}。','zh-TW':'亮點：{x}。','ja-JP':'見どころ：{x}。','ko-KR':'하이라이트: {x}.',
+  'en-US':'Highlights: {x}.','en-GB':'Highlights: {x}.','en-CA':'Highlights: {x}.','en-AU':'Highlights: {x}.','en-IN':'Highlights: {x}.',
+  'de-DE':'Highlights: {x}.','fr-FR':'Temps forts : {x}.','fr-CA':'Temps forts : {x}.',
+  'es-ES':'Lo destacado: {x}.','es-419':'Lo destacado: {x}.','es-US':'Lo destacado: {x}.',
+  'pt-BR':'Destaques: {x}.','pt-PT':'Destaques: {x}.',
+  'it-IT':'In evidenza: {x}.','ru-RU':'Главное: {x}.','tr-TR':'Öne çıkanlar: {x}.',
+  'th-TH':'ไฮไลต์: {x}.','vi-VN':'Điểm nổi bật: {x}.','id-ID':'Sorotan: {x}.','ms-MY':'Sorotan: {x}.',
+  'pl-PL':'Najważniejsze: {x}.','nl-NL':'Hoogtepunten: {x}.','ar-SA':'أبرز ما في الحدث: {x}.','he-IL':'עיקרים: {x}.','hi-IN':'मुख्य आकर्षण: {x}.','fil-PH':'Mga highlight: {x}.','sv-SE':'Höjdpunkter: {x}.','no-NO':'Høydepunkter: {x}.','da-DK':'Højdepunkter: {x}.','fi-FI':'Kohokohdat: {x}.','cs-CZ':'Hlavní body: {x}.','sk-SK':'Najdôležitejšie: {x}.','hu-HU':'Kiemelések: {x}.','ro-RO':'Cele mai importante: {x}.','uk-UA':'Головне: {x}.','bg-BG':'Акценти: {x}.','hr-HR':'Vrhunci: {x}.','el-GR':'Σημαντικά: {x}.','ca-ES':'Destacats: {x}.',
 };
 function joinPts(pts,code){
   if(!pts.length)return'';
-  const m={'zh-CN':'亮点：'+pts.join('、')+'。','zh-TW':'亮點：'+pts.join('、')+'。','ja-JP':'見どころ：'+pts.join('、')+'。','ko-KR':'하이라이트: '+pts.join(', ')+'.','en-US':'Highlights: '+pts.join(', ')+'.','de-DE':'Highlights: '+pts.join(', ')+'.','fr-FR':'Temps forts : '+pts.join(', ')+'.','es-ES':'Lo destacado: '+pts.join(', ')+'.'};
-  return m[code]||('Highlights: '+pts.join(', ')+'.');
+  const sep=(code==='zh-CN'||code==='zh-TW'||code==='ja-JP')?'、':', ';
+  return (PTS_FMT[code]||'Highlights: {x}.').replace('{x}',pts.join(sep));
 }
-function fill(str,ctx,code){return str.replaceAll('{p}',ctx.project||'Your App').replaceAll('{c}',ctx.campaign||ctx.theme||'New Update').replaceAll('{pts}',joinPts(ctx.points||[],code));}
+function fill(str,ctx,code){return str.replaceAll('{p}',ctx.project||'Your App').replaceAll('{c}',ctx.campaign||'New Update').replaceAll('{pts}',joinPts(ctx.points||[],code));}
 function fallbackTr(text,code){let o=String(text||'');for(const g of GLOSSARY){const v=g[code];if(v&&o.includes(g.src))o=o.split(g.src).join(v);}return o;}
 function genNative(ctx){
   const tpl=(TPL[ctx.type]||TPL.event)['zh-CN'];
@@ -654,16 +755,21 @@ function genNative(ctx){
 }
 function localize(ctx,codes){
   const map=TPL[ctx.type]||TPL.event;const out=[];
-  const zh=map['zh-CN'];
-  const baseT=ctx.sourceTag||fill(zh.t,ctx,'zh-CN'),baseD=ctx.sourceDesc||fill(zh.d,ctx,'zh-CN');
+  const baseT=ctx.sourceTag||fill(map['zh-CN'].t,ctx,'zh-CN'),baseD=ctx.sourceDesc||fill(map['zh-CN'].d,ctx,'zh-CN');
+  // 兜底基础语种：优先 en-US，其次 zh-CN
+  const fbBase=map['en-US']||map['zh-CN'];
   for(const code of codes){
     let tag,desc,byTpl=!!map[code];
     if(byTpl){tag=fill(map[code].t,ctx,code);desc=fill(map[code].d,ctx,code);}
-    else{tag=fallbackTr(baseT,code);desc=fallbackTr(baseD,code);}
+    else{
+      // 用英文模板填充再做词典替换（比直接复制中文更安全）
+      tag=fallbackTr(fill(fbBase.t,ctx,code),code);
+      desc=fallbackTr(fill(fbBase.d,ctx,code),code);
+    }
     let trimmed=false;
     if(countChars(tag)>LIMITS.tagline){tag=smartShrink(tag,LIMITS.tagline);trimmed=true;}
     if(countChars(desc)>LIMITS.description){desc=smartShrink(desc,LIMITS.description);trimmed=true;}
-    out.push({code,name:LANGUAGES.find(l=>l.code===code)?.name||code,tag,desc,tagLen:countChars(tag),descLen:countChars(desc),byTpl,trimmed,ok:countChars(tag)<=LIMITS.tagline&&countChars(desc)<=LIMITS.description});
+    out.push({code,name:getLangName(code),tag,desc,tagLen:countChars(tag),descLen:countChars(desc),byTpl,trimmed,ok:countChars(tag)<=LIMITS.tagline&&countChars(desc)<=LIMITS.description});
   }
   return out;
 }
@@ -674,50 +780,57 @@ function buildCsv(rows){const out=[['Language Code','Tagline','Description'].joi
 function download(name,content,type='text/csv;charset=utf-8'){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),800);}
 
 /* ---------- 国旗 ---------- */
-const LANG2GEO={'en-US':'US','en-GB':'GB','ja-JP':'JP','ko-KR':'KR','zh-TW':'TW','de-DE':'DE','fr-FR':'FR','es-ES':'ES','pt-BR':'BR','it-IT':'IT','ru-RU':'RU','th-TH':'TH','vi-VN':'VN','id-ID':'ID','tr-TR':'TR'};
-function flag(cc){if(!cc||cc.length!==2)return'🏳️';return cc.toUpperCase().replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt(0)));}
+function flag(cc){if(!cc||cc.length!==2)return'🌐';return cc.toUpperCase().replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt(0)));}
 
 /* ---------- storage ---------- */
-const K_REG='playops.registry';
+const K_REG='playops.registry',K_PRESETS='playops.lang_presets';
 function loadLS(k,fb){try{const r=localStorage.getItem(k);return r?JSON.parse(r):fb;}catch{return fb;}}
 function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
-/* ---------- 缩略图生成 ---------- */
+function getPresets(){
+  let p=loadLS(K_PRESETS,null);
+  if(!p){
+    p=[
+      {id:'p_asia',name:'亚洲核心 5 国',langs:['zh-CN','zh-TW','ja-JP','ko-KR','th-TH']},
+      {id:'p_top10',name:'全球 Top 10',langs:['en-US','ja-JP','ko-KR','zh-TW','de-DE','fr-FR','es-ES','pt-BR','ru-RU','it-IT']},
+      {id:'p_emea',name:'EMEA 主战场',langs:['en-GB','de-DE','fr-FR','es-ES','it-IT','pl-PL','tr-TR','ar-SA']},
+    ];
+    saveLS(K_PRESETS,p);
+  }
+  return p;
+}
+function savePresets(list){saveLS(K_PRESETS,list);}
+
+/* ---------- 缩略图 / 示例数据（同上版本） ---------- */
 function svgThumb(text,c1,c2,emoji){
   const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='180'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='${c1}'/><stop offset='1' stop-color='${c2}'/></linearGradient></defs><rect width='320' height='180' fill='url(#g)'/><text x='20' y='52' font-size='34'>${emoji}</text><text x='20' y='150' font-family='Segoe UI,sans-serif' font-size='24' font-weight='700' fill='#ffffff'>${text}</text></svg>`;
   return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
 }
 function compressImage(file,maxW=420){
-  return new Promise((res)=>{
-    const img=new Image();img.onload=()=>{
-      const sc=Math.min(1,maxW/img.width);const w=Math.round(img.width*sc),h=Math.round(img.height*sc);
-      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
-      try{res(cv.toDataURL('image/jpeg',0.72));}catch{res('');}
-    };img.onerror=()=>res('');img.src=URL.createObjectURL(file);
-  });
+  return new Promise((res)=>{const img=new Image();img.onload=()=>{
+    const sc=Math.min(1,maxW/img.width);const w=Math.round(img.width*sc),h=Math.round(img.height*sc);
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    try{res(cv.toDataURL('image/jpeg',0.72));}catch{res('');}
+  };img.onerror=()=>res('');img.src=URL.createObjectURL(file);});
 }
-
-/* ---------- 示例数据 ---------- */
-function seedData(){
-  return [
-    {id:'s1',project:'Rebel Glam',campaign:'夏季浪潮沙滩派对更新',type:'update',preview:'2026-06-01',start:'2026-06-10',end:'2026-06-30',featured:true,audience:'Gen Z / Dress-up Users',geos:['US','JP','KR','DE'],impressions:450000,cvr:14.2,pic:'You Yirou',thumb:svgThumb('Rebel Glam','#ff7eb3','#ff758c','👗')},
-    {id:'s2',project:'Rebel Glam',campaign:'仲夏抽卡狂欢节',type:'event',preview:'2026-05-20',start:'2026-05-25',end:'2026-06-08',featured:false,audience:'付费抽卡用户',geos:['US','JP','TW'],impressions:320000,cvr:9.8,pic:'Cheng Ying',thumb:svgThumb('Rebel Glam','#a18cd1','#fbc2eb','🎰')},
-    {id:'s3',project:'Puzzle Bloom',campaign:'春日花园周年庆',type:'festival',preview:'2026-03-15',start:'2026-03-20',end:'2026-04-05',featured:true,audience:'休闲解谜玩家',geos:['US','DE','FR','KR'],impressions:610000,cvr:18.5,pic:'You Yirou',thumb:svgThumb('Puzzle Bloom','#43e97b','#38f9d7','🌸')},
-    {id:'s4',project:'Speed Racer X',campaign:'S3 霓虹赛季通行证',type:'season',preview:'2026-04-25',start:'2026-05-01',end:'2026-05-31',featured:false,audience:'竞速核心玩家',geos:['US','KR','BR'],impressions:280000,cvr:7.4,pic:'Liang Hao',thumb:svgThumb('Speed Racer X','#4facfe','#00f2fe','🏎️')},
-    {id:'s5',project:'Mythic Saga',campaign:'诸神黄昏限时副本',type:'event',preview:'2026-06-05',start:'2026-06-12',end:'2026-06-26',featured:true,audience:'RPG 重度玩家',geos:['JP','KR','TW','US'],impressions:540000,cvr:16.1,pic:'Cheng Ying',thumb:svgThumb('Mythic Saga','#30cfd0','#330867','⚔️')},
-    {id:'s6',project:'Cozy Cafe',campaign:'夏日冰品上新',type:'festival',preview:'2026-06-15',start:'2026-06-20',end:'2026-07-10',featured:false,audience:'模拟经营玩家',geos:['US','JP','DE'],impressions:190000,cvr:6.2,pic:'Wang Lin',thumb:svgThumb('Cozy Cafe','#f6d365','#fda085','🍧')},
-  ];
-}
+function seedData(){return [
+  {id:'s1',project:'Rebel Glam',campaign:'夏季浪潮沙滩派对更新',type:'update',preview:'2026-06-01',start:'2026-06-10',end:'2026-06-30',featured:true,audience:'Gen Z / Dress-up Users',geos:['US','JP','KR','DE'],impressions:450000,cvr:14.2,pic:'You Yirou',thumb:svgThumb('Rebel Glam','#ff7eb3','#ff758c','👗')},
+  {id:'s2',project:'Rebel Glam',campaign:'仲夏抽卡狂欢节',type:'event',preview:'2026-05-20',start:'2026-05-25',end:'2026-06-08',featured:false,audience:'付费抽卡用户',geos:['US','JP','TW'],impressions:320000,cvr:9.8,pic:'Cheng Ying',thumb:svgThumb('Rebel Glam','#a18cd1','#fbc2eb','🎰')},
+  {id:'s3',project:'Puzzle Bloom',campaign:'春日花园周年庆',type:'festival',preview:'2026-03-15',start:'2026-03-20',end:'2026-04-05',featured:true,audience:'休闲解谜玩家',geos:['US','DE','FR','KR'],impressions:610000,cvr:18.5,pic:'You Yirou',thumb:svgThumb('Puzzle Bloom','#43e97b','#38f9d7','🌸')},
+  {id:'s4',project:'Speed Racer X',campaign:'S3 霓虹赛季通行证',type:'season',preview:'2026-04-25',start:'2026-05-01',end:'2026-05-31',featured:false,audience:'竞速核心玩家',geos:['US','KR','BR'],impressions:280000,cvr:7.4,pic:'Liang Hao',thumb:svgThumb('Speed Racer X','#4facfe','#00f2fe','🏎️')},
+  {id:'s5',project:'Mythic Saga',campaign:'诸神黄昏限时副本',type:'event',preview:'2026-06-05',start:'2026-06-12',end:'2026-06-26',featured:true,audience:'RPG 重度玩家',geos:['JP','KR','TW','US'],impressions:540000,cvr:16.1,pic:'Cheng Ying',thumb:svgThumb('Mythic Saga','#30cfd0','#330867','⚔️')},
+  {id:'s6',project:'Cozy Cafe',campaign:'夏日冰品上新',type:'festival',preview:'2026-06-15',start:'2026-06-20',end:'2026-07-10',featured:false,audience:'模拟经营玩家',geos:['US','JP','DE'],impressions:190000,cvr:6.2,pic:'Wang Lin',thumb:svgThumb('Cozy Cafe','#f6d365','#fda085','🍧')},
+];}
 function getRegistry(){let r=loadLS(K_REG,null);if(!r){r=seedData();saveLS(K_REG,r);}return r;}
 function setRegistry(r){saveLS(K_REG,r);}
 
-/* ---------- 工具 ---------- */
+/* ---------- helpers ---------- */
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(m,ms=2200){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),ms);}
-function quarterOf(dateStr){if(!dateStr)return'';const d=new Date(dateStr);if(isNaN(d))return'';return d.getFullYear()+'-Q'+(Math.floor(d.getMonth()/3)+1);}
+function quarterOf(d){if(!d)return'';const x=new Date(d);if(isNaN(x))return'';return x.getFullYear()+'-Q'+(Math.floor(x.getMonth()/3)+1);}
 function fmtNum(n){return Number(n||0).toLocaleString('en-US');}
 const TYPE_LABEL={event:'限时活动',update:'版本更新',festival:'节日活动',season:'新赛季',bundle:'礼包',comeback:'回流'};
 const TYPE_CLS={update:'update',event:'event',festival:'festival'};
@@ -734,6 +847,7 @@ const state={
   translations:[],
   csv:'',
   tab:'table',
+  langSearch:'',
 };
 
 /* ==================================================================
@@ -749,15 +863,13 @@ function switchView(v){
 }
 
 /* ==================================================================
- *  ENGINE
+ *  ENGINE — 卡片 1/2/3
  * ================================================================== */
 function renderPoints(){
   $('#pointChips').innerHTML=state.points.map((p,i)=>`<span class="chip">${esc(p)}<button data-i="${i}">×</button></span>`).join('');
   $$('#pointChips button').forEach(b=>b.onclick=()=>{state.points.splice(+b.dataset.i,1);renderPoints();});
 }
-function ctxOf(){
-  return {project:$('#inProject').value.trim()||'Rebel Glam',campaign:$('#inCampaign').value.trim(),type:$('#inType').value,points:[...state.points]};
-}
+function ctxOf(){return {project:$('#inProject').value.trim()||'Rebel Glam',campaign:$('#inCampaign').value.trim(),type:$('#inType').value,points:[...state.points]};}
 function refreshCounters(){
   const t=countChars($('#outTag').value),d=countChars($('#outDesc').value);
   const c1=$('#cntTag'),c2=$('#cntDesc');
@@ -768,29 +880,88 @@ function refreshCounters(){
 }
 function runScan(){
   const ctx=ctxOf();
-  const findings=[];const seen=new Set();
-  for(const f of [...scan($('#outTag').value,ctx),...scan($('#outDesc').value,ctx)]){if(seen.has(f.id))continue;seen.add(f.id);findings.push(f);}
-  const sc={high:0,med:0,low:0};findings.forEach(f=>sc[f.level]++);
+  const found=[];const seen=new Set();
+  for(const f of [...scan($('#outTag').value,ctx),...scan($('#outDesc').value,ctx)]){if(seen.has(f.id))continue;seen.add(f.id);found.push(f);}
+  const sc={high:0,med:0,low:0};found.forEach(f=>sc[f.level]++);
   const b=$('#compBadges');
-  if(!findings.length){b.innerHTML='<span class="cbadge ok">✓ 全部通过</span>';}
+  if(!found.length){b.innerHTML='<span class="cbadge ok">✓ 全部通过</span>';}
   else{b.innerHTML=(sc.high?`<span class="cbadge h">${sc.high} 高危</span>`:'')+(sc.med?`<span class="cbadge m">${sc.med} 中危</span>`:'')+(sc.low?`<span class="cbadge l">${sc.low} 提示</span>`:'');}
   const list=$('#compList');
-  if(!findings.length){list.innerHTML=`<div class="risk low" style="border-left-color:var(--green);background:#f4fbf7"><div class="rh"><span style="color:var(--green-deep)">✅ 未发现违规命中</span></div><div class="rb">已扫描虚假按钮、价格折扣、夸张宣称、占位符等 11 项规则，全部通过。</div></div>`;}
-  else{const lvl={high:'高风险 · 阻塞',med:'中风险',low:'低风险 · 建议'};list.innerHTML=findings.map(f=>`<div class="risk ${f.level}"><div class="rh"><span>${esc(f.name)}</span><span style="font-size:11px;opacity:.8">${lvl[f.level]}</span></div><div class="rb">${esc(f.hint)}${f.snippet?` · 命中：<code>${esc(f.snippet)}</code>`:''}</div></div>`).join('');}
-  return {findings,blocked:sc.high>0};
+  if(!found.length){list.innerHTML=`<div class="risk low" style="border-left-color:var(--green);background:#f4fbf7"><div class="rh"><span style="color:var(--green-deep)">✅ 未发现违规命中</span></div><div class="rb">已扫描虚假按钮、价格折扣、夸张宣称、占位符等 11 项规则，全部通过。</div></div>`;}
+  else{const lvl={high:'高风险 · 阻塞',med:'中风险',low:'低风险 · 建议'};list.innerHTML=found.map(f=>`<div class="risk ${f.level}"><div class="rh"><span>${esc(f.name)}</span><span style="font-size:11px;opacity:.8">${lvl[f.level]}</span></div><div class="rb">${esc(f.hint)}${f.snippet?` · 命中：<code>${esc(f.snippet)}</code>`:''}</div></div>`).join('');}
+  return {findings:found,blocked:sc.high>0};
 }
-function renderLangPills(){
-  $('#langPills').innerHTML=LANGUAGES.map(l=>{
-    const on=state.selectedLangs.includes(l.code);
-    return `<label class="pill ${on?'on':''}" data-code="${l.code}"><input type="checkbox" ${on?'checked':''}/><span class="flag">${flag(LANG2GEO[l.code])}</span><span>${esc(l.name)}</span><span class="code">${l.code}</span></label>`;
-  }).join('');
-  $$('#langPills .pill').forEach(p=>p.onclick=e=>{
-    e.preventDefault();const code=p.dataset.code;
-    if(state.selectedLangs.includes(code))state.selectedLangs=state.selectedLangs.filter(c=>c!==code);
-    else state.selectedLangs.push(code);
-    renderLangPills();
+
+/* ==================================================================
+ *  ENGINE — 语言预设 + 已选 chips + 搜索添加
+ * ================================================================== */
+function renderPresetChips(){
+  const list=getPresets(),wrap=$('#presetChips');
+  if(!list.length){wrap.innerHTML='<div class="preset-empty">尚未保存任何预设。在下方输入名称即可保存当前选择。</div>';return;}
+  wrap.innerHTML=list.map(p=>`<span class="preset-chip" data-pid="${p.id}"><span>📁</span><span>${esc(p.name)}</span><span class="pn">${p.langs.length}</span><button class="pdel" data-pdel="${p.id}" title="删除预设">×</button></span>`).join('');
+  $$('#presetChips .preset-chip').forEach(c=>c.onclick=e=>{
+    if(e.target.classList.contains('pdel'))return;
+    const p=getPresets().find(x=>x.id===c.dataset.pid);
+    if(!p)return;
+    state.selectedLangs=[...new Set(p.langs)];
+    renderSelectedLangs();renderLangOptions();
+    toast('已载入预设「'+p.name+'」 · 共 '+p.langs.length+' 种语言');
+  });
+  $$('#presetChips .pdel').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const p=getPresets().find(x=>x.id===b.dataset.pdel);
+    if(!p||!confirm('删除预设「'+p.name+'」？'))return;
+    savePresets(getPresets().filter(x=>x.id!==b.dataset.pdel));
+    renderPresetChips();
   });
 }
+function renderSelectedLangs(){
+  $('#selCount').textContent=state.selectedLangs.length;
+  const wrap=$('#selChips');
+  if(!state.selectedLangs.length){wrap.innerHTML='<div class="sel-empty">尚未选择任何语言 · 从右侧搜索添加</div>';return;}
+  wrap.innerHTML=state.selectedLangs.map(code=>{
+    const l=getLang(code);
+    return `<span class="sel-chip"><span class="flag">${flag(lang2geo(code))}</span><span class="sname">${esc(l?l.name:code)}</span><span class="scode">${code}</span><button class="rmbtn" data-rm="${code}" title="移除">×</button></span>`;
+  }).join('');
+  $$('#selChips .rmbtn').forEach(b=>b.onclick=()=>{
+    state.selectedLangs=state.selectedLangs.filter(c=>c!==b.dataset.rm);
+    renderSelectedLangs();renderLangOptions();
+  });
+}
+function renderLangOptions(){
+  const q=state.langSearch.toLowerCase().trim();
+  const wrap=$('#langOptions');
+  const avail=LANGUAGES.filter(l=>!state.selectedLangs.includes(l.code));
+  const list=q
+    ? avail.filter(l=>l.code.toLowerCase().includes(q)||l.name.toLowerCase().includes(q))
+    : avail;
+  if(!list.length){
+    wrap.innerHTML=`<div class="lopt empty">${q?'无匹配的语言':'已添加全部 '+LANGUAGES.length+' 种语言'}</div>`;
+    return;
+  }
+  wrap.innerHTML=list.map(l=>`<div class="lopt" data-code="${l.code}"><span class="flag">${flag(lang2geo(l.code))}</span><span class="lcname">${esc(l.name)}</span><span class="lccode">${l.code}</span><span class="lc-add">＋</span></div>`).join('');
+  $$('#langOptions .lopt[data-code]').forEach(o=>o.onclick=()=>{
+    const code=o.dataset.code;
+    if(!state.selectedLangs.includes(code))state.selectedLangs.push(code);
+    renderSelectedLangs();renderLangOptions();
+  });
+}
+function savePresetFromCurrent(){
+  const name=$('#presetName').value.trim();
+  if(!name){toast('请填写预设名称');return;}
+  if(!state.selectedLangs.length){toast('当前没有选择语言');return;}
+  const list=getPresets();
+  if(list.some(p=>p.name===name)){if(!confirm('预设「'+name+'」已存在，覆盖？'))return;list.splice(list.findIndex(p=>p.name===name),1);}
+  list.push({id:'p_'+Date.now().toString(36),name,langs:[...state.selectedLangs]});
+  savePresets(list);
+  $('#presetName').value='';
+  renderPresetChips();
+  toast('✓ 已保存预设「'+name+'」 · '+state.selectedLangs.length+' 种语言');
+}
+
+/* ==================================================================
+ *  ENGINE — 翻译表 + CSV
+ * ================================================================== */
 function renderI18n(){
   const tb=$('#i18nBody');
   if(!state.translations.length){tb.innerHTML=`<tr><td colspan="4" class="empty" style="padding:34px"><div class="ei">🌍</div>选择语言后点击「一键本地化」生成多语文案</td></tr>`;return;}
@@ -802,7 +973,7 @@ function renderI18n(){
     else if(r.byTpl&&!r.trimmed){tag='ok';txt='达标';}
     else{tag='aligned';txt='已对齐';}
     return `<tr>
-      <td class="lc">${flag(LANG2GEO[r.code])} ${r.code}<span class="lname">${esc(r.name)}</span></td>
+      <td class="lc">${flag(lang2geo(r.code))} ${r.code}<span class="lname">${esc(r.name)}</span></td>
       <td class="cell-txt">${esc(r.tag)}<div class="len ${tc}">${r.tagLen}/${LIMITS.tagline}</div></td>
       <td class="cell-txt">${esc(r.desc)}<div class="len ${dc}">${r.descLen}/${LIMITS.description}</div></td>
       <td><span class="tag ${tag}">${txt}</span></td>
@@ -813,12 +984,22 @@ function renderCsv(){
   state.csv=buildCsv(state.translations);
   $('#csvBox').textContent=state.translations.length?state.csv:'— 暂无数据 —';
 }
-function bindEngine(){
-  $('#inProject').oninput=()=>{};
-  ['inProject','inCampaign','inType'].forEach(id=>$('#'+id).addEventListener('input',()=>{}));
-  const pi=$('#inPoint');
-  pi.addEventListener('keydown',e=>{if(e.key!=='Enter')return;e.preventDefault();const v=pi.value.trim();if(!v)return;if(state.points.length>=5){toast('最多 5 个核心卖点');return;}if(!state.points.includes(v))state.points.push(v);pi.value='';renderPoints();});
 
+/* ==================================================================
+ *  ENGINE — 绑定
+ * ================================================================== */
+function bindEngine(){
+  // chips: selling points
+  const pi=$('#inPoint');
+  pi.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;e.preventDefault();
+    const v=pi.value.trim();if(!v)return;
+    if(state.points.length>=5){toast('最多 5 个核心卖点');return;}
+    if(!state.points.includes(v))state.points.push(v);
+    pi.value='';renderPoints();
+  });
+
+  // image dropzone
   const dz=$('#dropzone'),fi=$('#inImage');
   dz.onclick=()=>fi.click();
   dz.ondragover=e=>{e.preventDefault();dz.classList.add('drag');};
@@ -826,36 +1007,62 @@ function bindEngine(){
   dz.ondrop=e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files?.[0];if(f)handleImg(f);};
   fi.onchange=()=>{const f=fi.files?.[0];if(f)handleImg(f);};
 
+  // AI generate
   $('#genBtn').onclick=()=>{
-    const ctx=ctxOf();
-    const c=genNative(ctx);
+    const ctx=ctxOf();const c=genNative(ctx);
     state.copy=c;$('#outTag').value=c.tag;$('#outDesc').value=c.desc;
     refreshCounters();runScan();toast('已生成符合指南的母语文案');
   };
   $('#outTag').addEventListener('input',()=>{state.copy.tag=$('#outTag').value;refreshCounters();});
   $('#outDesc').addEventListener('input',()=>{state.copy.desc=$('#outDesc').value;refreshCounters();});
-  $('#shrinkBtn').onclick=()=>{$('#outTag').value=smartShrink($('#outTag').value,LIMITS.tagline);$('#outDesc').value=smartShrink($('#outDesc').value,LIMITS.description);state.copy.tag=$('#outTag').value;state.copy.desc=$('#outDesc').value;refreshCounters();runScan();toast('已精简到上限内');};
+  $('#shrinkBtn').onclick=()=>{
+    $('#outTag').value=smartShrink($('#outTag').value,LIMITS.tagline);
+    $('#outDesc').value=smartShrink($('#outDesc').value,LIMITS.description);
+    state.copy.tag=$('#outTag').value;state.copy.desc=$('#outDesc').value;
+    refreshCounters();runScan();toast('已精简到上限内');
+  };
   $('#rescanBtn').onclick=()=>{runScan();toast('已重新扫描');};
 
-  $('#langCore').onclick=()=>{state.selectedLangs=LANGUAGES.filter(l=>l.core).map(l=>l.code);renderLangPills();};
-  $('#langClear').onclick=()=>{state.selectedLangs=[];renderLangPills();};
+  // language picker
+  $('#langSearch').addEventListener('input',e=>{state.langSearch=e.target.value;renderLangOptions();});
+  $('#clearLangsBtn').onclick=()=>{
+    if(!state.selectedLangs.length){toast('当前没有选择语言');return;}
+    if(confirm('清空已选择的 '+state.selectedLangs.length+' 种语言？')){state.selectedLangs=[];renderSelectedLangs();renderLangOptions();}
+  };
+  $('#savePresetBtn').onclick=savePresetFromCurrent;
+  $('#presetName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePresetFromCurrent();}});
+
+  // translate
   $('#translateBtn').onclick=()=>{
     if(!state.selectedLangs.length){toast('请至少选择 1 种语言');return;}
     if(!$('#outTag').value.trim()){toast('请先生成或填写母语文案');return;}
     const r=runScan();
-    if(r.blocked){toast('⚠ 存在高风险命中，请先修复再本地化');}
+    if(r.blocked){toast('⚠ 存在高风险命中，建议先修复再本地化');}
     const ctx=ctxOf();ctx.sourceTag=$('#outTag').value;ctx.sourceDesc=$('#outDesc').value;
     state.translations=localize(ctx,state.selectedLangs);
     renderI18n();renderCsv();
     toast('已完成 '+state.translations.length+' 种语言本地化');
   };
+
+  // export & archive
   $('#csvBtn').onclick=()=>{
     if(!state.translations.length){toast('请先执行本地化');return;}
     const name=(ctxOf().project.toLowerCase().replace(/\s+/g,'_'))+'_promo_'+new Date().toISOString().slice(0,10)+'.csv';
     download(name,state.csv||buildCsv(state.translations));toast('CSV 已导出');
   };
   $('#archiveBtn').onclick=archiveActivity;
-  renderPoints();renderLangPills();renderI18n();renderCsv();refreshCounters();runScan();
+
+  // 初次渲染
+  $('#langTotal').textContent=LANGUAGES.length;
+  $('#selTotal').textContent=LANGUAGES.length;
+  renderPoints();
+  renderPresetChips();
+  renderSelectedLangs();
+  renderLangOptions();
+  renderI18n();
+  renderCsv();
+  refreshCounters();
+  runScan();
 }
 async function handleImg(file){
   if(!file.type.startsWith('image/')){toast('仅支持图片文件');return;}
@@ -868,7 +1075,7 @@ async function archiveActivity(){
   const ctx=ctxOf();
   if(!ctx.campaign){toast('请填写「活动名称」后再归档');return;}
   const reg=getRegistry();
-  const geos=[...new Set(state.selectedLangs.map(c=>LANG2GEO[c]).filter(Boolean))];
+  const geos=[...new Set(state.selectedLangs.map(c=>lang2geo(c)).filter(Boolean))];
   const thumb=state.imageData||svgThumb(ctx.project,'#1A73E8','#00A86B','🎮');
   reg.unshift({
     id:'a_'+Date.now().toString(36),
@@ -899,9 +1106,8 @@ function populateFilters(){
   setOpts($('#fPic'),pics);
 }
 function filteredRegistry(){
-  let reg=getRegistry();
   const q=$('#fQuarter').value,g=$('#fGeo').value,p=$('#fPic').value,f=$('#fFeat').value,s=$('#fSearch').value.trim().toLowerCase();
-  return reg.filter(r=>{
+  return getRegistry().filter(r=>{
     if(q&&quarterOf(r.start)!==q)return false;
     if(g&&!(r.geos||[]).includes(g))return false;
     if(p&&r.pic!==p)return false;
@@ -912,16 +1118,15 @@ function filteredRegistry(){
   });
 }
 function renderStats(rows){
-  const total=rows.length;
-  const feat=rows.filter(r=>r.featured).length;
+  const total=rows.length,feat=rows.filter(r=>r.featured).length;
   const imp=rows.reduce((a,r)=>a+(+r.impressions||0),0);
   const cvrs=rows.filter(r=>+r.cvr>0);
-  const avgCvr=cvrs.length?(cvrs.reduce((a,r)=>a+(+r.cvr||0),0)/cvrs.length):0;
+  const avg=cvrs.length?(cvrs.reduce((a,r)=>a+(+r.cvr||0),0)/cvrs.length):0;
   $('#statLine').innerHTML=`
     <div class="stat"><div class="v">${total}</div><div class="l">活动总数</div></div>
     <div class="stat"><div class="v" style="color:#f5a623">${feat}</div><div class="l">⭐ 特推活动</div></div>
     <div class="stat"><div class="v blue">${fmtNum(imp)}</div><div class="l">累计曝光量</div></div>
-    <div class="stat"><div class="v green">+${avgCvr.toFixed(1)}%</div><div class="l">平均转化率</div></div>`;
+    <div class="stat"><div class="v green">+${avg.toFixed(1)}%</div><div class="l">平均转化率</div></div>`;
 }
 function renderRegistry(){
   populateFilters();
@@ -940,9 +1145,7 @@ function renderTable(rows){
     <td class="camp">${esc(r.campaign)}</td>
     <td><span class="type-tag ${TYPE_CLS[r.type]||''}">${TYPE_LABEL[r.type]||r.type}</span></td>
     <td>${quarterOf(r.start)||'—'}</td>
-    <td>${r.preview||'—'}</td>
-    <td>${r.start||'—'}</td>
-    <td>${r.end||'—'}</td>
+    <td>${r.preview||'—'}</td><td>${r.start||'—'}</td><td>${r.end||'—'}</td>
     <td><span class="star ${r.featured?'on':'off'}">${r.featured?'★':'☆'}</span></td>
     <td>${esc(r.audience||'—')}</td>
     <td><span class="geos">${(r.geos||[]).map(g=>`<span class="geo-chip" title="${g}">${flag(g)}</span>`).join('')}</span></td>
@@ -981,7 +1184,6 @@ function renderGantt(rows){
   const dayW=Math.max(7,Math.min(14,820/span));
   const trackW=Math.round(span*dayW);
   const pct=d=>((new Date(d)-min)/86400000)/span*100;
-  // month ticks
   let ticks='';const cur=new Date(min.getFullYear(),min.getMonth(),1);
   while(cur<=max){const left=Math.max(0,pct(cur));ticks+=`<div class="gantt-tick" style="left:${left}%">${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}</div>`;cur.setMonth(cur.getMonth()+1);}
   let gridLines='';const cur2=new Date(min.getFullYear(),min.getMonth(),1);
@@ -1004,8 +1206,6 @@ function renderGantt(rows){
   inner.innerHTML=`<div class="gantt-headrow"><div class="gantt-corner">项目 / 活动</div><div class="gantt-axis">${ticks}</div></div>${rowsHtml}`;
   bindGanttTips();
 }
-
-/* thumbnails modal */
 function bindThumbs(){
   $$('.reg-table .thumb').forEach(t=>t.onclick=()=>{$('#modalImg').src=t.dataset.full;$('#imgModal').classList.add('show');});
 }
@@ -1025,9 +1225,9 @@ function loadToEngine(id){
   state.copy={tag:r.copy?.tag||'',desc:r.copy?.desc||''};
   $('#outTag').value=state.copy.tag;$('#outDesc').value=state.copy.desc;refreshCounters();runScan();
   state.translations=r.translations||[];
-  state.selectedLangs=(r.geos||[]).map(g=>Object.keys(LANG2GEO).find(k=>LANG2GEO[k]===g)).filter(Boolean);
+  state.selectedLangs=(r.geos||[]).map(g=>geo2lang(g)).filter(Boolean);
   if(!state.selectedLangs.length)state.selectedLangs=['en-US'];
-  renderLangPills();renderI18n();renderCsv();
+  renderSelectedLangs();renderLangOptions();renderI18n();renderCsv();
   if(r.thumb){$('#preview').src=r.thumb;$('#dropzone').classList.add('has');state.imageData=r.thumb;}
   switchView('engine');toast('已载入「'+r.campaign+'」到生产引擎');
 }

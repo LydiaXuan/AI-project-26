@@ -307,6 +307,25 @@ tbody tr:hover{background:#fbfcfe}
 .modal.show{display:flex}
 .modal img{max-width:90vw;max-height:86vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
 
+/* AI 配置弹窗 */
+.modal.form-modal{align-items:flex-start;padding-top:60px}
+.form-card{background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:84vh;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.3);display:flex;flex-direction:column}
+.form-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border-soft)}
+.form-head h3{font-size:16px}
+.form-body{padding:18px 22px;flex:1;overflow-y:auto}
+.form-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--border-soft);background:var(--th-bg)}
+.modal-close{border:0;background:transparent;cursor:pointer;font-size:22px;color:var(--muted);padding:2px 8px;border-radius:6px;line-height:1}
+.modal-close:hover{background:var(--border-soft);color:var(--ink)}
+.api-status{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 10px;border-radius:999px;font-weight:600}
+.api-status.on{background:var(--green-soft);color:var(--green-deep);border:1px solid #bfe8d6}
+.api-status.off{background:var(--border-soft);color:var(--muted);border:1px solid var(--border)}
+.api-status .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.help-text{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.55}
+.test-result{margin-top:12px;padding:9px 12px;border-radius:var(--r-sm);font-size:12px;display:none;line-height:1.5}
+.test-result.show{display:block}
+.test-result.ok{background:var(--green-soft);color:var(--green-deep);border:1px solid #bfe8d6}
+.test-result.err{background:var(--red-soft);color:var(--red);border:1px solid #f5c5c5;word-break:break-all}
+
 @media (max-width:760px){.sidebar{display:none}}
 </style>
 </head>
@@ -348,6 +367,8 @@ tbody tr:hover{background:#fbfcfe}
       <div class="crumb">Creation Engine · 三栏并行 → 多语言本地化 → 一键 CSV 导出</div>
     </div>
     <div class="topbar-actions">
+      <span class="api-status off" id="apiStatusChip"><span class="dot"></span><span id="apiStatusText">未配置 AI</span></span>
+      <button class="btn ghost sm" id="apiSetBtn" type="button">⚙ AI 视觉设置</button>
       <a class="btn ghost sm" href="https://support.google.com/googleplay/android-developer/answer/12929944?hl=zh-Hans" target="_blank" rel="noopener">📘 内容质量指南</a>
     </div>
   </div>
@@ -558,6 +579,53 @@ tbody tr:hover{background:#fbfcfe}
     </div>
   </section>
 
+</div>
+
+<!-- AI 视觉文案 API 配置弹窗 -->
+<div class="modal form-modal" id="apiModal">
+  <div class="form-card">
+    <div class="form-head">
+      <div>
+        <h3>🤖 多模态 AI 视觉文案 · API 配置</h3>
+        <div class="muted" style="margin-top:4px;line-height:1.55">配置后，「AI 智能生成」将把海报上传至所选模型，分析画面内容与风格，自定主题后撰写文案。</div>
+      </div>
+      <button class="modal-close" id="apiModalClose" type="button">×</button>
+    </div>
+    <div class="form-body">
+      <div class="field">
+        <div class="flabel">服务商</div>
+        <select id="apiProvider">
+          <option value="anthropic">Anthropic Claude（推荐）</option>
+          <option value="openai">OpenAI</option>
+          <option value="custom">自定义 · 兼容 OpenAI 协议</option>
+        </select>
+        <div class="help-text">支持 Claude / GPT-4o 等多模态模型，或任何兼容 OpenAI Chat Completions 协议的代理 / 自建端点。</div>
+      </div>
+      <div class="field">
+        <div class="flabel">API Base URL</div>
+        <input id="apiBaseUrl" type="text" placeholder="例：https://api.anthropic.com/v1" autocomplete="off" />
+      </div>
+      <div class="field">
+        <div class="flabel">API Key</div>
+        <input id="apiKey" type="password" placeholder="sk-ant-... / sk-... / 自定义 Token" autocomplete="off" />
+        <div class="help-text">⚠ Key 仅保存在本地浏览器 localStorage，不会上传任何服务器；公共电脑请使用后点「清空配置」。</div>
+      </div>
+      <div class="field">
+        <div class="flabel">模型 ID</div>
+        <input id="apiModel" type="text" placeholder="例：claude-sonnet-4-6 / gpt-4o" autocomplete="off" />
+        <div class="help-text">必须选择支持视觉（multimodal）的模型，否则海报内容无法被分析。</div>
+      </div>
+      <div class="row gap" style="margin-top:6px">
+        <button class="btn sm" id="apiTestBtn" type="button">🔌 测试连接</button>
+        <button class="btn ghost sm" id="apiClearBtn" type="button">🗑 清空配置</button>
+      </div>
+      <div class="test-result" id="apiTestResult"></div>
+    </div>
+    <div class="form-foot">
+      <button class="btn" id="apiCancelBtn" type="button">取消</button>
+      <button class="btn blue" id="apiSaveBtn" type="button">💾 保存配置</button>
+    </div>
+  </div>
 </div>
 
 <div class="gtip" id="gtip"></div>
@@ -825,6 +893,218 @@ function seedData(){return [
 function getRegistry(){let r=loadLS(K_REG,null);if(!r){r=seedData();saveLS(K_REG,r);}return r;}
 function setRegistry(r){saveLS(K_REG,r);}
 
+/* ====================================================================
+ *  多模态 AI 视觉文案 · API 适配（Anthropic / OpenAI 兼容）
+ * ==================================================================== */
+const K_API='playops.ai_config';
+const API_DEFAULTS={
+  anthropic:{baseUrl:'https://api.anthropic.com/v1',model:'claude-sonnet-4-6'},
+  openai:{baseUrl:'https://api.openai.com/v1',model:'gpt-4o'},
+  custom:{baseUrl:'',model:''}
+};
+function getApiConfig(){
+  const def=API_DEFAULTS.anthropic;
+  return loadLS(K_API,{provider:'anthropic',baseUrl:def.baseUrl,apiKey:'',model:def.model});
+}
+function saveApiConfig(c){saveLS(K_API,c);refreshApiStatus();}
+function hasApiKey(){return !!(getApiConfig().apiKey||'').trim();}
+
+function buildVisionPrompt(ctx,hasImage){
+  const typeLabel=TYPE_LABEL[ctx.type]||ctx.type;
+  const points=ctx.points.length?ctx.points.join('、'):'（未提供）';
+  const observe=hasImage
+    ? '1. 仔细观察海报：识别画面元素（角色 / 场景 / 物件 / 色彩 / 季节符号），辨认风格调性（甜美 / 史诗 / 赛博 / 治愈 / 复古 / 节庆…）。\n2. 结合项目名、活动名、活动类型、卖点，**自行推断该活动的主题与世界观**（如「夏日海滩派对」「诸神黄昏副本」「霓虹赛车赛季」）。'
+    : '1. 基于项目名、活动名、活动类型、卖点，**自行推断该活动的主题与世界观**（如「夏日海滩派对」「诸神黄昏副本」「霓虹赛车赛季」）。';
+  return `你是 Google Play 应用商店推广文案专家。
+
+【任务】
+${hasImage?'基于用户上传的活动海报与下方上下文':'基于下方上下文'}，生成符合 Google Play 推广内容规范的母语中文文案。
+
+【步骤】
+${observe}
+3. 写出 Tagline（口号）与 Description（长说明），**必须**满足：
+   - 清楚说明"这是一个什么活动"（不要只写"限时活动开启"这种空话）
+   - 明确告诉玩家**具体要做什么**（例：挑战 BOSS、装扮角色、收集道具、组队竞速、解锁皮肤、参与抽卡…根据主题选取）
+   - 语气与用词${hasImage?'匹配海报视觉风格':'贴合项目名所体现的调性'}
+   - 在合适位置出现项目名 "${ctx.project}"
+   - 自然带入卖点（如有）
+
+【上下文】
+- 项目名：${ctx.project}
+- 活动名：${ctx.campaign||'（未填写，请基于内容推断一个合适的名字）'}
+- 活动类型：${typeLabel}
+- 核心卖点：${points}
+
+【硬性合规规则（违反将被驳回）】
+- 禁止「立即下载 / 点击安装 / Click to install」等仿系统 CTA
+- 禁止具体价格、折扣百分比（如 50% OFF、￥30）
+- 禁止「Google Play 独家 / Editor's Choice / 官方推荐」等虚假平台声明
+- 禁止「全球第一 / No.1 / 绝对免费」等无法证伪的夸张宣称
+- 禁止全大写英文段落、≥3 个连续感叹号、>3 个 emoji
+- 禁止承诺真实金钱奖励
+- 不要使用占位符 {{var}} 或 [TODO]
+
+【字数限制（按字符计，含标点）】
+- Tagline：≤ 80
+- Description：≤ 500
+
+【输出格式】
+严格输出**纯 JSON**（不要 markdown 代码块、不要其它说明文字）：
+{
+  "theme": "你推断出的主题（一句话中文，便于团队复核）",
+  "tag": "Tagline 中文（≤ 80 字）",
+  "desc": "Description 中文（≤ 500 字）"
+}`;
+}
+
+function dataUrlParts(dataUrl){
+  const m=String(dataUrl||'').match(/^data:([^;]+);base64,(.+)$/);
+  return m?{mediaType:m[1],b64:m[2]}:null;
+}
+function parseAiJson(raw){
+  let s=String(raw||'').trim();
+  s=s.replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'').trim();
+  const i=s.indexOf('{'),j=s.lastIndexOf('}');
+  if(i>=0&&j>i)s=s.slice(i,j+1);
+  try{return JSON.parse(s);}catch{return null;}
+}
+
+async function callAnthropic(cfg,prompt,imageData){
+  const content=[];
+  if(imageData){
+    const p=dataUrlParts(imageData);
+    if(p)content.push({type:'image',source:{type:'base64',media_type:p.mediaType,data:p.b64}});
+  }
+  content.push({type:'text',text:prompt});
+  const r=await fetch(cfg.baseUrl.replace(/\/+$/,'')+'/messages',{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key':cfg.apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:cfg.model,max_tokens:1024,messages:[{role:'user',content}]})
+  });
+  if(!r.ok){const t=await r.text();throw new Error('Anthropic '+r.status+': '+t.slice(0,260));}
+  const data=await r.json();
+  return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+}
+async function callOpenAI(cfg,prompt,imageData){
+  const content=[{type:'text',text:prompt}];
+  if(imageData)content.push({type:'image_url',image_url:{url:imageData}});
+  const body={model:cfg.model,max_tokens:1024,messages:[{role:'user',content}]};
+  if(cfg.provider==='openai')body.response_format={type:'json_object'};
+  const r=await fetch(cfg.baseUrl.replace(/\/+$/,'')+'/chat/completions',{
+    method:'POST',
+    headers:{'content-type':'application/json','authorization':'Bearer '+cfg.apiKey},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok){const t=await r.text();throw new Error((cfg.provider==='openai'?'OpenAI ':'Custom ')+r.status+': '+t.slice(0,260));}
+  const data=await r.json();
+  return data.choices?.[0]?.message?.content||'';
+}
+async function aiVisionGenerate(ctx,imageData){
+  const cfg=getApiConfig();
+  if(!cfg.apiKey)throw new Error('NO_KEY');
+  const prompt=buildVisionPrompt(ctx,!!imageData);
+  const raw=cfg.provider==='anthropic'
+    ?await callAnthropic(cfg,prompt,imageData)
+    :await callOpenAI(cfg,prompt,imageData);
+  const j=parseAiJson(raw);
+  if(!j||!j.tag||!j.desc)throw new Error('AI 返回内容解析失败');
+  return {
+    tag:smartShrink(String(j.tag),LIMITS.tagline),
+    desc:smartShrink(String(j.desc),LIMITS.description),
+    theme:String(j.theme||'').trim()
+  };
+}
+async function aiTestConnection(cfg){
+  const prompt='请仅回复以下纯 JSON，不要任何其它内容：{"ok": true}';
+  const raw=cfg.provider==='anthropic'?await callAnthropic(cfg,prompt,''):await callOpenAI(cfg,prompt,'');
+  const j=parseAiJson(raw);
+  if(!j)throw new Error('返回内容无法解析：'+(raw||'').slice(0,80));
+  return true;
+}
+
+function refreshApiStatus(){
+  const c=getApiConfig();
+  const chip=$('#apiStatusChip'),txt=$('#apiStatusText'),btn=$('#genBtn');
+  if(!chip||!txt)return;
+  if((c.apiKey||'').trim()){
+    chip.className='api-status on';
+    txt.textContent='AI 已就绪 · '+(c.provider==='anthropic'?'Claude':c.provider==='openai'?'OpenAI':'Custom');
+    if(btn)btn.innerHTML='🤖 AI 视觉分析 · 智能生成文案';
+  } else {
+    chip.className='api-status off';
+    txt.textContent='未配置 AI';
+    if(btn)btn.innerHTML='✨ AI 智能生成符合指南文案';
+  }
+}
+function openApiModal(){
+  const c=getApiConfig();
+  $('#apiProvider').value=c.provider||'anthropic';
+  $('#apiBaseUrl').value=c.baseUrl||'';
+  $('#apiKey').value=c.apiKey||'';
+  $('#apiModel').value=c.model||'';
+  const r=$('#apiTestResult');r.className='test-result';r.textContent='';
+  $('#apiModal').classList.add('show');
+}
+function closeApiModal(){$('#apiModal').classList.remove('show');}
+function bindApiModal(){
+  $('#apiSetBtn').onclick=openApiModal;
+  $('#apiModalClose').onclick=closeApiModal;
+  $('#apiCancelBtn').onclick=closeApiModal;
+  $('#apiModal').onclick=e=>{if(e.target===$('#apiModal'))closeApiModal();};
+  $('#apiProvider').onchange=()=>{
+    const v=$('#apiProvider').value,d=API_DEFAULTS[v];
+    const urlField=$('#apiBaseUrl'),modelField=$('#apiModel');
+    const knownUrls=Object.values(API_DEFAULTS).map(x=>x.baseUrl).filter(Boolean);
+    const knownModels=Object.values(API_DEFAULTS).map(x=>x.model).filter(Boolean);
+    if(!urlField.value.trim()||knownUrls.includes(urlField.value.trim()))urlField.value=d.baseUrl;
+    if(!modelField.value.trim()||knownModels.includes(modelField.value.trim()))modelField.value=d.model;
+  };
+  $('#apiSaveBtn').onclick=()=>{
+    const cfg={
+      provider:$('#apiProvider').value,
+      baseUrl:$('#apiBaseUrl').value.trim(),
+      apiKey:$('#apiKey').value.trim(),
+      model:$('#apiModel').value.trim()
+    };
+    if(!cfg.baseUrl||!cfg.apiKey||!cfg.model){toast('请填写完整：Base URL / API Key / 模型 ID');return;}
+    saveApiConfig(cfg);closeApiModal();toast('✓ AI 配置已保存');
+  };
+  $('#apiClearBtn').onclick=()=>{
+    if(!confirm('清空 API 配置？「AI 智能生成」将回退到本地模板。'))return;
+    try{localStorage.removeItem(K_API);}catch{}
+    $('#apiKey').value='';
+    refreshApiStatus();
+    toast('已清空 API 配置');
+  };
+  $('#apiTestBtn').onclick=async()=>{
+    const cfg={
+      provider:$('#apiProvider').value,
+      baseUrl:$('#apiBaseUrl').value.trim(),
+      apiKey:$('#apiKey').value.trim(),
+      model:$('#apiModel').value.trim()
+    };
+    const r=$('#apiTestResult');
+    if(!cfg.baseUrl||!cfg.apiKey||!cfg.model){
+      r.className='test-result show err';r.textContent='请先填完整字段再测试。';return;
+    }
+    r.className='test-result show';r.textContent='⏳ 正在请求模型…';
+    const tb=$('#apiTestBtn');tb.disabled=true;
+    try{
+      await aiTestConnection(cfg);
+      r.className='test-result show ok';
+      r.textContent='✓ 连接成功，模型可用。点击「保存配置」即可启用 AI 视觉文案。';
+    }catch(e){
+      r.className='test-result show err';
+      r.textContent='✗ 测试失败：'+(e&&e.message||e);
+    } finally { tb.disabled=false; }
+  };
+}
+
 /* ---------- helpers ---------- */
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -1007,11 +1287,33 @@ function bindEngine(){
   dz.ondrop=e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files?.[0];if(f)handleImg(f);};
   fi.onchange=()=>{const f=fi.files?.[0];if(f)handleImg(f);};
 
-  // AI generate
-  $('#genBtn').onclick=()=>{
-    const ctx=ctxOf();const c=genNative(ctx);
-    state.copy=c;$('#outTag').value=c.tag;$('#outDesc').value=c.desc;
-    refreshCounters();runScan();toast('已生成符合指南的母语文案');
+  // AI generate（已配置 API → 多模态视觉文案；未配置 → 本地模板兜底）
+  $('#genBtn').onclick=async()=>{
+    const ctx=ctxOf();
+    const btn=$('#genBtn');
+    if(hasApiKey()){
+      btn.disabled=true;btn.innerHTML='⏳ AI 正在分析海报与撰写文案…';
+      try{
+        const c=await aiVisionGenerate(ctx,state.imageData);
+        state.copy={tag:c.tag,desc:c.desc};
+        $('#outTag').value=c.tag;$('#outDesc').value=c.desc;
+        refreshCounters();runScan();
+        toast(c.theme?'✓ AI 生成完成 · 主题：'+c.theme:'✓ AI 生成完成');
+      }catch(e){
+        if(e&&e.message==='NO_KEY'){toast('请先配置 AI API');openApiModal();}
+        else{
+          const c=genNative(ctx);
+          state.copy=c;$('#outTag').value=c.tag;$('#outDesc').value=c.desc;
+          refreshCounters();runScan();
+          toast('AI 调用失败，已回退本地模板：'+(e&&e.message||e),3600);
+        }
+      } finally { btn.disabled=false; refreshApiStatus(); }
+    } else {
+      const c=genNative(ctx);
+      state.copy=c;$('#outTag').value=c.tag;$('#outDesc').value=c.desc;
+      refreshCounters();runScan();
+      toast('已用本地模板生成（点击右上 ⚙ 配置 AI 可启用视觉分析）',3200);
+    }
   };
   $('#outTag').addEventListener('input',()=>{state.copy.tag=$('#outTag').value;refreshCounters();});
   $('#outDesc').addEventListener('input',()=>{state.copy.desc=$('#outDesc').value;refreshCounters();});
@@ -1270,6 +1572,8 @@ function init(){
   $$('.nav-item').forEach(n=>n.onclick=()=>switchView(n.dataset.view));
   bindEngine();
   bindRegistry();
+  bindApiModal();
+  refreshApiStatus();
 }
 document.addEventListener('DOMContentLoaded',init);
 </script>

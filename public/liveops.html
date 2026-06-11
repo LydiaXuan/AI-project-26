@@ -91,7 +91,7 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:var(-
 .flabel .tag-req{font-size:10px;color:var(--red);font-weight:700;padding:1px 6px;background:var(--red-soft);border-radius:999px}
 .flabel .tag-opt{font-size:10px;color:var(--muted);font-weight:600;padding:1px 6px;background:var(--border-soft);border-radius:999px}
 .flabel .tag-cond{font-size:10px;color:var(--amber);font-weight:700;padding:1px 6px;background:var(--amber-soft);border-radius:999px}
-input[type=text],input[type=date],input[type=number],input[type=password],select,textarea{width:100%;font:inherit;color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;background:#fff;transition:border .14s,box-shadow .14s;font-family:inherit}
+input[type=text],input[type=date],input[type=datetime-local],input[type=number],input[type=password],select,textarea{width:100%;font:inherit;color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;background:#fff;transition:border .14s,box-shadow .14s;font-family:inherit}
 input::placeholder,textarea::placeholder{color:#b3bccb}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
 textarea{resize:vertical;min-height:78px;line-height:1.55}
@@ -477,18 +477,18 @@ tbody tr:hover{background:#fbfcfe}
         <div class="three-col">
           <div class="field">
             <div class="flabel">start_time_utc <span class="tag-req">必填</span></div>
-            <input id="inStart" type="text" placeholder="2026-07-30 08:00" />
-            <div class="help-text">UTC 格式：<code>YYYY-MM-DD HH:MM</code></div>
+            <input id="inStart" type="datetime-local" />
+            <div class="help-text">点击右侧图标选择开始时间（UTC）</div>
           </div>
           <div class="field">
             <div class="flabel">end_time_utc <span class="tag-req">必填</span></div>
-            <input id="inEnd" type="text" placeholder="2026-08-15 08:00" />
-            <div class="help-text">UTC 格式：<code>YYYY-MM-DD HH:MM</code></div>
+            <input id="inEnd" type="datetime-local" />
+            <div class="help-text">点击右侧图标选择结束时间（UTC）</div>
           </div>
           <div class="field">
             <div class="flabel">preview_time_utc <span class="tag-opt">选填</span></div>
-            <input id="inPreview" type="text" placeholder="留空则不预展" />
-            <div class="help-text">UTC 格式：<code>YYYY-MM-DD HH:MM</code></div>
+            <input id="inPreview" type="datetime-local" />
+            <div class="help-text">留空则不预展</div>
           </div>
         </div>
 
@@ -586,6 +586,7 @@ tbody tr:hover{background:#fbfcfe}
       <div class="wizard-nav">
         <div class="muted">所有 <span style="color:var(--red);font-weight:600">必填</span> 字段须填写完整后才能进入下一步。</div>
         <div class="nav-spacer"></div>
+        <button class="btn green" id="skipToStep4" type="button">⤵ 已有翻译 · 跳到 Step 4 粘贴导出</button>
         <button class="btn blue lg" id="goStep2" type="button">下一步：视觉分析 →</button>
       </div>
     </div>
@@ -678,6 +679,7 @@ tbody tr:hover{background:#fbfcfe}
         <div class="row between" style="margin-bottom:6px;flex-wrap:wrap;gap:10px">
           <div class="section-title" style="margin:0">🌐 多语文案表（可逐格手动编辑 · AI 翻译为可选辅助）</div>
           <span class="row gap">
+            <button class="btn sm" id="pasteBtn" type="button">📋 批量粘贴译文</button>
             <button class="btn ghost sm" id="retransAllBtn" type="button">↻ 全部重译</button>
             <button class="btn blue sm" id="runTranslateBtn" type="button">🤖 AI 翻译空白行（可选）</button>
           </span>
@@ -796,6 +798,34 @@ tbody tr:hover{background:#fbfcfe}
       <div class="test-result" id="apiTestResult"></div>
     </div>
     <div class="form-foot"><button class="btn" id="apiCancelBtn" type="button">取消</button><button class="btn blue" id="apiSaveBtn" type="button">💾 保存配置</button></div>
+  </div>
+</div>
+
+<!-- 批量粘贴译文 -->
+<div class="modal form-modal" id="pasteModal">
+  <div class="form-card" style="max-width:760px">
+    <div class="form-head">
+      <div>
+        <h3>📋 批量粘贴译文</h3>
+        <div class="muted" style="margin-top:4px;line-height:1.6">把外部翻译结果（本地化团队 / 表格 / 其它 AI）整体粘贴进来，解析后自动填入表格并勾选，随后即可一键导出。</div>
+      </div>
+      <button class="modal-close" id="pasteModalClose" type="button">×</button>
+    </div>
+    <div class="form-body">
+      <div class="help-text" style="margin:0 0 10px;line-height:1.8">支持三种格式，自动识别：<br>
+        ① <b>表格三列</b>（从 Excel / Google Sheets 直接复制粘贴，Tab 分隔）：<code>en-US → Summer Fest → Join limited missions...</code><br>
+        ② <b>竖线分隔</b>：<code>ja-JP | 夏祭り開催 | 限定ミッションに挑戦...</code><br>
+        ③ <b>JSON 数组</b>（Workflow 3 输出格式）：<code>[{"language_code":"ko-KR","tagline_localized":"...","description_localized":"..."}]</code><br>
+        语言代码大小写不敏感（<code>ja</code> 自动补全为 <code>ja-JP</code>）；表头行自动跳过；不在 Step 1 已选列表的语言会自动加进去。
+      </div>
+      <textarea id="pasteBox" class="csv-edit" rows="12" placeholder="en-US	Summer Fest is here	Take on limited missions to win exclusive outfits&#10;ja-JP	夏祭りイベント開催	限定ミッションに挑戦して限定衣装を手に入れよう&#10;ko-KR	여름 축제 개최	한정 미션에 도전하고 한정 의상을 획득하세요"></textarea>
+      <div class="test-result" id="pasteResult"></div>
+    </div>
+    <div class="form-foot">
+      <button class="btn" id="pasteCancelBtn" type="button">取消</button>
+      <button class="btn blue" id="pasteFillBtn" type="button">✓ 解析并填入表格</button>
+      <button class="btn green" id="pasteExportBtn" type="button">⬇ 解析填入并直接导出 CSV</button>
+    </div>
   </div>
 </div>
 
@@ -1477,9 +1507,11 @@ function validateStep1(){
   if(!f.keywords){toast('请填写核心关键词 / 主题说明');return false;}
   if(!f.defaultLangs.length){toast('请至少选择 1 种 default_language_code');return false;}
   if(!f.countries.length){toast('请至少选择 1 个国家');return false;}
-  f.startTimeUtc=$('#inStart').value.trim();
-  f.endTimeUtc=$('#inEnd').value.trim();
-  f.previewTimeUtc=$('#inPreview').value.trim();
+  // datetime-local 返回 YYYY-MM-DDTHH:MM，转为 Google Play 要求的 YYYY-MM-DD HH:MM
+  const toCsv=v=>String(v||'').trim().replace('T',' ').slice(0,16);
+  f.startTimeUtc=toCsv($('#inStart').value);
+  f.endTimeUtc=toCsv($('#inEnd').value);
+  f.previewTimeUtc=toCsv($('#inPreview').value);
   const re=/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}$/;
   if(!re.test(f.startTimeUtc)){toast('start_time_utc 格式必须为 YYYY-MM-DD HH:MM');return false;}
   if(!re.test(f.endTimeUtc)){toast('end_time_utc 格式必须为 YYYY-MM-DD HH:MM');return false;}
@@ -1702,6 +1734,116 @@ function exportCsv(){
 }
 
 /* ====================================================================
+ *  批量粘贴译文 · 解析（TSV / 竖线 / JSON）→ 填表 → 可直接导出
+ * ==================================================================== */
+function normalizeLangCode(raw){
+  const s=String(raw||'').trim();
+  if(!s)return null;
+  const exact=LANGUAGES.find(l=>l.code.toLowerCase()===s.toLowerCase());
+  if(exact)return exact.code;
+  const pref=LANGUAGES.find(l=>l.code.toLowerCase().startsWith(s.toLowerCase()+'-'));
+  if(pref)return pref.code;
+  const m=s.match(/^([a-z]{2,3})[-_]([a-z0-9]{2,4})$/i);
+  if(m)return m[1].toLowerCase()+'-'+(/^\d+$/.test(m[2])?m[2]:m[2].toUpperCase());
+  return null;
+}
+function unq(s){s=String(s==null?'':s).trim();if(s.startsWith('"')&&s.endsWith('"')&&s.length>1)s=s.slice(1,-1).replace(/""/g,'"');return s.trim();}
+function parsePastedTranslations(raw){
+  const text=String(raw||'').trim();
+  const rows=[],bad=[];
+  if(!text)return{rows,bad};
+  // ③ JSON 数组 / 单对象
+  if(/^[\[{]/.test(text)){
+    try{
+      let j=JSON.parse(text);
+      if(!Array.isArray(j))j=[j];
+      for(const o of j){
+        const code=normalizeLangCode(o.language_code||o.lang||o.code);
+        const tag=String(o.tagline_localized||o.tagline||o.tag||'').trim();
+        const desc=String(o.description_localized||o.description||o.desc||'').trim();
+        if(code&&(tag||desc))rows.push({code,tag,desc});
+        else bad.push(JSON.stringify(o).slice(0,60));
+      }
+      return{rows,bad};
+    }catch(e){/* 不是合法 JSON，落回行模式 */}
+  }
+  // ①② 行模式：Tab 或 | 分隔
+  for(const line0 of text.split(/\r?\n/)){
+    const line=line0.trim();
+    if(!line)continue;
+    let parts=line.split('\t');
+    if(parts.length<3)parts=line.split('|');
+    if(parts.length<3){
+      if(/language|tagline|description|语言|口号|说明/i.test(line))continue; // 表头行
+      bad.push(line.slice(0,60));continue;
+    }
+    const code=normalizeLangCode(unq(parts[0]));
+    const tag=unq(parts[1]);
+    const desc=unq(parts.slice(2).join(' '));
+    if(!code){
+      if(/language|tagline|description|语言|口号|说明/i.test(parts[0]))continue; // 表头行
+      bad.push(line.slice(0,60));continue;
+    }
+    if(!tag&&!desc){bad.push(line.slice(0,60));continue;}
+    rows.push({code,tag,desc});
+  }
+  return{rows,bad};
+}
+function applyPastedTranslations(parsed){
+  let filled=0,added=0;
+  for(const r of parsed.rows){
+    if(!state.form.defaultLangs.includes(r.code)){state.form.defaultLangs.push(r.code);added++;}
+    let t=state.translations.find(x=>x.language_code===r.code);
+    if(!t){t={language_code:r.code,tagline_localized:'',description_localized:''};state.translations.push(t);}
+    if(r.tag)t.tagline_localized=r.tag;
+    if(r.desc)t.description_localized=r.desc;
+    delete t.failed;t.include=true;filled++;
+  }
+  ensureTranslationRows();
+  renderLangSelected();renderLangOptList();
+  renderI18n();renderCsvPreview();
+  return{filled,added};
+}
+function bindPasteModal(){
+  const close=()=>$('#pasteModal').classList.remove('show');
+  $('#pasteBtn').onclick=()=>{
+    $('#pasteBox').value='';
+    const r=$('#pasteResult');r.className='test-result';r.textContent='';
+    $('#pasteModal').classList.add('show');
+    setTimeout(()=>$('#pasteBox').focus(),50);
+  };
+  $('#pasteModalClose').onclick=close;
+  $('#pasteCancelBtn').onclick=close;
+  $('#pasteModal').onclick=e=>{if(e.target===$('#pasteModal'))close();};
+  const doParse=()=>{
+    const parsed=parsePastedTranslations($('#pasteBox').value);
+    const r=$('#pasteResult');
+    if(!parsed.rows.length){
+      r.className='test-result show err';
+      r.textContent='✗ 未解析到有效行。每行需为：语言代码 + Tab或| + 口号 + Tab或| + 长说明；或粘贴 JSON 数组。'+(parsed.bad.length?'（'+parsed.bad.length+' 行无法识别）':'');
+      return null;
+    }
+    if(parsed.bad.length){
+      r.className='test-result show ok';
+      r.textContent='✓ 解析到 '+parsed.rows.length+' 种语言；另有 '+parsed.bad.length+' 行无法识别将被跳过：'+parsed.bad[0];
+    }
+    return parsed;
+  };
+  $('#pasteFillBtn').onclick=()=>{
+    const parsed=doParse();if(!parsed)return;
+    const res=applyPastedTranslations(parsed);
+    close();
+    toast('✓ 已填入 '+res.filled+' 种语言'+(res.added?'（'+res.added+' 种自动加入语言列表）':'')+(parsed.bad.length?' · 跳过 '+parsed.bad.length+' 行':''),3600);
+  };
+  $('#pasteExportBtn').onclick=()=>{
+    const parsed=doParse();if(!parsed)return;
+    applyPastedTranslations(parsed);
+    close();
+    exportCsv();
+  };
+}
+
+/* ====================================================================
  *  归档 · 看板
  * ==================================================================== */
 function svgThumb(text,c1,c2,emoji){
@@ -1840,7 +1982,8 @@ function loadToEngine(id){
   $('#selPreviewOpt').value=r.previewOptIn||'OPT_OUT';
   $('#selEligibility').value=r.userEligibility||'';
   $('#inKeywords').value=r.keywords||'';
-  $('#inStart').value=r.startTimeUtc;$('#inEnd').value=r.endTimeUtc;$('#inPreview').value=r.previewTimeUtc||'';
+  const toInp=v=>String(v||'').replace(' ','T').slice(0,16);
+  $('#inStart').value=toInp(r.startTimeUtc);$('#inEnd').value=toInp(r.endTimeUtc);$('#inPreview').value=toInp(r.previewTimeUtc);
   if(state.form.posterDataUrl){$('#preview').src=state.form.posterDataUrl;$('#dropzone').classList.add('has');}
   renderLangSelected();renderLangOptList();renderCtrySelected();renderCtryOptList();
   updateEligibilityVisibility();
@@ -1944,6 +2087,7 @@ function init(){
     gotoStep(target);
   });
   $('#goStep2').onclick=()=>{if(validateStep1())gotoStep(2);};
+  $('#skipToStep4').onclick=()=>{if(validateStep1()){gotoStep(4);setTimeout(()=>{if($('#pasteBtn'))$('#pasteBtn').click();},220);}};
   $('#goStep3').onclick=()=>gotoStep(3);
   $('#goStep4').onclick=()=>gotoStep(4);
   $('#back2').onclick=()=>gotoStep(1);
@@ -1951,7 +2095,7 @@ function init(){
   $('#back4').onclick=()=>gotoStep(3);
   bindFormSelects();
   bindDropzone();bindLanguageUI();bindCountryUI();
-  bindApiModal();bindProjectModal();bindRegistry();
+  bindApiModal();bindProjectModal();bindPasteModal();bindRegistry();
   $('#runVisualBtn').onclick=runVisualAnalysis;
   $('#regenVisualBtn').onclick=runVisualAnalysis;
   $('#visualReport').addEventListener('input',e=>{state.visualReport=e.target.value;});

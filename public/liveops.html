@@ -110,17 +110,15 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .help-text{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.55}
 .help-text code{font-size:11px}
 
-/* radio group */
-.radio-group{display:flex;flex-wrap:wrap;gap:8px}
-.radio-pill{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#fff;border:1px solid var(--border);border-radius:999px;font-size:12.5px;cursor:pointer;transition:all .14s;user-select:none;font-family:inherit;font-weight:500;color:var(--ink-soft)}
-.radio-pill:hover{border-color:var(--blue);color:var(--blue-deep)}
-.radio-pill input{display:none}
-.radio-pill.active{background:var(--blue-soft);color:var(--blue-deep);border-color:var(--blue);font-weight:600}
-.radio-pill .rcode{font-family:ui-monospace,monospace;font-size:11px;opacity:.7}
-
-/* project select with manage btn */
-.project-select-row{display:flex;gap:8px;align-items:stretch}
-.project-select-row .radio-group{flex:1}
+/* layout wrappers · 居中限宽，两侧留白 */
+.wizard-wrap{max-width:1140px;margin:0 auto}
+.reg-wrap{max-width:1320px;margin:0 auto}
+.wizard-step .card{margin-bottom:16px}
+.wizard-step .card:last-of-type{margin-bottom:0}
+.four-col{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:1100px){.four-col{grid-template-columns:1fr 1fr}}
+@media (max-width:680px){.four-col{grid-template-columns:1fr}}
+select:disabled{background-color:var(--th-bg);color:var(--muted);cursor:not-allowed}
 
 /* dropzone */
 .dropzone{position:relative;border:2px dashed var(--border);border-radius:var(--r);background:var(--th-bg);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;overflow:hidden}
@@ -389,6 +387,7 @@ tbody tr:hover{background:#fbfcfe}
 
   <!-- ===== ENGINE VIEW (WIZARD) ===== -->
   <section class="view active" data-view="engine">
+  <div class="wizard-wrap">
 
     <!-- Stepper -->
     <div class="stepper" id="stepper">
@@ -400,19 +399,48 @@ tbody tr:hover{background:#fbfcfe}
 
     <!-- ============ STEP 1 ============ -->
     <div class="wizard-step active" data-step="1">
-      <div class="card"><div class="card-h"><h3><span class="step-no" style="display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--blue-soft);color:var(--blue-deep);font-size:12px;font-weight:700;align-items:center;justify-content:center;margin-right:9px">1</span>录入与素材</h3><span class="muted">字段名严格对齐 Google Play 官方 LiveOps CSV 模板</span></div>
-      <div class="card-pad">
-
-        <!-- 项目名称 -->
-        <div class="field">
-          <div class="flabel">项目名称 <span class="tag-req">必填</span></div>
-          <div class="project-select-row">
-            <div class="radio-group" id="projectRadios"></div>
-            <button class="btn sm" id="projectManageBtn" type="button">⚙ 管理项目</button>
+      <!-- 模块 A · 基本信息 -->
+      <div class="card">
+        <div class="card-h"><h3>📋 基本信息</h3><span class="muted">字段名严格对齐 Google Play 官方 LiveOps CSV 模板</span></div>
+        <div class="card-pad">
+          <div class="four-col">
+            <div class="field">
+              <div class="flabel">项目名称 <span class="tag-req">必填</span></div>
+              <div class="row gap">
+                <select id="projectSelect" style="flex:1"></select>
+                <button class="btn sm" id="projectManageBtn" type="button">⚙ 管理</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="flabel">Event_type <span class="tag-req">必填</span></div>
+              <select id="selEventType">
+                <option value="OFFER">OFFER · 优惠</option>
+                <option value="TIME-LIMITED_EVENT" selected>TIME-LIMITED_EVENT · 限时活动</option>
+                <option value="MAJOR_UPDATE">MAJOR_UPDATE · 重大更新</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="flabel">Priority <span class="tag-req">必填</span></div>
+              <select id="selPriority">
+                <option value="FEATURING_REQUESTED">FEATURING_REQUESTED · ⭐ 申请特推</option>
+                <option value="FEATURING_NOT_REQUESTED" selected>FEATURING_NOT_REQUESTED · 不申请</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="flabel">submission_state <span class="tag-req">必填</span></div>
+              <select id="selSubmission">
+                <option value="DRAFT" selected>DRAFT · 草稿</option>
+                <option value="SUBMITTED">SUBMITTED · 已提交</option>
+              </select>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- 活动海报 + 核心关键词 双栏 -->
+      <!-- 模块 B · 素材与主题 -->
+      <div class="card">
+        <div class="card-h"><h3>🎨 素材与主题</h3><span class="muted">海报与关键词将作为 Workflow 1 / 2 的 AI 输入</span></div>
+        <div class="card-pad">
         <div class="two-col">
           <div>
             <div class="field">
@@ -438,32 +466,13 @@ tbody tr:hover{background:#fbfcfe}
           </div>
         </div>
 
-        <!-- Event_type / Priority / submission_state -->
-        <div class="three-col">
-          <div class="field">
-            <div class="flabel">Event_type <span class="tag-req">必填</span></div>
-            <div class="radio-group" id="eventTypeRadios">
-              <label class="radio-pill"><input type="radio" name="eventType" value="OFFER" /><span><code>OFFER</code> 优惠</span></label>
-              <label class="radio-pill active"><input type="radio" name="eventType" value="TIME-LIMITED_EVENT" checked /><span><code>TIME-LIMITED_EVENT</code> 限时活动</span></label>
-              <label class="radio-pill"><input type="radio" name="eventType" value="MAJOR_UPDATE" /><span><code>MAJOR_UPDATE</code> 重大更新</span></label>
-            </div>
-          </div>
-          <div class="field">
-            <div class="flabel">Priority <span class="tag-req">必填</span></div>
-            <div class="radio-group" id="priorityRadios">
-              <label class="radio-pill"><input type="radio" name="priority" value="FEATURING_REQUESTED" /><span>⭐ FEATURING_REQUESTED</span></label>
-              <label class="radio-pill active"><input type="radio" name="priority" value="FEATURING_NOT_REQUESTED" checked /><span>FEATURING_NOT_REQUESTED</span></label>
-            </div>
-          </div>
-          <div class="field">
-            <div class="flabel">submission_state <span class="tag-req">必填</span></div>
-            <div class="radio-group" id="submissionRadios">
-              <label class="radio-pill active"><input type="radio" name="submission" value="DRAFT" checked /><span>DRAFT 草稿</span></label>
-              <label class="radio-pill"><input type="radio" name="submission" value="SUBMITTED" /><span>SUBMITTED 已提交</span></label>
-            </div>
-          </div>
         </div>
+      </div>
 
+      <!-- 模块 C · 时间与受众 -->
+      <div class="card">
+        <div class="card-h"><h3>⏱ 时间与受众</h3><span class="muted">时间为 UTC · 格式 YYYY-MM-DD HH:MM</span></div>
+        <div class="card-pad">
         <!-- 时间字段 -->
         <div class="three-col">
           <div class="field">
@@ -483,26 +492,31 @@ tbody tr:hover{background:#fbfcfe}
           </div>
         </div>
 
-        <!-- preview_opt_in + user_eligibility (条件显示) -->
+        <!-- preview_opt_in + user_eligibility (条件启用) -->
         <div class="two-col">
           <div class="field">
             <div class="flabel">preview_opt_in <span class="tag-req">必填</span></div>
-            <div class="radio-group" id="previewRadios">
-              <label class="radio-pill"><input type="radio" name="preview" value="OPT_IN" /><span>OPT_IN 加入预展</span></label>
-              <label class="radio-pill active"><input type="radio" name="preview" value="OPT_OUT" checked /><span>OPT_OUT 不加入</span></label>
-            </div>
+            <select id="selPreviewOpt">
+              <option value="OPT_IN">OPT_IN · 加入预展</option>
+              <option value="OPT_OUT" selected>OPT_OUT · 不加入</option>
+            </select>
           </div>
           <div class="field" id="eligibilityField">
             <div class="flabel">user_eligibility <span class="tag-cond" id="eligTag">仅 OFFER 时启用</span></div>
-            <div class="radio-group" id="eligibilityRadios">
-              <label class="radio-pill active"><input type="radio" name="eligibility" value="EVERYONE" checked /><span>EVERYONE 全部用户</span></label>
-              <label class="radio-pill"><input type="radio" name="eligibility" value="NEW_USERS_ONLY" /><span>NEW_USERS_ONLY 仅新用户</span></label>
-              <label class="radio-pill"><input type="radio" name="eligibility" value="" /><span>留空</span></label>
-            </div>
+            <select id="selEligibility">
+              <option value="EVERYONE" selected>EVERYONE · 全部用户</option>
+              <option value="NEW_USERS_ONLY">NEW_USERS_ONLY · 仅新用户</option>
+              <option value="">（留空）</option>
+            </select>
           </div>
         </div>
+        </div>
+      </div>
 
-        <div class="divider"></div>
+      <!-- 模块 D · 投放范围 -->
+      <div class="card">
+        <div class="card-h"><h3>🌍 投放范围 · 语言与国家</h3><span class="muted">区域预设一键载入 · 节日活动可按地区投放</span></div>
+        <div class="card-pad">
 
         <!-- 区域预设 -->
         <div class="field">
@@ -703,6 +717,7 @@ tbody tr:hover{background:#fbfcfe}
       </div>
     </div>
 
+  </div>
   </section>
 
   <!-- ===== REGISTRY TOPBAR ===== -->
@@ -719,6 +734,7 @@ tbody tr:hover{background:#fbfcfe}
 
   <!-- ===== REGISTRY VIEW ===== -->
   <section class="view" data-view="registry">
+  <div class="reg-wrap">
     <div class="filterbar">
       <div class="fb"><label>Event_type</label><select id="fType"><option value="">全部类型</option><option value="OFFER">OFFER</option><option value="TIME-LIMITED_EVENT">TIME-LIMITED_EVENT</option><option value="MAJOR_UPDATE">MAJOR_UPDATE</option></select></div>
       <div class="fb"><label>提交状态</label><select id="fState"><option value="">全部状态</option><option value="DRAFT">DRAFT</option><option value="SUBMITTED">SUBMITTED</option></select></div>
@@ -745,6 +761,7 @@ tbody tr:hover{background:#fbfcfe}
       </div>
     </div>
     <div class="tabpanel" data-tab="gallery"><div class="gallery" id="galleryWrap"></div></div>
+  </div>
   </section>
 
 </div>
@@ -1231,15 +1248,14 @@ function gotoStep(n){
  * ==================================================================== */
 function getProjects(){return loadLS(K_PROJECTS,['Rebel Glam','Mia World']);}
 function saveProjects(list){saveLS(K_PROJECTS,list);}
-function renderProjectRadios(){
-  const list=getProjects(),wrap=$('#projectRadios');
+function renderProjectSelect(){
+  const list=getProjects(),sel=$('#projectSelect');
   if(!state.form.project&&list.length)state.form.project=list[0];
-  wrap.innerHTML=list.map(p=>`<label class="radio-pill ${p===state.form.project?'active':''}"><input type="radio" name="project" value="${esc(p)}" ${p===state.form.project?'checked':''} /><span>${esc(p)}</span></label>`).join('');
-  $$('#projectRadios input').forEach(inp=>inp.onchange=()=>{
-    state.form.project=inp.value;
-    $$('#projectRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===inp.value));
-    updateSaveAsProjectBtn();
-  });
+  if(state.form.project&&!list.includes(state.form.project))state.form.project=list[0]||'';
+  sel.innerHTML=list.length
+    ?list.map(p=>`<option value="${esc(p)}"${p===state.form.project?' selected':''}>${esc(p)}</option>`).join('')
+    :'<option value="">（暂无项目 · 点右侧「管理」添加）</option>';
+  sel.onchange=()=>{state.form.project=sel.value;updateSaveAsProjectBtn();};
   updateSaveAsProjectBtn();
 }
 function renderProjectModalList(){
@@ -1250,55 +1266,32 @@ function renderProjectModalList(){
     const i=+inp.dataset.idx,v=inp.value.trim();
     const cur=getProjects();
     if(!v){cur.splice(i,1);}else{cur[i]=v;}
-    saveProjects(cur);renderProjectModalList();renderProjectRadios();
+    saveProjects(cur);renderProjectModalList();renderProjectSelect();
   });
-  $$('#projectList [data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i<=0)return;const cur=getProjects();[cur[i-1],cur[i]]=[cur[i],cur[i-1]];saveProjects(cur);renderProjectModalList();renderProjectRadios();});
-  $$('#projectList [data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;const cur=getProjects();if(i>=cur.length-1)return;[cur[i],cur[i+1]]=[cur[i+1],cur[i]];saveProjects(cur);renderProjectModalList();renderProjectRadios();});
-  $$('#projectList [data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;const cur=getProjects();const name=cur[i];if(!confirm('删除项目「'+name+'」？'))return;cur.splice(i,1);saveProjects(cur);if(!cur.includes(state.form.project))state.form.project=cur[0]||'';renderProjectModalList();renderProjectRadios();renderRegionPresets();});
+  $$('#projectList [data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i<=0)return;const cur=getProjects();[cur[i-1],cur[i]]=[cur[i],cur[i-1]];saveProjects(cur);renderProjectModalList();renderProjectSelect();});
+  $$('#projectList [data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;const cur=getProjects();if(i>=cur.length-1)return;[cur[i],cur[i+1]]=[cur[i+1],cur[i]];saveProjects(cur);renderProjectModalList();renderProjectSelect();});
+  $$('#projectList [data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;const cur=getProjects();const name=cur[i];if(!confirm('删除项目「'+name+'」？'))return;cur.splice(i,1);saveProjects(cur);if(!cur.includes(state.form.project))state.form.project=cur[0]||'';renderProjectModalList();renderProjectSelect();renderRegionPresets();});
 }
 
 /* ====================================================================
  *  Step 1 · 表单字段
  * ==================================================================== */
-function bindEventTypeRadios(){
-  $$('#eventTypeRadios input').forEach(inp=>inp.onchange=()=>{
-    state.form.eventType=inp.value;
-    $$('#eventTypeRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===inp.value));
-    updateEligibilityVisibility();
-  });
-}
-function bindPriorityRadios(){
-  $$('#priorityRadios input').forEach(inp=>inp.onchange=()=>{
-    state.form.priority=inp.value;
-    $$('#priorityRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===inp.value));
-  });
-}
-function bindSubmissionRadios(){
-  $$('#submissionRadios input').forEach(inp=>inp.onchange=()=>{
-    state.form.submissionState=inp.value;
-    $$('#submissionRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===inp.value));
-  });
-}
-function bindPreviewRadios(){
-  $$('#previewRadios input').forEach(inp=>inp.onchange=()=>{
-    state.form.previewOptIn=inp.value;
-    $$('#previewRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===inp.value));
-  });
-}
-function bindEligibilityRadios(){
-  $$('#eligibilityRadios input').forEach(inp=>inp.onchange=()=>{
-    state.form.userEligibility=inp.value;
-    $$('#eligibilityRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===inp.value));
-  });
+function bindFormSelects(){
+  $('#selEventType').onchange=()=>{state.form.eventType=$('#selEventType').value;updateEligibilityVisibility();};
+  $('#selPriority').onchange=()=>{state.form.priority=$('#selPriority').value;};
+  $('#selSubmission').onchange=()=>{state.form.submissionState=$('#selSubmission').value;};
+  $('#selPreviewOpt').onchange=()=>{state.form.previewOptIn=$('#selPreviewOpt').value;};
+  $('#selEligibility').onchange=()=>{state.form.userEligibility=$('#selEligibility').value;};
 }
 function updateEligibilityVisibility(){
   const isOffer=state.form.eventType==='OFFER';
-  const tag=$('#eligTag');
-  tag.textContent=isOffer?'仅 OFFER 时必填':'仅 OFFER 时启用';
+  const tag=$('#eligTag'),sel=$('#selEligibility');
+  tag.textContent=isOffer?'OFFER 必填':'仅 OFFER 时启用';
   tag.style.color=isOffer?'var(--red)':'var(--amber)';
   tag.style.background=isOffer?'var(--red-soft)':'var(--amber-soft)';
-  const rg=$('#eligibilityField');
-  rg.style.opacity=isOffer?'1':'.55';
+  $('#eligibilityField').style.opacity=isOffer?'1':'.6';
+  sel.disabled=!isOffer;
+  if(isOffer&&!state.form.userEligibility){state.form.userEligibility='EVERYONE';sel.value='EVERYONE';}
 }
 
 /* ----- 海报上传 ----- */
@@ -1839,18 +1832,13 @@ function loadToEngine(id){
   state.visualReport=r.visualReport||'';
   state.copy={eventSubtype:r.eventSubtype||'',taglineZh:r.taglineZh||'',descriptionZh:r.descriptionZh||''};
   state.translations=(r.translations||[]).map(t=>({...t}));
-  // sync UI
-  renderProjectRadios();
-  $$('#eventTypeRadios input').forEach(i=>{i.checked=i.value===r.eventType;});
-  $$('#eventTypeRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===r.eventType));
-  $$('#priorityRadios input').forEach(i=>{i.checked=i.value===r.priority;});
-  $$('#priorityRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===r.priority));
-  $$('#submissionRadios input').forEach(i=>{i.checked=i.value===r.submissionState;});
-  $$('#submissionRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===r.submissionState));
-  $$('#previewRadios input').forEach(i=>{i.checked=i.value===r.previewOptIn;});
-  $$('#previewRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===r.previewOptIn));
-  $$('#eligibilityRadios input').forEach(i=>{i.checked=i.value===(r.userEligibility||'EVERYONE');});
-  $$('#eligibilityRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===(r.userEligibility||'EVERYONE')));
+  // sync UI（下拉框直接赋值）
+  renderProjectSelect();
+  $('#selEventType').value=r.eventType||'TIME-LIMITED_EVENT';
+  $('#selPriority').value=r.priority||'FEATURING_NOT_REQUESTED';
+  $('#selSubmission').value=r.submissionState||'DRAFT';
+  $('#selPreviewOpt').value=r.previewOptIn||'OPT_OUT';
+  $('#selEligibility').value=r.userEligibility||'';
   $('#inKeywords').value=r.keywords||'';
   $('#inStart').value=r.startTimeUtc;$('#inEnd').value=r.endTimeUtc;$('#inPreview').value=r.previewTimeUtc||'';
   if(state.form.posterDataUrl){$('#preview').src=state.form.posterDataUrl;$('#dropzone').classList.add('has');}
@@ -1920,7 +1908,7 @@ function bindProjectModal(){
     const v=$('#newProjectName').value.trim();if(!v){toast('请输入项目名');return;}
     const list=getProjects();if(list.includes(v)){toast('已存在');return;}
     list.push(v);saveProjects(list);$('#newProjectName').value='';
-    renderProjectModalList();renderProjectRadios();
+    renderProjectModalList();renderProjectSelect();
     toast('已新增「'+v+'」');
   };
   $('#newProjectName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#addProjectBtn').click();}});
@@ -1961,7 +1949,7 @@ function init(){
   $('#back2').onclick=()=>gotoStep(1);
   $('#back3').onclick=()=>gotoStep(2);
   $('#back4').onclick=()=>gotoStep(3);
-  bindEventTypeRadios();bindPriorityRadios();bindSubmissionRadios();bindPreviewRadios();bindEligibilityRadios();
+  bindFormSelects();
   bindDropzone();bindLanguageUI();bindCountryUI();
   bindApiModal();bindProjectModal();bindRegistry();
   $('#runVisualBtn').onclick=runVisualAnalysis;
@@ -1986,7 +1974,7 @@ function init(){
   $('#archiveBtn').onclick=archiveActivity;
   bindRegionPresetUI();
   // initial render
-  renderProjectRadios();
+  renderProjectSelect();
   renderRegionPresets();
   $('#langTotal').textContent=LANGUAGES.length;
   $('#ctryTotal').textContent=COUNTRIES.length;

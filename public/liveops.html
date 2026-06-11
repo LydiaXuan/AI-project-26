@@ -187,6 +187,23 @@ select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,va
 .textmode-toggle a{font-size:11.5px;cursor:pointer}
 .csv-edit{font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.6}
 
+/* region presets */
+.preset-chips{display:flex;flex-wrap:wrap;gap:7px;min-height:34px;margin-bottom:8px}
+.preset-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 6px 7px 12px;background:#fff;border:1px solid var(--border);border-radius:999px;font-size:12px;cursor:pointer;transition:all .14s;user-select:none}
+.preset-chip:hover{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
+.preset-chip .pn{font-size:10px;background:var(--border-soft);color:var(--ink-soft);padding:1px 7px;border-radius:999px;font-weight:600;white-space:nowrap}
+.preset-chip:hover .pn{background:#fff}
+.preset-chip .pdel{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;padding:0 4px}
+.preset-chip .pdel:hover{color:var(--red)}
+.preset-chip.pinned{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep);font-weight:600}
+.preset-chip.pinned .pn{background:#fff}
+.preset-save{display:flex;gap:8px}
+.preset-save input{flex:1;font-size:12.5px}
+
+/* export include checkbox */
+tr.row-excluded td{opacity:.45}
+.inc-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--green)}
+
 /* compliance / scan */
 .compliance{margin-top:10px;border:1px solid var(--border-soft);border-radius:var(--r-sm);overflow:hidden}
 .comp-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--th-bg);font-size:12px}
@@ -487,6 +504,18 @@ tbody tr:hover{background:#fbfcfe}
 
         <div class="divider"></div>
 
+        <!-- 区域预设 -->
+        <div class="field">
+          <div class="section-title">🧭 区域预设（一键同时设置 语言 + 国家 · 适合地区性节日活动）</div>
+          <div class="preset-chips" id="regionPresetChips"></div>
+          <div class="preset-save">
+            <input id="regionPresetName" type="text" placeholder="把当前语言+国家组合存为预设（例：东南亚斋月档）" maxlength="40" />
+            <button class="btn sm" id="saveRegionPresetBtn" type="button">💾 存为预设</button>
+            <button class="btn sm" id="bindProjectPresetBtn" type="button">📌 绑定到当前项目</button>
+          </div>
+          <div class="help-text">节日类活动通常只投部分地区：点击预设一键载入该区域的语言与国家组合，再手动微调。「绑定到当前项目」后，下次选择该项目会自动载入它的专属语言+国家组合。数据均存本地浏览器。</div>
+        </div>
+
         <!-- default_language_code 选择器 -->
         <div class="field">
           <div class="section-title">🌐 default_language_code（多选 · 共 <span id="langTotal"></span> 种可选）</div>
@@ -494,7 +523,10 @@ tbody tr:hover{background:#fbfcfe}
             <div class="picker-side">
               <div class="sel-head">
                 <span class="sel-count">已选 <em id="langSelCount">0</em> 种语言</span>
-                <button class="btn ghost xs" id="clearLangsBtn" type="button">清空</button>
+                <span class="row gap">
+                  <button class="btn ghost xs" id="selAllLangsBtn" type="button">⊕ 一键全选</button>
+                  <button class="btn ghost xs" id="clearLangsBtn" type="button">清空</button>
+                </span>
               </div>
               <div class="sel-chips" id="langSelChips"></div>
               <div class="help-text">CSV 字段 <code>default_language_code</code> 将以 <code>;</code> 拼接。所有选中语言都会自动出现在 Workflow 3 的本地化任务中。</div>
@@ -629,29 +661,38 @@ tbody tr:hover{background:#fbfcfe}
           </table>
         </div>
 
-        <div class="row between" style="margin-bottom:10px;flex-wrap:wrap;gap:10px">
-          <div class="section-title" style="margin:0">🌐 多语本地化预览（可逐格编辑）</div>
-          <button class="btn green" id="runTranslateBtn" type="button">🤖 一键执行多语翻译</button>
+        <div class="row between" style="margin-bottom:6px;flex-wrap:wrap;gap:10px">
+          <div class="section-title" style="margin:0">🌐 多语文案表（可逐格手动编辑 · AI 翻译为可选辅助）</div>
+          <span class="row gap">
+            <button class="btn ghost sm" id="retransAllBtn" type="button">↻ 全部重译</button>
+            <button class="btn blue sm" id="runTranslateBtn" type="button">🤖 AI 翻译空白行（可选）</button>
+          </span>
+        </div>
+        <div class="row gap" style="margin-bottom:8px;flex-wrap:wrap">
+          <span class="muted">将写入 CSV：<b id="exportLangCount" style="color:var(--green-deep)">0</b> / <span id="exportLangTotal">0</span> 种语言</span>
+          <button class="btn ghost xs" id="exportSelAllBtn" type="button">全部勾选</button>
+          <button class="btn ghost xs" id="exportSelNoneBtn" type="button">取消全部</button>
+          <span class="muted" style="font-size:11px">· 地区性活动可只勾选目标地区语言；表格行随 Step 1 所选语言自动生成，zh-CN 自动带入 Step 3 文案，其余行可手填或用 AI 补齐</span>
         </div>
         <div class="tablewrap">
           <table class="i18n-table">
-            <thead><tr><th>Language Code</th><th>Tagline</th><th>Description</th><th>状态</th></tr></thead>
+            <thead><tr><th style="width:42px">导出</th><th>Language Code</th><th>Tagline</th><th>Description</th><th>状态</th></tr></thead>
             <tbody id="i18nBody">
-              <tr><td colspan="4" class="empty" style="padding:34px"><div class="ei">🌍</div>点击「一键执行多语翻译」生成所有 default_language_code 的本地化文案</td></tr>
+              <tr><td colspan="5" class="empty" style="padding:34px"><div class="ei">🌍</div>请先在 Step 1 选择 default_language_code</td></tr>
             </tbody>
           </table>
         </div>
 
         <div style="margin-top:20px">
           <div class="row between"><div class="section-title" style="margin:0">📤 Google Play 官方 CSV 预览（即将下载的内容）</div>
-            <span class="muted">15 列严格对齐官方模板</span>
+            <span class="muted">15 列严格对齐官方模板 · 仅含已勾选且有内容的语言</span>
           </div>
-          <div class="csvbox" id="csvBox">— 完成翻译后自动生成 —</div>
+          <div class="csvbox" id="csvBox">— 暂无数据 —</div>
         </div>
 
         <div class="row end gap" style="margin-top:18px">
           <button class="btn" id="archiveBtn" type="button">💾 归档到看板</button>
-          <button class="btn green lg" id="exportCsvBtn" type="button">⬇ 一键导出官方 CSV</button>
+          <button class="btn green lg" id="exportCsvBtn" type="button">⬇ 一键导出官方 CSV（本地生成 · 无需 AI）</button>
         </div>
 
       </div></div>
@@ -892,6 +933,17 @@ const COUNTRIES=[
   {code:'AU',name:'Australia'},{code:'NZ',name:'New Zealand'},{code:'PG',name:'Papua New Guinea'},{code:'FJ',name:'Fiji'},
 ];
 
+/* ---------- 区域预设（语言 + 国家组合 · 适配地区性节日活动） ---------- */
+const REGION_PRESETS=[
+  {id:'r_global',name:'🌍 全球主流',langs:['en-US','en-GB','ja-JP','ko-KR','zh-TW','de-DE','fr-FR','es-ES','es-419','pt-BR','ru-RU','id-ID'],ctrys:'ALL',builtin:true},
+  {id:'r_eastasia',name:'🏮 东亚 · 春节/中秋',langs:['zh-CN','zh-TW','ja-JP','ko-KR'],ctrys:['TW','HK','JP','KR','SG','MY'],builtin:true},
+  {id:'r_sea',name:'🌴 东南亚 · 泼水节/开斋',langs:['th-TH','vi-VN','id-ID','ms-MY','fil-PH','en-US'],ctrys:['TH','VN','ID','MY','PH','SG','KH','LA','MM','BN'],builtin:true},
+  {id:'r_mena',name:'🕌 中东北非 · 斋月',langs:['ar-SA','tr-TR','en-GB'],ctrys:['SA','AE','QA','KW','BH','OM','JO','LB','IQ','EG','MA','DZ','TN','LY','TR'],builtin:true},
+  {id:'r_west',name:'🎄 欧美 · 圣诞/万圣/黑五',langs:['en-US','en-GB','en-CA','en-AU','de-DE','fr-FR','fr-CA','es-ES','it-IT','pt-PT','nl-NL'],ctrys:['US','CA','GB','IE','AU','NZ','DE','AT','CH','FR','BE','ES','IT','PT','NL','LU'],builtin:true},
+  {id:'r_india',name:'🪔 印度 · 排灯节/胡里节',langs:['hi-IN','en-IN','ta-IN','te-IN','mr-IN','gu-IN','kn-IN','ml-IN'],ctrys:['IN'],builtin:true},
+  {id:'r_latam',name:'💃 拉美 · 嘉年华/亡灵节',langs:['es-419','pt-BR'],ctrys:['MX','BR','AR','CL','CO','PE','EC','BO','PY','UY','VE','GT','SV','HN','NI','CR','PA','DO'],builtin:true},
+];
+
 /* ---------- 工具 ---------- */
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -905,6 +957,8 @@ function saveLS(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 const K_API='playops.ai_config';
 const K_REG='playops.registry_v3';
 const K_PROJECTS='playops.projects';
+const K_RPRESETS='playops.region_presets';
+const K_PROJPRESETS='playops.project_lang_presets';
 
 /* ====================================================================
  *  AI API · 适配 Anthropic / Google Gemini / OpenAI / Custom
@@ -1105,12 +1159,13 @@ function csvEsc(v){const s=v==null?'':String(v);return /[",\r\n]/.test(s)?'"'+s.
 function csvQuote(v){const s=v==null?'':String(v);return '"'+s.replace(/"/g,'""')+'"';}
 function cleanCsvVal(v){return String(v||'').replace(/[";=]/g,'');}
 function buildOfficialCsv(){
-  const f=state.form,c=state.copy,trs=state.translations;
-  const defaultLang=(f.defaultLangs&&f.defaultLangs[0])||'en-US';
+  const f=state.form,c=state.copy;
+  // 仅写入「已勾选 + 有内容」的语言行；纯本地拼装，不调用 AI
+  const incl=state.translations.filter(t=>t.include!==false&&!!(String(t.tagline_localized||'').trim()&&String(t.description_localized||'').trim())&&!t.failed);
   const imageName=f.posterFileName||'hero_banner.jpg';
   const taglinePairs=[],descPairs=[],imagePairs=[];
-  for(const t of trs){
-    const lc=t.language_code||defaultLang;
+  for(const t of incl){
+    const lc=t.language_code;
     taglinePairs.push(lc+'='+cleanCsvVal(t.tagline_localized));
     descPairs.push(lc+'='+cleanCsvVal(t.description_localized));
     imagePairs.push(lc+'='+imageName);
@@ -1118,8 +1173,10 @@ function buildOfficialCsv(){
   const taglines=taglinePairs.join(';');
   const descriptions=descPairs.join(';');
   const images=imagePairs.join(';');
+  // default_language_code 与导出语言保持一致，避免声明了语言却没有对应 tagline
+  const langCol=incl.length?incl.map(t=>t.language_code).join(';'):(f.defaultLangs||[]).join(';');
   const userEligibility=f.eventType==='OFFER'?(f.userEligibility||''):'';
-  const row=['',f.eventType,f.priority,f.submissionState,f.startTimeUtc,f.endTimeUtc,(f.defaultLangs||[]).join(';'),(f.countries||[]).join(';'),taglines,descriptions,images,userEligibility,f.previewOptIn,f.previewTimeUtc,c.eventSubtype||SUBTYPE_FALLBACK[f.eventType]||''];
+  const row=['',f.eventType,f.priority,f.submissionState,f.startTimeUtc,f.endTimeUtc,langCol,(f.countries||[]).join(';'),taglines,descriptions,images,userEligibility,f.previewOptIn,f.previewTimeUtc,c.eventSubtype||SUBTYPE_FALLBACK[f.eventType]||''];
   const csvRow=row.map(v=>v===''?'':csvQuote(v)).join(',');
   return '﻿'+CSV_HEADERS.join(',')+'\n'+csvRow+'\n';
 }
@@ -1181,6 +1238,8 @@ function renderProjectRadios(){
   $$('#projectRadios input').forEach(inp=>inp.onchange=()=>{
     state.form.project=inp.value;
     $$('#projectRadios .radio-pill').forEach(l=>l.classList.toggle('active',l.querySelector('input').value===inp.value));
+    renderRegionPresets();
+    applyProjectPresetIfAny(false);
   });
 }
 function renderProjectModalList(){
@@ -1195,7 +1254,7 @@ function renderProjectModalList(){
   });
   $$('#projectList [data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i<=0)return;const cur=getProjects();[cur[i-1],cur[i]]=[cur[i],cur[i-1]];saveProjects(cur);renderProjectModalList();renderProjectRadios();});
   $$('#projectList [data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;const cur=getProjects();if(i>=cur.length-1)return;[cur[i],cur[i+1]]=[cur[i+1],cur[i]];saveProjects(cur);renderProjectModalList();renderProjectRadios();});
-  $$('#projectList [data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;const cur=getProjects();if(!confirm('删除项目「'+cur[i]+'」？'))return;cur.splice(i,1);saveProjects(cur);if(!cur.includes(state.form.project))state.form.project=cur[0]||'';renderProjectModalList();renderProjectRadios();});
+  $$('#projectList [data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;const cur=getProjects();const name=cur[i];if(!confirm('删除项目「'+name+'」？'))return;cur.splice(i,1);saveProjects(cur);const o=getProjPresets();if(o[name]){delete o[name];saveProjPresets(o);}if(!cur.includes(state.form.project))state.form.project=cur[0]||'';renderProjectModalList();renderProjectRadios();renderRegionPresets();});
 }
 
 /* ====================================================================
@@ -1345,7 +1404,92 @@ function bindCountryUI(){
 }
 function bindLanguageUI(){
   $('#langSearch').addEventListener('input',e=>{state.langSearch=e.target.value;renderLangOptList();});
+  $('#selAllLangsBtn').onclick=()=>{
+    state.form.defaultLangs=LANGUAGES.map(l=>l.code);
+    renderLangSelected();renderLangOptList();
+    toast('已全选 '+LANGUAGES.length+' 种语言 · 提示：AI 翻译按语言逐次调用，全选会消耗较多额度（导出本身不耗）',4200);
+  };
   $('#clearLangsBtn').onclick=()=>{if(!state.form.defaultLangs.length){toast('已为空');return;}if(confirm('清空已选的 '+state.form.defaultLangs.length+' 种语言？')){state.form.defaultLangs=[];renderLangSelected();renderLangOptList();}};
+}
+
+/* ----- 区域预设 + 项目专属组合 ----- */
+function getCustomRegionPresets(){return loadLS(K_RPRESETS,[]);}
+function saveCustomRegionPresets(l){saveLS(K_RPRESETS,l);}
+function getProjPresets(){return loadLS(K_PROJPRESETS,{});}
+function saveProjPresets(o){saveLS(K_PROJPRESETS,o);}
+function applyProjectPresetIfAny(silent){
+  const pp=getProjPresets()[state.form.project];
+  if(!pp)return false;
+  state.form.defaultLangs=[...pp.langs];
+  state.form.countries=[...pp.ctrys];
+  state.ctryTextMode=false;
+  const tb=$('#editCtryTextBtn');if(tb)tb.textContent='✎ 文本模式';
+  renderLangSelected();renderLangOptList();renderCtrySelected();renderCtryOptList();
+  if(!silent)toast('📌 已自动载入「'+state.form.project+'」专属组合：'+pp.langs.length+' 种语言 · '+pp.ctrys.length+' 个国家');
+  return true;
+}
+function applyRegionPreset(p){
+  state.form.defaultLangs=[...p.langs];
+  state.form.countries=p.ctrys==='ALL'?COUNTRIES.map(c=>c.code):[...p.ctrys];
+  state.ctryTextMode=false;$('#editCtryTextBtn').textContent='✎ 文本模式';
+  renderLangSelected();renderLangOptList();renderCtrySelected();renderCtryOptList();
+  toast('已载入「'+p.name+'」：'+state.form.defaultLangs.length+' 种语言 · '+state.form.countries.length+' 个国家');
+}
+function renderRegionPresets(){
+  const wrap=$('#regionPresetChips');
+  const all=[...REGION_PRESETS,...getCustomRegionPresets()];
+  const pp=state.form.project?getProjPresets()[state.form.project]:null;
+  const pinned=pp?`<span class="preset-chip pinned" data-pp="1" title="点击载入该项目的专属语言+国家组合"><span>📌 ${esc(state.form.project)} 专属</span><span class="pn">${pp.langs.length}语·${pp.ctrys.length}国</span><button class="pdel" data-ppdel="1" title="解除绑定">×</button></span>`:'';
+  wrap.innerHTML=pinned+all.map(p=>{
+    const cn=p.ctrys==='ALL'?COUNTRIES.length:p.ctrys.length;
+    return `<span class="preset-chip" data-pid="${p.id}"><span>${esc(p.name)}</span><span class="pn">${p.langs.length}语·${cn}国</span>${p.builtin?'':`<button class="pdel" data-pdel="${p.id}" title="删除预设">×</button>`}</span>`;
+  }).join('');
+  const ppChip=$('#regionPresetChips .preset-chip[data-pp]');
+  if(ppChip){
+    ppChip.onclick=e=>{if(e.target.classList.contains('pdel'))return;applyProjectPresetIfAny(false);};
+    const ppDel=ppChip.querySelector('[data-ppdel]');
+    ppDel.onclick=e=>{
+      e.stopPropagation();
+      if(!confirm('解除「'+state.form.project+'」的语言+国家绑定？'))return;
+      const o=getProjPresets();delete o[state.form.project];saveProjPresets(o);
+      renderRegionPresets();toast('已解除绑定');
+    };
+  }
+  $$('#regionPresetChips .preset-chip[data-pid]').forEach(c=>c.onclick=e=>{
+    if(e.target.classList.contains('pdel'))return;
+    const p=all.find(x=>x.id===c.dataset.pid);if(p)applyRegionPreset(p);
+  });
+  $$('#regionPresetChips .pdel[data-pdel]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const list=getCustomRegionPresets();const p=list.find(x=>x.id===b.dataset.pdel);
+    if(!p||!confirm('删除预设「'+p.name+'」？'))return;
+    saveCustomRegionPresets(list.filter(x=>x.id!==b.dataset.pdel));renderRegionPresets();
+  });
+}
+function bindRegionPresetUI(){
+  $('#saveRegionPresetBtn').onclick=()=>{
+    const name=$('#regionPresetName').value.trim();
+    if(!name){toast('请填写预设名称');return;}
+    if(!state.form.defaultLangs.length||!state.form.countries.length){toast('当前语言或国家为空，无法保存');return;}
+    const list=getCustomRegionPresets();
+    const exist=list.findIndex(p=>p.name===name);
+    if(exist>=0){if(!confirm('预设「'+name+'」已存在，覆盖？'))return;list.splice(exist,1);}
+    list.push({id:'rp_'+Date.now().toString(36),name,langs:[...state.form.defaultLangs],ctrys:[...state.form.countries]});
+    saveCustomRegionPresets(list);
+    $('#regionPresetName').value='';
+    renderRegionPresets();
+    toast('✓ 已保存预设「'+name+'」');
+  };
+  $('#regionPresetName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#saveRegionPresetBtn').click();}});
+  $('#bindProjectPresetBtn').onclick=()=>{
+    if(!state.form.project){toast('请先选择项目名称');return;}
+    if(!state.form.defaultLangs.length||!state.form.countries.length){toast('当前语言或国家为空，无法绑定');return;}
+    const o=getProjPresets();
+    o[state.form.project]={langs:[...state.form.defaultLangs],ctrys:[...state.form.countries]};
+    saveProjPresets(o);
+    renderRegionPresets();
+    toast('📌 已绑定到「'+state.form.project+'」（'+state.form.defaultLangs.length+' 语言 · '+state.form.countries.length+' 国家）· 下次选择该项目自动载入');
+  };
 }
 
 /* ----- Step 1 · 校验 + 提交 ----- */
@@ -1443,6 +1587,32 @@ async function runCreativeCopy(){
 /* ====================================================================
  *  Step 4 · 多语本地化 + CSV
  * ==================================================================== */
+/* 行同步：表格行严格跟随 Step 1 所选语言生成；zh-CN 自动带入 Step 3 文案；
+ * 已有内容（手填或 AI）保留；被取消选择的语言行移除。导出不依赖 AI。 */
+function ensureTranslationRows(){
+  const codes=state.form.defaultLangs;
+  state.translations=state.translations.filter(t=>codes.includes(t.language_code));
+  const have=new Set(state.translations.map(t=>t.language_code));
+  for(const c of codes){
+    if(have.has(c))continue;
+    if(c==='zh-CN'){
+      state.translations.push({language_code:'zh-CN',tagline_localized:state.copy.taglineZh||'',description_localized:state.copy.descriptionZh||''});
+    } else {
+      state.translations.push({language_code:c,tagline_localized:'',description_localized:''});
+    }
+  }
+  // zh-CN 空行时自动同步最新源文案
+  const zh=state.translations.find(t=>t.language_code==='zh-CN');
+  if(zh&&!zh.tagline_localized&&!zh.description_localized){zh.tagline_localized=state.copy.taglineZh||'';zh.description_localized=state.copy.descriptionZh||'';}
+  state.translations.sort((a,b)=>codes.indexOf(a.language_code)-codes.indexOf(b.language_code));
+}
+function rowHasContent(t){return !!(String(t.tagline_localized||'').trim()&&String(t.description_localized||'').trim())&&!t.failed;}
+function exportableRows(){return state.translations.filter(t=>t.include!==false&&rowHasContent(t));}
+function updateExportCount(){
+  const el=$('#exportLangCount');if(!el)return;
+  el.textContent=exportableRows().length;
+  $('#exportLangTotal').textContent=state.translations.length;
+}
 function refreshStep4(){
   state.copy.taglineZh=$('#outTagZh').value.trim();
   state.copy.descriptionZh=$('#outDescZh').value.trim();
@@ -1453,40 +1623,64 @@ function refreshStep4(){
     <td class="cell-txt">${esc(c.descriptionZh||'—')}<div class="len ${classifyLen(countChars(c.descriptionZh),LIMITS.description)}">${countChars(c.descriptionZh)}/${LIMITS.description}</div></td>
     <td><span class="tag gray">源</span></td>
   </tr>`;
+  ensureTranslationRows();
   renderI18n();
   renderCsvPreview();
 }
 function renderI18n(){
   const tb=$('#i18nBody');
-  if(!state.translations.length){tb.innerHTML=`<tr><td colspan="4" class="empty" style="padding:34px"><div class="ei">🌍</div>点击「一键执行多语翻译」生成所有 default_language_code 的本地化文案</td></tr>`;return;}
+  updateExportCount();
+  if(!state.translations.length){tb.innerHTML=`<tr><td colspan="5" class="empty" style="padding:34px"><div class="ei">🌍</div>请先在 Step 1 选择 default_language_code</td></tr>`;return;}
   tb.innerHTML=state.translations.map((r,idx)=>{
     const tn=countChars(r.tagline_localized),dn=countChars(r.description_localized);
     const tc=classifyLen(tn,LIMITS.tagline),dc=classifyLen(dn,LIMITS.description);
-    const ok=tc!=='over'&&dc!=='over';
-    return `<tr>
+    const filled=rowHasContent(r);
+    const inc=r.include!==false&&filled;
+    let tag,txt;
+    if(r.failed){tag='over';txt='失败';}
+    else if(!filled){tag='pending';txt='待填';}
+    else if(tc==='over'||dc==='over'){tag='over';txt='超长';}
+    else{tag='ok';txt='达标';}
+    return `<tr class="${inc?'':'row-excluded'}">
+      <td><input type="checkbox" class="inc-cb" data-inc="${idx}" ${inc?'checked':''} ${!filled?'disabled title="该行无内容，填写后可勾选"':''} /></td>
       <td class="lc">${flag(lang2geo(r.language_code))} ${r.language_code}<span class="lname">${esc(getLangName(r.language_code))}</span></td>
-      <td class="cell-txt"><textarea data-edit="tag" data-idx="${idx}">${esc(r.tagline_localized)}</textarea><div class="len ${tc}">${tn}/${LIMITS.tagline}</div></td>
-      <td class="cell-txt"><textarea data-edit="desc" data-idx="${idx}">${esc(r.description_localized)}</textarea><div class="len ${dc}">${dn}/${LIMITS.description}</div></td>
-      <td><span class="tag ${ok?'ok':'over'}">${ok?'达标':'超长'}</span><button class="icon-btn" data-retry="${idx}" title="重译" style="display:block;margin-top:4px">↻</button></td>
+      <td class="cell-txt"><textarea data-edit="tag" data-idx="${idx}" placeholder="手动填写或 AI 翻译">${esc(r.tagline_localized)}</textarea><div class="len ${tc}">${tn}/${LIMITS.tagline}</div></td>
+      <td class="cell-txt"><textarea data-edit="desc" data-idx="${idx}" placeholder="手动填写或 AI 翻译">${esc(r.description_localized)}</textarea><div class="len ${dc}">${dn}/${LIMITS.description}</div></td>
+      <td><span class="tag ${tag}">${txt}</span><button class="icon-btn" data-retry="${idx}" title="AI 重译此行" style="display:block;margin-top:4px">↻</button></td>
     </tr>`;
   }).join('');
+  $$('#i18nBody .inc-cb').forEach(cb=>cb.onchange=()=>{
+    const i=+cb.dataset.inc;
+    state.translations[i].include=cb.checked;
+    cb.closest('tr').classList.toggle('row-excluded',!cb.checked);
+    updateExportCount();renderCsvPreview();
+  });
   $$('#i18nBody textarea[data-edit]').forEach(ta=>ta.oninput=()=>{
     const i=+ta.dataset.idx,k=ta.dataset.edit;
-    if(k==='tag')state.translations[i].tagline_localized=ta.value;
-    else state.translations[i].description_localized=ta.value;
+    const t=state.translations[i];
+    if(k==='tag')t.tagline_localized=ta.value;
+    else t.description_localized=ta.value;
+    if(t.failed&&ta.value.trim())delete t.failed;
     const row=ta.closest('tr');
-    const tn=countChars(state.translations[i].tagline_localized),dn=countChars(state.translations[i].description_localized);
+    const tn=countChars(t.tagline_localized),dn=countChars(t.description_localized);
     const tc=classifyLen(tn,LIMITS.tagline),dc=classifyLen(dn,LIMITS.description);
     row.querySelectorAll('.len')[k==='tag'?0:1].textContent=(k==='tag'?tn:dn)+'/'+(k==='tag'?LIMITS.tagline:LIMITS.description);
     row.querySelectorAll('.len')[k==='tag'?0:1].className='len '+(k==='tag'?tc:dc);
-    renderCsvPreview();
+    // 行有内容后解锁勾选框
+    const cb=row.querySelector('.inc-cb');
+    const filled=rowHasContent(t);
+    cb.disabled=!filled;
+    if(filled&&t.include===undefined){cb.checked=true;row.classList.remove('row-excluded');}
+    updateExportCount();renderCsvPreview();
   });
   $$('#i18nBody [data-retry]').forEach(b=>b.onclick=async()=>{
     const i=+b.dataset.retry;const code=state.translations[i].language_code;
-    if(!hasApiKey()){toast('请先配置 AI');openApiModal();return;}
+    if(!hasApiKey()){toast('请先配置 AI（或直接在格子里手动填写，无需 AI）');openApiModal();return;}
+    if(!state.copy.taglineZh){toast('请先在 Step 3 填写中文源文案');return;}
     b.disabled=true;
     try{
       const r=await runWorkflow3ForLang(code,state.copy.taglineZh,state.copy.descriptionZh);
+      r.include=state.translations[i].include;
       state.translations[i]=r;renderI18n();renderCsvPreview();toast('✓ 已重译 '+code);
     }catch(e){toast('重译失败：'+(e.message||e),3600);}
     finally{b.disabled=false;}
@@ -1496,35 +1690,39 @@ function renderCsvPreview(){
   state.csv=buildOfficialCsv();
   $('#csvBox').textContent=state.csv;
 }
+/* AI 翻译（可选辅助）：只填空白 / 失败行，已有内容（手填或已翻）自动跳过，不重复消耗额度 */
 async function runAllTranslate(){
-  if(!hasApiKey()){toast('请先配置 AI');openApiModal();return;}
+  if(!hasApiKey()){toast('未配置 AI · 也可以直接在表格里手动填写各语言文案后导出');openApiModal();return;}
   if(!state.copy.taglineZh||!state.copy.descriptionZh){toast('请回 Step 3 完成中文文案');gotoStep(3);return;}
-  if(!state.form.defaultLangs.length){toast('请回 Step 1 选择目标语言');gotoStep(1);return;}
-  const codes=state.form.defaultLangs;
+  ensureTranslationRows();
+  const todo=state.translations.filter(t=>!rowHasContent(t));
+  if(!todo.length){renderI18n();renderCsvPreview();toast('所有行均已有内容 · 需重译请用单行 ↻ 或「全部重译」');return;}
   const btn=$('#runTranslateBtn');btn.disabled=true;const o=btn.innerHTML;
-  state.translations=[];renderI18n();
   let ok=0,fail=0;
-  for(let i=0;i<codes.length;i++){
-    const c=codes[i];
-    btn.innerHTML=`⏳ 正在翻译 ${i+1}/${codes.length} · ${c}`;
+  for(let i=0;i<todo.length;i++){
+    const t=todo[i];
+    btn.innerHTML=`⏳ ${i+1}/${todo.length} · ${t.language_code}`;
     try{
-      const r=await runWorkflow3ForLang(c,state.copy.taglineZh,state.copy.descriptionZh);
-      state.translations.push(r);ok++;renderI18n();
+      const r=await runWorkflow3ForLang(t.language_code,state.copy.taglineZh,state.copy.descriptionZh);
+      Object.assign(t,r);delete t.failed;ok++;
     }catch(e){
-      state.translations.push({language_code:c,tagline_localized:'[翻译失败] '+(e.message||''),description_localized:'[翻译失败]'});fail++;
-      renderI18n();
+      t.tagline_localized='';t.description_localized='';t.failed=true;t.include=false;fail++;
     }
+    renderI18n();
   }
   renderCsvPreview();
   btn.disabled=false;btn.innerHTML=o;
-  toast(`✓ 完成 · 成功 ${ok} / 失败 ${fail}`);
+  toast(`✓ AI 翻译完成 · 成功 ${ok} / 失败 ${fail}（已有内容的行自动跳过）`);
 }
 
 function exportCsv(){
-  if(!state.translations.length){toast('请先执行多语翻译');return;}
+  ensureTranslationRows();
+  const rows=exportableRows();
+  if(!rows.length){toast('没有可导出的语言：请至少让 1 行有内容且已勾选（手动填写或 AI 翻译均可）',3600);renderI18n();return;}
+  renderCsvPreview();
   const name=`GooglePlay_LiveOps_${(state.form.project||'App').replace(/\s+/g,'_')}_${(state.form.startTimeUtc||'').slice(0,10)||new Date().toISOString().slice(0,10)}.csv`;
-  downloadCsv(state.csv||buildOfficialCsv(),name);
-  toast('✓ CSV 已导出');
+  downloadCsv(state.csv,name);
+  toast('✓ CSV 已导出（含 '+rows.length+' 种语言 · 本地生成未调用 AI）');
 }
 
 /* ====================================================================
@@ -1791,14 +1989,27 @@ function init(){
   $('#outDescZh').addEventListener('input',()=>{state.copy.descriptionZh=$('#outDescZh').value;refreshCounters();runComplianceScan();});
   $('#rescanBtn').onclick=runComplianceScan;
   $('#runTranslateBtn').onclick=runAllTranslate;
+  $('#retransAllBtn').onclick=()=>{
+    const filled=state.translations.filter(rowHasContent);
+    if(!filled.length){runAllTranslate();return;}
+    if(!confirm('清空现有 '+filled.length+' 条已填文案并全部用 AI 重译？（手动修改也会被覆盖）'))return;
+    state.translations.forEach(t=>{if(t.language_code!=='zh-CN'){t.tagline_localized='';t.description_localized='';delete t.failed;}});
+    renderI18n();renderCsvPreview();
+    runAllTranslate();
+  };
+  $('#exportSelAllBtn').onclick=()=>{state.translations.forEach(t=>{if(rowHasContent(t))t.include=true;});renderI18n();renderCsvPreview();};
+  $('#exportSelNoneBtn').onclick=()=>{state.translations.forEach(t=>t.include=false);renderI18n();renderCsvPreview();};
   $('#exportCsvBtn').onclick=exportCsv;
   $('#archiveBtn').onclick=archiveActivity;
+  bindRegionPresetUI();
   // initial render
   renderProjectRadios();
+  renderRegionPresets();
   $('#langTotal').textContent=LANGUAGES.length;
   $('#ctryTotal').textContent=COUNTRIES.length;
   renderLangSelected();renderLangOptList();
   renderCtrySelected();renderCtryOptList();
+  applyProjectPresetIfAny(true);
   updateEligibilityVisibility();
   refreshApiStatus();
 }

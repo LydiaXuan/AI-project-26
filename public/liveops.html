@@ -1110,7 +1110,14 @@ ${ctx.visualReport}
 [DESCRIPTION]这里填写生成的运营级中文长说明[DESCRIPTION]`;
 }
 function parseWorkflow2Output(raw){
-  const get=tag=>{const re=new RegExp('\\['+tag+'\\]([\\s\\S]*?)\\['+tag+'\\]','i');const m=String(raw||'').match(re);return m?m[1].trim():'';};
+  const get=tag=>{
+    const re=new RegExp('\\['+tag+'\\]([\\s\\S]*?)\\['+tag+'\\]','i');
+    const m=String(raw||'').match(re);
+    let v=m?m[1].trim():'';
+    // 去掉混入正文的任何 [SUBTYPE]/[TAGLINE]/[DESCRIPTION] / [/...] 残留标签
+    v=v.replace(/\[\/?\s*(?:SUBTYPE|TAGLINE|DESCRIPTION)\s*\]/gi,'').trim();
+    return v;
+  };
   return {subtype:get('SUBTYPE'),tag:get('TAGLINE'),desc:get('DESCRIPTION')};
 }
 async function runWorkflow2(){
@@ -1171,15 +1178,28 @@ ${sourceDesc}
 }`;
 }
 async function runWorkflow3ForLang(code,sourceTag,sourceDesc){
-  if(code==='zh-CN'){return {language_code:'zh-CN',tagline_localized:sourceTag,description_localized:sourceDesc};}
-  const raw=await aiCall(buildWorkflow3Prompt(code,sourceTag,sourceDesc),null);
-  const j=parseAiJson(raw);
-  if(!j||!j.tagline_localized||!j.description_localized)throw new Error('['+code+'] 返回 JSON 无效');
-  return {
-    language_code:code,
-    tagline_localized:smartShrink(j.tagline_localized,LIMITS.tagline),
-    description_localized:smartShrink(j.description_localized,LIMITS.description),
-  };
+  if(code==='zh-CN')return {language_code:'zh-CN',tagline_localized:sourceTag,description_localized:sourceDesc};
+  let lastErr=null;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      if(attempt>0)await new Promise(r=>setTimeout(r,1800*attempt));
+      const raw=await aiCall(buildWorkflow3Prompt(code,sourceTag,sourceDesc),null);
+      const j=parseAiJson(raw);
+      if(!j)throw new Error('返回非 JSON：'+String(raw||'').slice(0,120));
+      if(!j.tagline_localized||!j.description_localized)throw new Error('JSON 缺字段。原始：'+String(raw||'').slice(0,120));
+      return {
+        language_code:code,
+        tagline_localized:smartShrink(String(j.tagline_localized),LIMITS.tagline),
+        description_localized:smartShrink(String(j.description_localized),LIMITS.description),
+      };
+    }catch(e){
+      lastErr=e;
+      const msg=String(e.message||e);
+      if(/429|rate|quota|timeout|fetch|network|503|504|overload/i.test(msg))continue;
+      throw e;
+    }
+  }
+  throw lastErr||new Error('多次重试均失败');
 }
 
 /* ====================================================================
@@ -1617,12 +1637,14 @@ function renderI18n(){
     else if(!filled){tag='pending';txt='待填';}
     else if(tc==='over'||dc==='over'){tag='over';txt='超长';}
     else{tag='ok';txt='达标';}
+    const errAttr=r.failedReason?` title="${esc(r.failedReason)}"`:'';
+    const errHint=r.failedReason?`<div style="font-size:10.5px;color:var(--red);margin-top:4px;line-height:1.35;max-width:170px;word-break:break-all">${esc(r.failedReason.slice(0,120))}${r.failedReason.length>120?'…':''}</div>`:'';
     return `<tr class="${inc?'':'row-excluded'}">
       <td><input type="checkbox" class="inc-cb" data-inc="${idx}" ${inc?'checked':''} ${!filled?'disabled title="该行无内容，填写后可勾选"':''} /></td>
       <td class="lc">${flag(lang2geo(r.language_code))} ${r.language_code}<span class="lname">${esc(getLangName(r.language_code))}</span></td>
       <td class="cell-txt"><textarea data-edit="tag" data-idx="${idx}" placeholder="手动填写或 AI 翻译">${esc(r.tagline_localized)}</textarea><div class="len ${tc}">${tn}/${LIMITS.tagline}</div></td>
       <td class="cell-txt"><textarea data-edit="desc" data-idx="${idx}" placeholder="手动填写或 AI 翻译">${esc(r.description_localized)}</textarea><div class="len ${dc}">${dn}/${LIMITS.description}</div></td>
-      <td><span class="tag ${tag}">${txt}</span><button class="icon-btn" data-retry="${idx}" title="AI 重译此行" style="display:block;margin-top:4px">↻</button></td>
+      <td><span class="tag ${tag}"${errAttr}>${txt}</span>${errHint}<button class="icon-btn" data-retry="${idx}" title="AI 重译此行" style="display:block;margin-top:4px">↻</button></td>
     </tr>`;
   }).join('');
   $$('#i18nBody .inc-cb').forEach(cb=>cb.onchange=()=>{
@@ -1658,7 +1680,12 @@ function renderI18n(){
       const r=await runWorkflow3ForLang(code,state.copy.taglineZh,state.copy.descriptionZh);
       r.include=state.translations[i].include;
       state.translations[i]=r;renderI18n();renderCsvPreview();toast('✓ 已重译 '+code);
-    }catch(e){toast('重译失败：'+(e.message||e),3600);}
+    }catch(e){
+      state.translations[i].failed=true;
+      state.translations[i].failedReason=String(e.message||e).slice(0,200);
+      renderI18n();
+      toast('重译失败：'+String(e.message||e).slice(0,100),4500);
+    }
     finally{b.disabled=false;}
   });
 }
@@ -1680,15 +1707,19 @@ async function runAllTranslate(){
     btn.innerHTML=`⏳ ${i+1}/${todo.length} · ${t.language_code}`;
     try{
       const r=await runWorkflow3ForLang(t.language_code,state.copy.taglineZh,state.copy.descriptionZh);
-      Object.assign(t,r);delete t.failed;ok++;
+      Object.assign(t,r);delete t.failed;delete t.failedReason;ok++;
     }catch(e){
-      t.tagline_localized='';t.description_localized='';t.failed=true;t.include=false;fail++;
+      t.tagline_localized='';t.description_localized='';
+      t.failed=true;t.failedReason=String(e.message||e).slice(0,200);
+      t.include=false;fail++;
     }
     renderI18n();
+    // 节流：Gemini 2.5 Flash 免费层 10 RPM ≈ 每 6 秒 1 次，给 1.2s 间隔再叠加内部 3 次重试足够稳
+    if(i<todo.length-1)await new Promise(r=>setTimeout(r,1200));
   }
   renderCsvPreview();
   btn.disabled=false;btn.innerHTML=o;
-  toast(`✓ AI 翻译完成 · 成功 ${ok} / 失败 ${fail}（已有内容的行自动跳过）`);
+  toast(`✓ AI 翻译完成 · 成功 ${ok} / 失败 ${fail}${fail?'（鼠标悬停"失败"标签看具体原因）':''}`,5000);
 }
 
 function exportCsv(){

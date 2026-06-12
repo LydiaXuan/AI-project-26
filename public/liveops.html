@@ -87,10 +87,11 @@ code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:var(-
 /* ============== fields ============== */
 .field{margin-bottom:15px}
 .field:last-child{margin-bottom:0}
-.flabel{font-size:12.5px;color:var(--ink);font-weight:600;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
-.flabel .tag-req{font-size:10px;color:var(--red);font-weight:700;padding:1px 6px;background:var(--red-soft);border-radius:999px}
-.flabel .tag-opt{font-size:10px;color:var(--muted);font-weight:600;padding:1px 6px;background:var(--border-soft);border-radius:999px}
-.flabel .tag-cond{font-size:10px;color:var(--amber);font-weight:700;padding:1px 6px;background:var(--amber-soft);border-radius:999px}
+.flabel{font-size:13px;color:var(--ink);font-weight:600;margin-bottom:6px;display:flex;justify-content:flex-start;align-items:center;gap:4px;letter-spacing:.01em}
+.flabel .counter{margin-left:auto}
+.flabel .tag-req{font-size:16px;color:var(--red);font-weight:700;background:none;padding:0;margin:0;line-height:1}
+.flabel .tag-opt{font-size:11px;color:var(--muted);font-weight:500;background:none;padding:0;margin-left:2px}
+.flabel .tag-cond{font-size:11px;color:var(--amber);font-weight:600;background:none;padding:0;margin-left:2px}
 input[type=text],input[type=date],input[type=datetime-local],input[type=number],input[type=password],select,textarea{width:100%;font:inherit;color:var(--ink);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;background:#fff;transition:border .14s,box-shadow .14s;font-family:inherit}
 input::placeholder,textarea::placeholder{color:#b3bccb}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
@@ -149,54 +150,37 @@ select:disabled{background-color:var(--th-bg);color:var(--muted);cursor:not-allo
 .btn:disabled:hover{background:#fff;border-color:var(--border)}
 .btn.green:disabled:hover,.btn.blue:disabled:hover{filter:none}
 
-/* lang / country picker (shared pattern) */
-.picker-block{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:14px}
-@media (max-width:1040px){.picker-block{grid-template-columns:1fr}}
-.picker-side{display:flex;flex-direction:column}
-.sel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap}
-.sel-count{font-weight:600;color:var(--ink);font-size:12.5px}
-.sel-count em{font-style:normal;color:var(--green-deep);font-size:15px;margin-right:3px}
-.sel-chips{display:flex;flex-wrap:wrap;gap:6px;padding:11px;background:var(--th-bg);border:1px solid var(--border-soft);border-radius:var(--r-sm);min-height:54px;max-height:240px;overflow-y:auto;align-content:flex-start}
-.sel-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 4px 4px 9px;background:#fff;border:1px solid var(--border);border-radius:999px;font-size:11.5px;transition:border .12s}
-.sel-chip:hover{border-color:var(--green)}
-.sel-chip .flag{font-size:13px}
-.sel-chip .sname{color:var(--ink);font-weight:500;font-size:11px}
-.sel-chip .scode{color:var(--muted);font-family:ui-monospace,monospace;font-size:10px;font-weight:600}
-.sel-chip .rmbtn{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:all .12s}
-.sel-chip .rmbtn:hover{background:var(--red-soft);color:var(--red)}
-.sel-empty{font-size:12px;color:var(--muted);align-self:center;margin:auto;padding:14px}
-.combo-search{position:relative}
-.combo-search input{padding-left:32px;font-size:13px}
-.combo-search::before{content:'🔍';position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--muted);pointer-events:none}
-.opt-list{margin-top:8px;border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;max-height:240px;overflow-y:auto}
-.opt-list .opt{display:flex;align-items:center;gap:10px;padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--border-soft);transition:background .12s}
-.opt-list .opt:last-child{border-bottom:0}
-.opt-list .opt:hover{background:var(--blue-soft)}
-.opt-list .opt .flag{font-size:14px}
-.opt-list .opt .oname{flex:1;font-size:13px;color:var(--ink)}
-.opt-list .opt .ocode{font-family:ui-monospace,monospace;font-size:11px;color:var(--muted)}
-.opt-list .opt .o-add{color:var(--green-deep);font-size:14px;font-weight:700;padding:0 4px}
-.opt-list .opt:hover .o-add{color:var(--green)}
-.opt-list .opt.empty{color:var(--muted);font-style:italic;cursor:default;text-align:center;padding:18px;display:block}
-.opt-list .opt.empty:hover{background:transparent}
-
-/* country textmode */
-.textmode-toggle{display:flex;justify-content:flex-end;margin-bottom:7px}
-.textmode-toggle a{font-size:11.5px;cursor:pointer}
+/* ============== msel · 下拉多选组件 ============== */
+.msel{position:relative}
+.msel-trigger{display:flex;align-items:center;gap:8px;width:100%;border:1px solid var(--border);border-radius:var(--r-sm);background:#fff;padding:9px 12px;cursor:pointer;font:inherit;font-size:13px;transition:border .14s,box-shadow .14s;min-height:38px;text-align:left}
+.msel-trigger:hover{border-color:#cbd5e3}
+.msel.open .msel-trigger{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+.msel-summary{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.msel-summary .cnt{font-weight:700;color:var(--blue-deep);font-size:14px}
+.msel-summary .preview{color:var(--muted);font-size:12px}
+.msel-caret{color:var(--muted);font-size:12px;flex-shrink:0;transition:transform .15s}
+.msel.open .msel-caret{transform:rotate(180deg)}
+.msel-panel{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 36px rgba(16,30,54,.16);display:none;overflow:hidden}
+.msel.open .msel-panel{display:block}
+.msel-tools{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--border-soft);align-items:center;flex-wrap:wrap}
+.msel-tools input[type=text]{flex:1;min-width:110px;font-size:12.5px;padding:7px 10px}
+.msel-text{display:none;padding:10px;border-bottom:1px solid var(--border-soft);background:var(--th-bg)}
+.msel-text.show{display:block}
+.msel-list{max-height:296px;overflow-y:auto}
+.msel-opt{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border-soft);transition:background .1s}
+.msel-opt:last-child{border-bottom:0}
+.msel-opt:hover{background:var(--blue-soft)}
+.msel-opt .ck{width:18px;height:18px;border:1.5px solid #cdd6e3;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;transition:all .12s;background:#fff}
+.msel-opt.on .ck{background:var(--green);border-color:var(--green)}
+.msel-opt .mcode{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13.5px;font-weight:700;color:var(--ink);min-width:78px;flex-shrink:0}
+.msel-opt.on .mcode{color:var(--green-deep)}
+.msel-opt .mname{flex:1;font-size:12px;color:var(--muted);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msel-opt.empty{color:var(--muted);font-style:italic;cursor:default;justify-content:center;padding:18px}
+.msel-opt.empty:hover{background:transparent}
+.msel-opt .pdel{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:2px 6px;border-radius:5px;flex-shrink:0}
+.msel-opt .pdel:hover{background:var(--red-soft);color:var(--red)}
+.msel-foot{padding:8px 12px;border-top:1px solid var(--border-soft);background:var(--th-bg);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .csv-edit{font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.6}
-
-/* region presets */
-.preset-chips{display:flex;flex-wrap:wrap;gap:7px;min-height:34px;margin-bottom:8px}
-.preset-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 6px 7px 12px;background:#fff;border:1px solid var(--border);border-radius:999px;font-size:12px;cursor:pointer;transition:all .14s;user-select:none}
-.preset-chip:hover{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep)}
-.preset-chip .pn{font-size:10px;background:var(--border-soft);color:var(--ink-soft);padding:1px 7px;border-radius:999px;font-weight:600;white-space:nowrap}
-.preset-chip:hover .pn{background:#fff}
-.preset-chip .pdel{border:0;background:transparent;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;padding:0 4px}
-.preset-chip .pdel:hover{color:var(--red)}
-.preset-chip.proj{border-color:var(--blue);background:var(--blue-soft);color:var(--blue-deep);font-weight:600}
-.preset-chip.proj .pn{background:#fff}
-.preset-save{display:flex;gap:8px}
-.preset-save input{flex:1;font-size:12.5px}
 
 /* export include checkbox */
 tr.row-excluded td{opacity:.45}
@@ -405,14 +389,14 @@ tbody tr:hover{background:#fbfcfe}
         <div class="card-pad">
           <div class="four-col">
             <div class="field">
-              <div class="flabel">项目名称 <span class="tag-req">必填</span></div>
+              <div class="flabel">项目名称 <span class="tag-req">*</span></div>
               <div class="row gap">
                 <select id="projectSelect" style="flex:1"></select>
                 <button class="btn sm" id="projectManageBtn" type="button">⚙ 管理</button>
               </div>
             </div>
             <div class="field">
-              <div class="flabel">Event_type <span class="tag-req">必填</span></div>
+              <div class="flabel">Event_type <span class="tag-req">*</span></div>
               <select id="selEventType">
                 <option value="OFFER">OFFER · 优惠</option>
                 <option value="TIME-LIMITED_EVENT" selected>TIME-LIMITED_EVENT · 限时活动</option>
@@ -420,14 +404,14 @@ tbody tr:hover{background:#fbfcfe}
               </select>
             </div>
             <div class="field">
-              <div class="flabel">Priority <span class="tag-req">必填</span></div>
+              <div class="flabel">Priority <span class="tag-req">*</span></div>
               <select id="selPriority">
                 <option value="FEATURING_REQUESTED">FEATURING_REQUESTED · ⭐ 申请特推</option>
                 <option value="FEATURING_NOT_REQUESTED" selected>FEATURING_NOT_REQUESTED · 不申请</option>
               </select>
             </div>
             <div class="field">
-              <div class="flabel">submission_state <span class="tag-req">必填</span></div>
+              <div class="flabel">submission_state <span class="tag-req">*</span></div>
               <select id="selSubmission">
                 <option value="DRAFT" selected>DRAFT · 草稿</option>
                 <option value="SUBMITTED">SUBMITTED · 已提交</option>
@@ -444,7 +428,7 @@ tbody tr:hover{background:#fbfcfe}
         <div class="two-col">
           <div>
             <div class="field">
-              <div class="flabel">活动海报 / 主图形资源 <span class="tag-req">必填</span></div>
+              <div class="flabel">活动海报 / 主图形资源 <span class="tag-req">*</span></div>
               <div class="dropzone dropzone-half" id="dropzone">
                 <input id="inImage" type="file" accept="image/*" hidden />
                 <div class="dz-in">
@@ -459,7 +443,7 @@ tbody tr:hover{background:#fbfcfe}
           </div>
           <div>
             <div class="field">
-              <div class="flabel">核心关键词 / 主题说明 <span class="tag-req">必填</span></div>
+              <div class="flabel">核心关键词 / 主题说明 <span class="tag-req">*</span></div>
               <textarea id="inKeywords" class="lg" placeholder="例：千禧风 Y2K 潮流换装；限定黑金长裙、复古发型、流星太空舱；本次活动核心利益点是限定主题卡池..."></textarea>
               <div class="help-text">手动录入活动核心亮点 / 福利。这段文本将与海报视觉分析报告一起作为 Workflow 2 的输入。</div>
             </div>
@@ -476,12 +460,12 @@ tbody tr:hover{background:#fbfcfe}
         <!-- 时间字段 -->
         <div class="three-col">
           <div class="field">
-            <div class="flabel">start_time_utc <span class="tag-req">必填</span></div>
+            <div class="flabel">start_time_utc <span class="tag-req">*</span></div>
             <input id="inStart" type="datetime-local" />
             <div class="help-text">点击右侧图标选择开始时间（UTC）</div>
           </div>
           <div class="field">
-            <div class="flabel">end_time_utc <span class="tag-req">必填</span></div>
+            <div class="flabel">end_time_utc <span class="tag-req">*</span></div>
             <input id="inEnd" type="datetime-local" />
             <div class="help-text">点击右侧图标选择结束时间（UTC）</div>
           </div>
@@ -495,7 +479,7 @@ tbody tr:hover{background:#fbfcfe}
         <!-- preview_opt_in + user_eligibility (条件启用) -->
         <div class="two-col">
           <div class="field">
-            <div class="flabel">preview_opt_in <span class="tag-req">必填</span></div>
+            <div class="flabel">preview_opt_in <span class="tag-req">*</span></div>
             <select id="selPreviewOpt">
               <option value="OPT_IN">OPT_IN · 加入预展</option>
               <option value="OPT_OUT" selected>OPT_OUT · 不加入</option>
@@ -515,67 +499,67 @@ tbody tr:hover{background:#fbfcfe}
 
       <!-- 模块 D · 投放范围 -->
       <div class="card">
-        <div class="card-h"><h3>🌍 投放范围 · 语言与国家</h3><span class="muted">区域预设一键载入 · 节日活动可按地区投放</span></div>
+        <div class="card-h"><h3>🌍 投放范围 · 语言与国家</h3><span class="muted">下拉勾选 · 预设一键载入</span></div>
         <div class="card-pad">
 
-        <!-- 区域预设 -->
+        <!-- 区域预设：下拉 + 存为预设 -->
         <div class="field">
-          <div class="section-title">🧭 区域预设（一键同时设置 语言 + 国家 · 适合地区性节日活动）</div>
-          <div class="preset-chips" id="regionPresetChips"></div>
-          <div class="preset-save">
-            <input id="regionPresetName" type="text" placeholder="把当前语言+国家组合存为预设（例：东南亚斋月档）" maxlength="40" />
+          <div class="flabel">区域预设</div>
+          <div class="row gap">
+            <div class="msel" id="presetMsel" style="flex:1">
+              <button type="button" class="msel-trigger" data-msel="preset">
+                <span class="msel-summary" id="presetSummary"><span class="preview">选择预设，一键载入语言 + 国家组合…</span></span>
+                <span class="msel-caret">▾</span>
+              </button>
+              <div class="msel-panel">
+                <div class="msel-list" id="presetList"></div>
+                <div class="msel-foot"><span>内置区域档 + 自定义预设（可按项目命名）</span></div>
+              </div>
+            </div>
             <button class="btn sm" id="saveRegionPresetBtn" type="button">💾 存为预设</button>
-            <button class="btn sm" id="saveAsProjectBtn" type="button">📁 存为项目名</button>
-          </div>
-          <div class="help-text">节日类活动通常只投部分地区：点击预设一键载入该区域的语言与国家组合，再手动微调。「存为项目名」一键把当前组合保存成以当前项目命名的预设（如「Rebel Glam」），下次做该项目的活动直接点击该预设载入。数据均存本地浏览器。</div>
-        </div>
-
-        <!-- default_language_code 选择器 -->
-        <div class="field">
-          <div class="section-title">🌐 default_language_code（多选 · 共 <span id="langTotal"></span> 种可选）</div>
-          <div class="picker-block">
-            <div class="picker-side">
-              <div class="sel-head">
-                <span class="sel-count">已选 <em id="langSelCount">0</em> 种语言</span>
-                <span class="row gap">
-                  <button class="btn ghost xs" id="selAllLangsBtn" type="button">⊕ 一键全选</button>
-                  <button class="btn ghost xs" id="clearLangsBtn" type="button">清空</button>
-                </span>
-              </div>
-              <div class="sel-chips" id="langSelChips"></div>
-              <div class="help-text">CSV 字段 <code>default_language_code</code> 将以 <code>;</code> 拼接。所有选中语言都会自动出现在 Workflow 3 的本地化任务中。</div>
-            </div>
-            <div class="picker-side">
-              <div class="combo-search"><input id="langSearch" type="text" placeholder="搜索语言代码或名称（如 en, ja, French, 西班牙...）" /></div>
-              <div class="opt-list" id="langOptList"></div>
-            </div>
           </div>
         </div>
 
-        <div class="divider"></div>
-
-        <!-- countries 选择器 -->
-        <div class="field">
-          <div class="section-title">🗺 countries（多选 · 共 <span id="ctryTotal"></span> 个内置 / 可编辑添加）</div>
-          <div class="picker-block">
-            <div class="picker-side">
-              <div class="sel-head">
-                <span class="sel-count">已选 <em id="ctrySelCount">0</em> 个国家 / 地区</span>
-                <span class="row gap">
-                  <button class="btn ghost xs" id="selAllCtryBtn" type="button">⊕ 一键全选</button>
-                  <button class="btn ghost xs" id="clearCtryBtn" type="button">清空</button>
-                  <button class="btn ghost xs" id="editCtryTextBtn" type="button">✎ 文本模式</button>
-                </span>
+        <!-- 语言 + 国家：同行两列下拉 -->
+        <div class="two-col">
+          <div class="field">
+            <div class="flabel">default_language_code <span class="tag-req">*</span></div>
+            <div class="msel" id="langMsel">
+              <button type="button" class="msel-trigger" data-msel="lang">
+                <span class="msel-summary" id="langSummary"></span>
+                <span class="msel-caret">▾</span>
+              </button>
+              <div class="msel-panel">
+                <div class="msel-tools">
+                  <input type="text" id="langSearch" placeholder="搜索 code / 名称…" autocomplete="off" />
+                  <button class="btn xs" id="langAllBtn" type="button">全选</button>
+                  <button class="btn ghost xs" id="langNoneBtn" type="button">清空</button>
+                </div>
+                <div class="msel-list" id="langList"></div>
+                <div class="msel-foot"><span id="langFoot"></span></div>
               </div>
-              <div class="sel-chips" id="ctrySelChips"></div>
-              <textarea id="ctryTextEdit" class="csv-edit" rows="4" placeholder="US;GB;JP;KR;..." style="display:none;margin-top:8px"></textarea>
-              <div class="help-text">CSV 字段 <code>countries</code> 将以 <code>;</code> 拼接，例如 <code>US;GB;JP</code>。点击「文本模式」可直接粘贴 / 编辑分号串。</div>
             </div>
-            <div class="picker-side">
-              <div class="combo-search"><input id="ctrySearch" type="text" placeholder="搜索国家代码或名称（如 US, Japan, 巴西, France...）" /></div>
-              <div class="opt-list" id="ctryOptList"></div>
-              <div class="row end" style="margin-top:6px">
-                <button class="btn ghost xs" id="addCtryBtn" type="button">＋ 自定义新增国家代码</button>
+          </div>
+          <div class="field">
+            <div class="flabel">countries <span class="tag-req">*</span></div>
+            <div class="msel" id="ctryMsel">
+              <button type="button" class="msel-trigger" data-msel="ctry">
+                <span class="msel-summary" id="ctrySummary"></span>
+                <span class="msel-caret">▾</span>
+              </button>
+              <div class="msel-panel">
+                <div class="msel-tools">
+                  <input type="text" id="ctrySearch" placeholder="搜索 code / 中英文名…" autocomplete="off" />
+                  <button class="btn xs" id="ctryAllBtn" type="button">全选</button>
+                  <button class="btn ghost xs" id="ctryNoneBtn" type="button">清空</button>
+                  <button class="btn ghost xs" id="ctryTextBtn" type="button">✎ 文本</button>
+                </div>
+                <div class="msel-text" id="ctryTextWrap">
+                  <textarea id="ctryTextEdit" class="csv-edit" rows="3" placeholder="粘贴分号串自动识别：US;GB;JP;KR..."></textarea>
+                  <div class="row end gap" style="margin-top:6px"><button class="btn xs" id="ctryTextApply" type="button">✓ 应用</button></div>
+                </div>
+                <div class="msel-list" id="ctryList"></div>
+                <div class="msel-foot"><span id="ctryFoot"></span></div>
               </div>
             </div>
           </div>
@@ -584,7 +568,7 @@ tbody tr:hover{background:#fbfcfe}
       </div></div>
 
       <div class="wizard-nav">
-        <div class="muted">所有 <span style="color:var(--red);font-weight:600">必填</span> 字段须填写完整后才能进入下一步。</div>
+        <div class="muted">所有 <span style="color:var(--red);font-weight:700;font-size:15px">*</span> 字段须填写完整后才能进入下一步。</div>
         <div class="nav-spacer"></div>
         <button class="btn green" id="skipToStep4" type="button">⤵ 已有翻译 · 跳到 Step 4 粘贴导出</button>
         <button class="btn blue lg" id="goStep2" type="button">下一步：视觉分析 →</button>
@@ -930,54 +914,54 @@ function lang2geo(code){const map={'es-419':'MX','ar-SA':'SA','en-US':'US'};if(m
 
 /* ---------- 143 国家地区（Google Play 主流市场） ---------- */
 const COUNTRIES=[
-  {code:'US',name:'United States'},{code:'CA',name:'Canada'},{code:'MX',name:'Mexico'},
-  {code:'GT',name:'Guatemala'},{code:'SV',name:'El Salvador'},{code:'HN',name:'Honduras'},
-  {code:'NI',name:'Nicaragua'},{code:'CR',name:'Costa Rica'},{code:'PA',name:'Panama'},
-  {code:'DO',name:'Dominican Republic'},{code:'JM',name:'Jamaica'},{code:'TT',name:'Trinidad and Tobago'},
-  {code:'PR',name:'Puerto Rico'},{code:'BS',name:'Bahamas'},
-  {code:'BR',name:'Brazil'},{code:'AR',name:'Argentina'},{code:'CL',name:'Chile'},{code:'CO',name:'Colombia'},
-  {code:'PE',name:'Peru'},{code:'VE',name:'Venezuela'},{code:'EC',name:'Ecuador'},{code:'BO',name:'Bolivia'},
-  {code:'PY',name:'Paraguay'},{code:'UY',name:'Uruguay'},{code:'GY',name:'Guyana'},{code:'SR',name:'Suriname'},
-  {code:'GB',name:'United Kingdom'},{code:'IE',name:'Ireland'},{code:'FR',name:'France'},{code:'DE',name:'Germany'},
-  {code:'IT',name:'Italy'},{code:'ES',name:'Spain'},{code:'PT',name:'Portugal'},{code:'NL',name:'Netherlands'},
-  {code:'BE',name:'Belgium'},{code:'LU',name:'Luxembourg'},{code:'CH',name:'Switzerland'},{code:'AT',name:'Austria'},
-  {code:'MC',name:'Monaco'},{code:'AD',name:'Andorra'},{code:'SM',name:'San Marino'},{code:'MT',name:'Malta'},
-  {code:'LI',name:'Liechtenstein'},
-  {code:'GR',name:'Greece'},{code:'CY',name:'Cyprus'},{code:'IS',name:'Iceland'},{code:'NO',name:'Norway'},
-  {code:'SE',name:'Sweden'},{code:'FI',name:'Finland'},{code:'DK',name:'Denmark'},
-  {code:'EE',name:'Estonia'},{code:'LV',name:'Latvia'},{code:'LT',name:'Lithuania'},
-  {code:'PL',name:'Poland'},{code:'CZ',name:'Czechia'},{code:'SK',name:'Slovakia'},{code:'HU',name:'Hungary'},
-  {code:'RO',name:'Romania'},{code:'BG',name:'Bulgaria'},{code:'MD',name:'Moldova'},
-  {code:'UA',name:'Ukraine'},{code:'BY',name:'Belarus'},{code:'RU',name:'Russia'},
-  {code:'HR',name:'Croatia'},{code:'SI',name:'Slovenia'},{code:'RS',name:'Serbia'},
-  {code:'BA',name:'Bosnia and Herzegovina'},{code:'ME',name:'Montenegro'},
-  {code:'MK',name:'North Macedonia'},{code:'AL',name:'Albania'},
-  {code:'TR',name:'Türkiye'},{code:'IL',name:'Israel'},{code:'JO',name:'Jordan'},{code:'LB',name:'Lebanon'},
-  {code:'IQ',name:'Iraq'},{code:'IR',name:'Iran'},{code:'SA',name:'Saudi Arabia'},
-  {code:'AE',name:'United Arab Emirates'},{code:'OM',name:'Oman'},{code:'QA',name:'Qatar'},
-  {code:'KW',name:'Kuwait'},{code:'BH',name:'Bahrain'},{code:'YE',name:'Yemen'},
-  {code:'EG',name:'Egypt'},{code:'LY',name:'Libya'},{code:'TN',name:'Tunisia'},
-  {code:'DZ',name:'Algeria'},{code:'MA',name:'Morocco'},
-  {code:'ZA',name:'South Africa'},{code:'NG',name:'Nigeria'},{code:'KE',name:'Kenya'},{code:'GH',name:'Ghana'},
-  {code:'ET',name:'Ethiopia'},{code:'UG',name:'Uganda'},{code:'TZ',name:'Tanzania'},
-  {code:'ZW',name:'Zimbabwe'},{code:'ZM',name:'Zambia'},{code:'BW',name:'Botswana'},{code:'NA',name:'Namibia'},
-  {code:'MZ',name:'Mozambique'},{code:'MG',name:'Madagascar'},{code:'SN',name:'Senegal'},
-  {code:'CI',name:"Côte d'Ivoire"},{code:'CM',name:'Cameroon'},{code:'AO',name:'Angola'},
-  {code:'MW',name:'Malawi'},{code:'RW',name:'Rwanda'},{code:'BJ',name:'Benin'},
-  {code:'BF',name:'Burkina Faso'},{code:'NE',name:'Niger'},{code:'TG',name:'Togo'},
-  {code:'CN',name:'China'},{code:'HK',name:'Hong Kong'},{code:'TW',name:'Taiwan'},
-  {code:'JP',name:'Japan'},{code:'KR',name:'South Korea'},{code:'MN',name:'Mongolia'},
-  {code:'IN',name:'India'},{code:'PK',name:'Pakistan'},{code:'BD',name:'Bangladesh'},
-  {code:'NP',name:'Nepal'},{code:'BT',name:'Bhutan'},{code:'LK',name:'Sri Lanka'},
-  {code:'MV',name:'Maldives'},{code:'AF',name:'Afghanistan'},
-  {code:'MM',name:'Myanmar'},{code:'TH',name:'Thailand'},{code:'VN',name:'Vietnam'},
-  {code:'KH',name:'Cambodia'},{code:'LA',name:'Laos'},{code:'MY',name:'Malaysia'},
-  {code:'SG',name:'Singapore'},{code:'ID',name:'Indonesia'},{code:'PH',name:'Philippines'},
-  {code:'BN',name:'Brunei'},{code:'TL',name:'Timor-Leste'},
-  {code:'KZ',name:'Kazakhstan'},{code:'UZ',name:'Uzbekistan'},{code:'KG',name:'Kyrgyzstan'},
-  {code:'TJ',name:'Tajikistan'},
-  {code:'GE',name:'Georgia'},{code:'AM',name:'Armenia'},{code:'AZ',name:'Azerbaijan'},
-  {code:'AU',name:'Australia'},{code:'NZ',name:'New Zealand'},{code:'PG',name:'Papua New Guinea'},{code:'FJ',name:'Fiji'},
+  {code:'US',name:"United States-美国"},{code:'CA',name:"Canada-加拿大"},{code:'MX',name:"Mexico-墨西哥"},
+  {code:'GT',name:"Guatemala-危地马拉"},{code:'SV',name:"El Salvador-萨尔瓦多"},{code:'HN',name:"Honduras-洪都拉斯"},
+  {code:'NI',name:"Nicaragua-尼加拉瓜"},{code:'CR',name:"Costa Rica-哥斯达黎加"},{code:'PA',name:"Panama-巴拿马"},
+  {code:'DO',name:"Dominican Republic-多米尼加"},{code:'JM',name:"Jamaica-牙买加"},{code:'TT',name:"Trinidad and Tobago-特立尼达和多巴哥"},
+  {code:'PR',name:"Puerto Rico-波多黎各"},{code:'BS',name:"Bahamas-巴哈马"},
+  {code:'BR',name:"Brazil-巴西"},{code:'AR',name:"Argentina-阿根廷"},{code:'CL',name:"Chile-智利"},{code:'CO',name:"Colombia-哥伦比亚"},
+  {code:'PE',name:"Peru-秘鲁"},{code:'VE',name:"Venezuela-委内瑞拉"},{code:'EC',name:"Ecuador-厄瓜多尔"},{code:'BO',name:"Bolivia-玻利维亚"},
+  {code:'PY',name:"Paraguay-巴拉圭"},{code:'UY',name:"Uruguay-乌拉圭"},{code:'GY',name:"Guyana-圭亚那"},{code:'SR',name:"Suriname-苏里南"},
+  {code:'GB',name:"United Kingdom-英国"},{code:'IE',name:"Ireland-爱尔兰"},{code:'FR',name:"France-法国"},{code:'DE',name:"Germany-德国"},
+  {code:'IT',name:"Italy-意大利"},{code:'ES',name:"Spain-西班牙"},{code:'PT',name:"Portugal-葡萄牙"},{code:'NL',name:"Netherlands-荷兰"},
+  {code:'BE',name:"Belgium-比利时"},{code:'LU',name:"Luxembourg-卢森堡"},{code:'CH',name:"Switzerland-瑞士"},{code:'AT',name:"Austria-奥地利"},
+  {code:'MC',name:"Monaco-摩纳哥"},{code:'AD',name:"Andorra-安道尔"},{code:'SM',name:"San Marino-圣马力诺"},{code:'MT',name:"Malta-马耳他"},
+  {code:'LI',name:"Liechtenstein-列支敦士登"},
+  {code:'GR',name:"Greece-希腊"},{code:'CY',name:"Cyprus-塞浦路斯"},{code:'IS',name:"Iceland-冰岛"},{code:'NO',name:"Norway-挪威"},
+  {code:'SE',name:"Sweden-瑞典"},{code:'FI',name:"Finland-芬兰"},{code:'DK',name:"Denmark-丹麦"},
+  {code:'EE',name:"Estonia-爱沙尼亚"},{code:'LV',name:"Latvia-拉脱维亚"},{code:'LT',name:"Lithuania-立陶宛"},
+  {code:'PL',name:"Poland-波兰"},{code:'CZ',name:"Czechia-捷克"},{code:'SK',name:"Slovakia-斯洛伐克"},{code:'HU',name:"Hungary-匈牙利"},
+  {code:'RO',name:"Romania-罗马尼亚"},{code:'BG',name:"Bulgaria-保加利亚"},{code:'MD',name:"Moldova-摩尔多瓦"},
+  {code:'UA',name:"Ukraine-乌克兰"},{code:'BY',name:"Belarus-白俄罗斯"},{code:'RU',name:"Russia-俄罗斯"},
+  {code:'HR',name:"Croatia-克罗地亚"},{code:'SI',name:"Slovenia-斯洛文尼亚"},{code:'RS',name:"Serbia-塞尔维亚"},
+  {code:'BA',name:"Bosnia and Herzegovina-波黑"},{code:'ME',name:"Montenegro-黑山"},
+  {code:'MK',name:"North Macedonia-北马其顿"},{code:'AL',name:"Albania-阿尔巴尼亚"},
+  {code:'TR',name:"Türkiye-土耳其"},{code:'IL',name:"Israel-以色列"},{code:'JO',name:"Jordan-约旦"},{code:'LB',name:"Lebanon-黎巴嫩"},
+  {code:'IQ',name:"Iraq-伊拉克"},{code:'IR',name:"Iran-伊朗"},{code:'SA',name:"Saudi Arabia-沙特阿拉伯"},
+  {code:'AE',name:"United Arab Emirates-阿联酋"},{code:'OM',name:"Oman-阿曼"},{code:'QA',name:"Qatar-卡塔尔"},
+  {code:'KW',name:"Kuwait-科威特"},{code:'BH',name:"Bahrain-巴林"},{code:'YE',name:"Yemen-也门"},
+  {code:'EG',name:"Egypt-埃及"},{code:'LY',name:"Libya-利比亚"},{code:'TN',name:"Tunisia-突尼斯"},
+  {code:'DZ',name:"Algeria-阿尔及利亚"},{code:'MA',name:"Morocco-摩洛哥"},
+  {code:'ZA',name:"South Africa-南非"},{code:'NG',name:"Nigeria-尼日利亚"},{code:'KE',name:"Kenya-肯尼亚"},{code:'GH',name:"Ghana-加纳"},
+  {code:'ET',name:"Ethiopia-埃塞俄比亚"},{code:'UG',name:"Uganda-乌干达"},{code:'TZ',name:"Tanzania-坦桑尼亚"},
+  {code:'ZW',name:"Zimbabwe-津巴布韦"},{code:'ZM',name:"Zambia-赞比亚"},{code:'BW',name:"Botswana-博茨瓦纳"},{code:'NA',name:"Namibia-纳米比亚"},
+  {code:'MZ',name:"Mozambique-莫桑比克"},{code:'MG',name:"Madagascar-马达加斯加"},{code:'SN',name:"Senegal-塞内加尔"},
+  {code:'CI',name:"Côte d'Ivoire-科特迪瓦"},{code:'CM',name:"Cameroon-喀麦隆"},{code:'AO',name:"Angola-安哥拉"},
+  {code:'MW',name:"Malawi-马拉维"},{code:'RW',name:"Rwanda-卢旺达"},{code:'BJ',name:"Benin-贝宁"},
+  {code:'BF',name:"Burkina Faso-布基纳法索"},{code:'NE',name:"Niger-尼日尔"},{code:'TG',name:"Togo-多哥"},
+  {code:'CN',name:"China-中国"},{code:'HK',name:"Hong Kong-中国香港"},{code:'TW',name:"Taiwan-中国台湾"},
+  {code:'JP',name:"Japan-日本"},{code:'KR',name:"South Korea-韩国"},{code:'MN',name:"Mongolia-蒙古"},
+  {code:'IN',name:"India-印度"},{code:'PK',name:"Pakistan-巴基斯坦"},{code:'BD',name:"Bangladesh-孟加拉国"},
+  {code:'NP',name:"Nepal-尼泊尔"},{code:'BT',name:"Bhutan-不丹"},{code:'LK',name:"Sri Lanka-斯里兰卡"},
+  {code:'MV',name:"Maldives-马尔代夫"},{code:'AF',name:"Afghanistan-阿富汗"},
+  {code:'MM',name:"Myanmar-缅甸"},{code:'TH',name:"Thailand-泰国"},{code:'VN',name:"Vietnam-越南"},
+  {code:'KH',name:"Cambodia-柬埔寨"},{code:'LA',name:"Laos-老挝"},{code:'MY',name:"Malaysia-马来西亚"},
+  {code:'SG',name:"Singapore-新加坡"},{code:'ID',name:"Indonesia-印度尼西亚"},{code:'PH',name:"Philippines-菲律宾"},
+  {code:'BN',name:"Brunei-文莱"},{code:'TL',name:"Timor-Leste-东帝汶"},
+  {code:'KZ',name:"Kazakhstan-哈萨克斯坦"},{code:'UZ',name:"Uzbekistan-乌兹别克斯坦"},{code:'KG',name:"Kyrgyzstan-吉尔吉斯斯坦"},
+  {code:'TJ',name:"Tajikistan-塔吉克斯坦"},
+  {code:'GE',name:"Georgia-格鲁吉亚"},{code:'AM',name:"Armenia-亚美尼亚"},{code:'AZ',name:"Azerbaijan-阿塞拜疆"},
+  {code:'AU',name:"Australia-澳大利亚"},{code:'NZ',name:"New Zealand-新西兰"},{code:'PG',name:"Papua New Guinea-巴布亚新几内亚"},{code:'FJ',name:"Fiji-斐济"},
 ];
 
 /* ---------- 区域预设（语言 + 国家组合 · 适配地区性节日活动） ---------- */
@@ -1285,8 +1269,7 @@ function renderProjectSelect(){
   sel.innerHTML=list.length
     ?list.map(p=>`<option value="${esc(p)}"${p===state.form.project?' selected':''}>${esc(p)}</option>`).join('')
     :'<option value="">（暂无项目 · 点右侧「管理」添加）</option>';
-  sel.onchange=()=>{state.form.project=sel.value;updateSaveAsProjectBtn();};
-  updateSaveAsProjectBtn();
+  sel.onchange=()=>{state.form.project=sel.value;};
 }
 function renderProjectModalList(){
   const list=getProjects(),wrap=$('#projectList');
@@ -1300,7 +1283,7 @@ function renderProjectModalList(){
   });
   $$('#projectList [data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i<=0)return;const cur=getProjects();[cur[i-1],cur[i]]=[cur[i],cur[i-1]];saveProjects(cur);renderProjectModalList();renderProjectSelect();});
   $$('#projectList [data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;const cur=getProjects();if(i>=cur.length-1)return;[cur[i],cur[i+1]]=[cur[i+1],cur[i]];saveProjects(cur);renderProjectModalList();renderProjectSelect();});
-  $$('#projectList [data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;const cur=getProjects();const name=cur[i];if(!confirm('删除项目「'+name+'」？'))return;cur.splice(i,1);saveProjects(cur);if(!cur.includes(state.form.project))state.form.project=cur[0]||'';renderProjectModalList();renderProjectSelect();renderRegionPresets();});
+  $$('#projectList [data-del]').forEach(b=>b.onclick=()=>{const i=+b.dataset.del;const cur=getProjects();const name=cur[i];if(!confirm('删除项目「'+name+'」？'))return;cur.splice(i,1);saveProjects(cur);if(!cur.includes(state.form.project))state.form.project=cur[0]||'';renderProjectModalList();renderProjectSelect();});
 }
 
 /* ====================================================================
@@ -1317,8 +1300,7 @@ function updateEligibilityVisibility(){
   const isOffer=state.form.eventType==='OFFER';
   const tag=$('#eligTag'),sel=$('#selEligibility');
   tag.textContent=isOffer?'OFFER 必填':'仅 OFFER 时启用';
-  tag.style.color=isOffer?'var(--red)':'var(--amber)';
-  tag.style.background=isOffer?'var(--red-soft)':'var(--amber-soft)';
+  tag.style.color=isOffer?'var(--red)':'var(--muted)';
   $('#eligibilityField').style.opacity=isOffer?'1':'.6';
   sel.disabled=!isOffer;
   if(isOffer&&!state.form.userEligibility){state.form.userEligibility='EVERYONE';sel.value='EVERYONE';}
@@ -1350,151 +1332,137 @@ function bindDropzone(){
   fi.onchange=()=>{const f=fi.files?.[0];if(f)handleImg(f);};
 }
 
-/* ----- 语言选择器 ----- */
-function renderLangSelected(){
-  $('#langSelCount').textContent=state.form.defaultLangs.length;
-  const wrap=$('#langSelChips');
-  if(!state.form.defaultLangs.length){wrap.innerHTML='<div class="sel-empty">尚未选择任何语言 · 从右侧搜索添加</div>';return;}
-  wrap.innerHTML=state.form.defaultLangs.map(code=>{
-    const l=getLang(code);
-    return `<span class="sel-chip"><span class="flag">${flag(lang2geo(code))}</span><span class="sname">${esc(l?l.name:code)}</span><span class="scode">${code}</span><button class="rmbtn" data-rm="${code}" title="移除">×</button></span>`;
-  }).join('');
-  $$('#langSelChips .rmbtn').forEach(b=>b.onclick=()=>{state.form.defaultLangs=state.form.defaultLangs.filter(c=>c!==b.dataset.rm);renderLangSelected();renderLangOptList();});
+/* ====================================================================
+ *  msel · 下拉多选组件（语言 / 国家 / 预设共用）
+ * ==================================================================== */
+function closeAllMsel(){$$('.msel.open').forEach(m=>m.classList.remove('open'));}
+function bindMselTriggers(){
+  $$('.msel-trigger').forEach(t=>{
+    t.onclick=e=>{
+      e.stopPropagation();
+      const root=t.closest('.msel');
+      const was=root.classList.contains('open');
+      closeAllMsel();
+      if(!was)root.classList.add('open');
+    };
+  });
+  document.addEventListener('click',e=>{if(!e.target.closest('.msel'))closeAllMsel();});
 }
-function renderLangOptList(){
+
+/* ----- 语言下拉多选 ----- */
+function renderLangMsel(){
+  const sel=state.form.defaultLangs;
+  const sum=$('#langSummary');
+  sum.innerHTML=sel.length
+    ?`<span class="cnt">${sel.length}</span><span class="preview"> / ${LANGUAGES.length} 种 · ${esc(sel.slice(0,4).join(', '))}${sel.length>4?'…':''}</span>`
+    :'<span class="preview">未选择 · 点击勾选语言</span>';
   const q=state.langSearch.toLowerCase().trim();
-  const wrap=$('#langOptList');
-  const avail=LANGUAGES.filter(l=>!state.form.defaultLangs.includes(l.code));
-  const list=q?avail.filter(l=>l.code.toLowerCase().includes(q)||l.name.toLowerCase().includes(q)):avail;
-  if(!list.length){wrap.innerHTML=`<div class="opt empty">${q?'无匹配的语言':'已添加全部语言'}</div>`;return;}
-  wrap.innerHTML=list.map(l=>`<div class="opt" data-code="${l.code}"><span class="flag">${flag(lang2geo(l.code))}</span><span class="oname">${esc(l.name)}</span><span class="ocode">${l.code}</span><span class="o-add">＋</span></div>`).join('');
-  $$('#langOptList .opt[data-code]').forEach(o=>o.onclick=()=>{const c=o.dataset.code;if(!state.form.defaultLangs.includes(c))state.form.defaultLangs.push(c);renderLangSelected();renderLangOptList();});
+  const list=q?LANGUAGES.filter(l=>l.code.toLowerCase().includes(q)||l.name.toLowerCase().includes(q)):LANGUAGES;
+  $('#langList').innerHTML=list.length?list.map(l=>{
+    const on=sel.includes(l.code);
+    return `<div class="msel-opt${on?' on':''}" data-code="${l.code}"><span class="ck">${on?'✓':''}</span><span class="mcode">${flag(lang2geo(l.code))} ${l.code}</span><span class="mname">${esc(l.name)}</span></div>`;
+  }).join(''):'<div class="msel-opt empty">无匹配的语言</div>';
+  $('#langFoot').textContent='已选 '+sel.length+' / '+LANGUAGES.length+' · 点击行勾选或取消';
+  $$('#langList .msel-opt[data-code]').forEach(o=>o.onclick=()=>{
+    const c=o.dataset.code;
+    if(state.form.defaultLangs.includes(c))state.form.defaultLangs=state.form.defaultLangs.filter(x=>x!==c);
+    else state.form.defaultLangs.push(c);
+    renderLangMsel();
+  });
 }
 
-/* ----- 国家选择器 ----- */
-function renderCtrySelected(){
-  $('#ctrySelCount').textContent=state.form.countries.length;
-  const wrap=$('#ctrySelChips');
-  const ta=$('#ctryTextEdit');
-  if(state.ctryTextMode){
-    wrap.style.display='none';ta.style.display='block';
-    ta.value=state.form.countries.join(';');
-    return;
-  }
-  wrap.style.display='';ta.style.display='none';
-  if(!state.form.countries.length){wrap.innerHTML='<div class="sel-empty">尚未选择任何国家 · 从右侧搜索添加 / 全选 / 文本模式粘贴</div>';return;}
-  wrap.innerHTML=state.form.countries.map(code=>{
-    const c=COUNTRIES.find(x=>x.code===code);
-    return `<span class="sel-chip"><span class="flag">${flag(code)}</span><span class="sname">${esc(c?c.name:code)}</span><span class="scode">${code}</span><button class="rmbtn" data-rm="${code}" title="移除">×</button></span>`;
-  }).join('');
-  $$('#ctrySelChips .rmbtn').forEach(b=>b.onclick=()=>{state.form.countries=state.form.countries.filter(c=>c!==b.dataset.rm);renderCtrySelected();renderCtryOptList();});
-}
-function renderCtryOptList(){
+/* ----- 国家下拉多选 ----- */
+function renderCtryMsel(){
+  const sel=state.form.countries;
+  const sum=$('#ctrySummary');
+  sum.innerHTML=sel.length
+    ?`<span class="cnt">${sel.length}</span><span class="preview"> / ${COUNTRIES.length} 国 · ${esc(sel.slice(0,6).join(';'))}${sel.length>6?'…':''}</span>`
+    :'<span class="preview">未选择 · 点击勾选国家</span>';
   const q=state.ctrySearch.toLowerCase().trim();
-  const wrap=$('#ctryOptList');
-  const avail=COUNTRIES.filter(c=>!state.form.countries.includes(c.code));
-  const list=q?avail.filter(c=>c.code.toLowerCase().includes(q)||c.name.toLowerCase().includes(q)):avail;
-  if(!list.length){wrap.innerHTML=`<div class="opt empty">${q?'无匹配的国家，或点击下方「自定义新增」':'已添加全部 '+COUNTRIES.length+' 个内置国家'}</div>`;return;}
-  wrap.innerHTML=list.map(c=>`<div class="opt" data-code="${c.code}"><span class="flag">${flag(c.code)}</span><span class="oname">${esc(c.name)}</span><span class="ocode">${c.code}</span><span class="o-add">＋</span></div>`).join('');
-  $$('#ctryOptList .opt[data-code]').forEach(o=>o.onclick=()=>{const c=o.dataset.code;if(!state.form.countries.includes(c))state.form.countries.push(c);renderCtrySelected();renderCtryOptList();});
-}
-function applyCtryTextEdit(){
-  const ta=$('#ctryTextEdit');
-  const raw=ta.value;
-  const codes=raw.split(/[;,\s]+/).map(s=>s.trim().toUpperCase()).filter(s=>/^[A-Z]{2}$/.test(s));
-  state.form.countries=[...new Set(codes)];
-  state.ctryTextMode=false;
-  renderCtrySelected();renderCtryOptList();
-  toast('已识别 '+state.form.countries.length+' 个国家代码');
-}
-function bindCountryUI(){
-  $('#ctrySearch').addEventListener('input',e=>{state.ctrySearch=e.target.value;renderCtryOptList();});
-  $('#selAllCtryBtn').onclick=()=>{state.form.countries=COUNTRIES.map(c=>c.code);renderCtrySelected();renderCtryOptList();toast('已全选 '+state.form.countries.length+' 个国家');};
-  $('#clearCtryBtn').onclick=()=>{if(!state.form.countries.length){toast('已为空');return;}if(confirm('清空已选的 '+state.form.countries.length+' 个国家？')){state.form.countries=[];renderCtrySelected();renderCtryOptList();}};
-  $('#editCtryTextBtn').onclick=()=>{
-    if(!state.ctryTextMode){state.ctryTextMode=true;renderCtrySelected();$('#editCtryTextBtn').textContent='✓ 应用文本';}
-    else{applyCtryTextEdit();$('#editCtryTextBtn').textContent='✎ 文本模式';}
-  };
-  $('#addCtryBtn').onclick=()=>{
-    const code=prompt('输入 2 位国家代码（ISO 3166-1 alpha-2）：','');
-    if(!code)return;
-    const up=code.trim().toUpperCase();
-    if(!/^[A-Z]{2}$/.test(up)){toast('代码格式错误，需为 2 位英文字母');return;}
-    if(!state.form.countries.includes(up))state.form.countries.push(up);
-    renderCtrySelected();renderCtryOptList();
-    toast('已添加 '+up);
-  };
-}
-function bindLanguageUI(){
-  $('#langSearch').addEventListener('input',e=>{state.langSearch=e.target.value;renderLangOptList();});
-  $('#selAllLangsBtn').onclick=()=>{
-    state.form.defaultLangs=LANGUAGES.map(l=>l.code);
-    renderLangSelected();renderLangOptList();
-    toast('已全选 '+LANGUAGES.length+' 种语言 · 提示：AI 翻译按语言逐次调用，全选会消耗较多额度（导出本身不耗）',4200);
-  };
-  $('#clearLangsBtn').onclick=()=>{if(!state.form.defaultLangs.length){toast('已为空');return;}if(confirm('清空已选的 '+state.form.defaultLangs.length+' 种语言？')){state.form.defaultLangs=[];renderLangSelected();renderLangOptList();}};
+  // 自定义代码（不在内置表里）排在最前，便于回看
+  const extra=sel.filter(code=>!COUNTRIES.some(c=>c.code===code)).map(code=>({code,name:'自定义'}));
+  const full=[...extra,...COUNTRIES];
+  const list=q?full.filter(c=>c.code.toLowerCase().includes(q)||c.name.toLowerCase().includes(q)):full;
+  $('#ctryList').innerHTML=list.length?list.map(c=>{
+    const on=sel.includes(c.code);
+    return `<div class="msel-opt${on?' on':''}" data-code="${c.code}"><span class="ck">${on?'✓':''}</span><span class="mcode">${flag(c.code)} ${c.code}</span><span class="mname">${esc(c.name)}</span></div>`;
+  }).join(''):'<div class="msel-opt empty">无匹配 · 可在「✎ 文本」里粘贴自定义代码</div>';
+  $('#ctryFoot').textContent='已选 '+sel.length+' / '+COUNTRIES.length+' · 点击行勾选或取消';
+  $$('#ctryList .msel-opt[data-code]').forEach(o=>o.onclick=()=>{
+    const c=o.dataset.code;
+    if(state.form.countries.includes(c))state.form.countries=state.form.countries.filter(x=>x!==c);
+    else state.form.countries.push(c);
+    renderCtryMsel();
+  });
 }
 
-/* ----- 区域预设（含「存为项目名」的普通预设，不与项目联动） ----- */
+function bindLangCtryUI(){
+  $('#langSearch').addEventListener('input',e=>{state.langSearch=e.target.value;renderLangMsel();});
+  $('#langSearch').onclick=e=>e.stopPropagation();
+  $('#langAllBtn').onclick=()=>{
+    state.form.defaultLangs=LANGUAGES.map(l=>l.code);
+    renderLangMsel();
+    toast('已全选 '+LANGUAGES.length+' 种语言 · AI 翻译按语言逐次调用，全选耗额度较多（导出不耗）',3600);
+  };
+  $('#langNoneBtn').onclick=()=>{state.form.defaultLangs=[];renderLangMsel();};
+  $('#ctrySearch').addEventListener('input',e=>{state.ctrySearch=e.target.value;renderCtryMsel();});
+  $('#ctrySearch').onclick=e=>e.stopPropagation();
+  $('#ctryAllBtn').onclick=()=>{state.form.countries=COUNTRIES.map(c=>c.code);renderCtryMsel();toast('已全选 '+COUNTRIES.length+' 个国家');};
+  $('#ctryNoneBtn').onclick=()=>{state.form.countries=[];renderCtryMsel();};
+  $('#ctryTextBtn').onclick=()=>{
+    const w=$('#ctryTextWrap');
+    const show=!w.classList.contains('show');
+    w.classList.toggle('show',show);
+    if(show)$('#ctryTextEdit').value=state.form.countries.join(';');
+  };
+  $('#ctryTextApply').onclick=()=>{
+    const codes=$('#ctryTextEdit').value.split(/[;,\s]+/).map(s=>s.trim().toUpperCase()).filter(s=>/^[A-Z]{2}$/.test(s));
+    state.form.countries=[...new Set(codes)];
+    $('#ctryTextWrap').classList.remove('show');
+    renderCtryMsel();
+    toast('已识别 '+state.form.countries.length+' 个国家代码');
+  };
+}
+
+/* ----- 区域预设下拉（点「存为预设」时弹出命名） ----- */
 function getCustomRegionPresets(){return loadLS(K_RPRESETS,[]);}
 function saveCustomRegionPresets(l){saveLS(K_RPRESETS,l);}
-function updateSaveAsProjectBtn(){
-  const b=$('#saveAsProjectBtn');
-  if(b)b.textContent='📁 存为「'+(state.form.project||'项目')+'」';
-}
 function applyRegionPreset(p){
   state.form.defaultLangs=[...p.langs];
   state.form.countries=p.ctrys==='ALL'?COUNTRIES.map(c=>c.code):[...p.ctrys];
-  state.ctryTextMode=false;$('#editCtryTextBtn').textContent='✎ 文本模式';
-  renderLangSelected();renderLangOptList();renderCtrySelected();renderCtryOptList();
+  renderLangMsel();renderCtryMsel();
+  closeAllMsel();
   toast('已载入「'+p.name+'」：'+state.form.defaultLangs.length+' 种语言 · '+state.form.countries.length+' 个国家');
 }
-function renderRegionPresets(){
-  const wrap=$('#regionPresetChips');
+function renderPresetMsel(){
   const all=[...REGION_PRESETS,...getCustomRegionPresets()];
-  const projNames=getProjects();
-  wrap.innerHTML=all.map(p=>{
+  $('#presetList').innerHTML=all.map(p=>{
     const cn=p.ctrys==='ALL'?COUNTRIES.length:p.ctrys.length;
-    const isProj=!p.builtin&&projNames.includes(p.name);
-    return `<span class="preset-chip${isProj?' proj':''}" data-pid="${p.id}"><span>${isProj?'📁 ':''}${esc(p.name)}</span><span class="pn">${p.langs.length}语·${cn}国</span>${p.builtin?'':`<button class="pdel" data-pdel="${p.id}" title="删除预设">×</button>`}</span>`;
+    return `<div class="msel-opt" data-pid="${p.id}"><span class="mcode" style="min-width:0;font-family:inherit;font-size:12.5px;font-weight:600;flex:1">${esc(p.name)}</span><span class="mname" style="flex:0 0 auto">${p.langs.length} 语 · ${cn} 国</span>${p.builtin?'':`<button class="pdel" data-pdel="${p.id}" title="删除预设">×</button>`}</div>`;
   }).join('');
-  $$('#regionPresetChips .preset-chip[data-pid]').forEach(c=>c.onclick=e=>{
+  $$('#presetList .msel-opt[data-pid]').forEach(o=>o.onclick=e=>{
     if(e.target.classList.contains('pdel'))return;
-    const p=all.find(x=>x.id===c.dataset.pid);if(p)applyRegionPreset(p);
+    const p=all.find(x=>x.id===o.dataset.pid);if(p)applyRegionPreset(p);
   });
-  $$('#regionPresetChips .pdel[data-pdel]').forEach(b=>b.onclick=e=>{
+  $$('#presetList .pdel[data-pdel]').forEach(b=>b.onclick=e=>{
     e.stopPropagation();
     const list=getCustomRegionPresets();const p=list.find(x=>x.id===b.dataset.pdel);
     if(!p||!confirm('删除预设「'+p.name+'」？'))return;
-    saveCustomRegionPresets(list.filter(x=>x.id!==b.dataset.pdel));renderRegionPresets();
+    saveCustomRegionPresets(list.filter(x=>x.id!==b.dataset.pdel));renderPresetMsel();
   });
 }
 function bindRegionPresetUI(){
   $('#saveRegionPresetBtn').onclick=()=>{
-    const name=$('#regionPresetName').value.trim();
-    if(!name){toast('请填写预设名称');return;}
     if(!state.form.defaultLangs.length||!state.form.countries.length){toast('当前语言或国家为空，无法保存');return;}
-    const list=getCustomRegionPresets();
-    const exist=list.findIndex(p=>p.name===name);
-    if(exist>=0){if(!confirm('预设「'+name+'」已存在，覆盖？'))return;list.splice(exist,1);}
-    list.push({id:'rp_'+Date.now().toString(36),name,langs:[...state.form.defaultLangs],ctrys:[...state.form.countries]});
-    saveCustomRegionPresets(list);
-    $('#regionPresetName').value='';
-    renderRegionPresets();
-    toast('✓ 已保存预设「'+name+'」');
-  };
-  $('#regionPresetName').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#saveRegionPresetBtn').click();}});
-  $('#saveAsProjectBtn').onclick=()=>{
-    const name=state.form.project;
-    if(!name){toast('请先选择项目名称');return;}
-    if(!state.form.defaultLangs.length||!state.form.countries.length){toast('当前语言或国家为空，无法保存');return;}
+    const name=(prompt('预设名称（可直接用项目名命名，便于复用）：',state.form.project||'')||'').trim();
+    if(!name)return;
     const list=getCustomRegionPresets();
     const exist=list.findIndex(p=>p.name===name);
     if(exist>=0){if(!confirm('预设「'+name+'」已存在，覆盖为当前组合？'))return;list.splice(exist,1);}
     list.push({id:'rp_'+Date.now().toString(36),name,langs:[...state.form.defaultLangs],ctrys:[...state.form.countries]});
     saveCustomRegionPresets(list);
-    renderRegionPresets();
-    toast('📁 已存为预设「'+name+'」· 下次做该项目活动时点击该预设一键载入');
+    renderPresetMsel();
+    toast('✓ 已保存预设「'+name+'」（'+state.form.defaultLangs.length+' 语 · '+state.form.countries.length+' 国）');
   };
 }
 
@@ -1800,7 +1768,7 @@ function applyPastedTranslations(parsed){
     delete t.failed;t.include=true;filled++;
   }
   ensureTranslationRows();
-  renderLangSelected();renderLangOptList();
+  renderLangMsel();
   renderI18n();renderCsvPreview();
   return{filled,added};
 }
@@ -1985,7 +1953,7 @@ function loadToEngine(id){
   const toInp=v=>String(v||'').replace(' ','T').slice(0,16);
   $('#inStart').value=toInp(r.startTimeUtc);$('#inEnd').value=toInp(r.endTimeUtc);$('#inPreview').value=toInp(r.previewTimeUtc);
   if(state.form.posterDataUrl){$('#preview').src=state.form.posterDataUrl;$('#dropzone').classList.add('has');}
-  renderLangSelected();renderLangOptList();renderCtrySelected();renderCtryOptList();
+  renderLangMsel();renderCtryMsel();
   updateEligibilityVisibility();
   switchView('engine');gotoStep(1);toast('已载入「'+r.project+'」');
 }
@@ -2094,7 +2062,7 @@ function init(){
   $('#back3').onclick=()=>gotoStep(2);
   $('#back4').onclick=()=>gotoStep(3);
   bindFormSelects();
-  bindDropzone();bindLanguageUI();bindCountryUI();
+  bindDropzone();bindMselTriggers();bindLangCtryUI();
   bindApiModal();bindProjectModal();bindPasteModal();bindRegistry();
   $('#runVisualBtn').onclick=runVisualAnalysis;
   $('#regenVisualBtn').onclick=runVisualAnalysis;
@@ -2119,11 +2087,9 @@ function init(){
   bindRegionPresetUI();
   // initial render
   renderProjectSelect();
-  renderRegionPresets();
-  $('#langTotal').textContent=LANGUAGES.length;
-  $('#ctryTotal').textContent=COUNTRIES.length;
-  renderLangSelected();renderLangOptList();
-  renderCtrySelected();renderCtryOptList();
+  renderPresetMsel();
+  renderLangMsel();
+  renderCtryMsel();
   updateEligibilityVisibility();
   refreshApiStatus();
 }

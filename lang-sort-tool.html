@@ -217,12 +217,12 @@
       <details class="panel input" open>
     <summary><span class="chev">▶</span> 粘贴 / 编辑原始内容</summary>
     <div class="input-body">
-      <textarea id="src" spellcheck="false" placeholder="粘贴形如 &lt;en-US&gt; ... [TAGLINE]...[TAGLINE] [DESCRIPTION]...[DESCRIPTION] ... &lt;/en-US&gt; 的内容"></textarea>
+      <textarea id="src" spellcheck="false" placeholder="按 <语言> 分块粘贴即可，两种写法都认：&#10;1) [TAGLINE]...[TAGLINE]  [DESCRIPTION]...[DESCRIPTION]&#10;2) tagline_localized: ...（换行）description_localized: ..."></textarea>
       <div class="btnrow">
         <button class="primary" id="parseBtn">解析生成表格</button>
         <button id="restoreBtn" class="ghost">恢复示例数据</button>
         <button id="clearBtn" class="ghost">清空</button>
-        <span class="hint">编辑内容会自动重新解析。</span>
+        <span class="hint">支持 <code>[TAGLINE]</code> 方括号 或 <code>tagline_localized:</code> 键值两种格式，编辑后自动重新解析。</span>
       </div>
     </div>
   </details>
@@ -263,12 +263,32 @@ const LOCALE_NAMES = {
 
 const state = { items: [], filter: "" };
 
-/* ---------- 解析 ---------- */
-function extractMarker(body, name) {
-  // 标记使用相同的开闭标签：[NAME] ... [NAME]
-  const re = new RegExp("\\[" + name + "\\]([\\s\\S]*?)\\[" + name + "\\]");
-  const m = re.exec(body);
-  return m ? m[1].trim() : "";
+/* ---------- 解析（兼容多种格式） ---------- */
+// 每个字段支持两种写法：
+//   1) 方括号标记： [TAGLINE] ... [TAGLINE]
+//   2) 键: 值：     tagline_localized: ...（也认 tagline: ...，值可跨行）
+const FIELD_DEFS = {
+  tagline:     { token: "TAGLINE",     keys: ["tagline_localized", "tagline"] },
+  description: { token: "DESCRIPTION", keys: ["description_localized", "description"] },
+  subtype:     { token: "SUBTYPE",     keys: ["subtype_localized", "subtype"] }
+};
+// 所有键按长度降序（避免前缀误判），用于「键: 值」取值时定位下一字段的边界
+const ALL_KEYS = Object.values(FIELD_DEFS).flatMap(d => d.keys).sort((a, b) => b.length - a.length);
+const KEY_BOUNDARY = ALL_KEYS.join("|");
+
+function extractField(body, def) {
+  // 1) 方括号标记：[TOKEN] ... [TOKEN]
+  let m = new RegExp("\\[" + def.token + "\\]([\\s\\S]*?)\\[" + def.token + "\\]").exec(body);
+  if (m) return m[1].trim();
+  // 2) 键: 值：取到下一个已知字段键或文本结尾（值内的冒号会保留）
+  for (const key of def.keys) {
+    m = new RegExp(
+      "(?:^|\\n)[ \\t]*" + key + "[ \\t]*[:：][ \\t]*([\\s\\S]*?)(?=\\n[ \\t]*(?:" + KEY_BOUNDARY + ")[ \\t]*[:：]|$)",
+      "i"
+    ).exec(body);
+    if (m) return m[1].trim();
+  }
+  return "";
 }
 
 function parse(text) {
@@ -279,9 +299,9 @@ function parse(text) {
   while ((m = blockRe.exec(text)) !== null) {
     const locale = m[1];
     const body = m[2];
-    const tagline = extractMarker(body, "TAGLINE");
-    const description = extractMarker(body, "DESCRIPTION");
-    const subtype = extractMarker(body, "SUBTYPE");
+    const tagline = extractField(body, FIELD_DEFS.tagline);
+    const description = extractField(body, FIELD_DEFS.description);
+    const subtype = extractField(body, FIELD_DEFS.subtype);
     if (!tagline && !description && !subtype) continue; // 跳过非文案块
     items.push({ locale, subtype, tagline, description });
   }

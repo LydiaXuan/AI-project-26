@@ -217,12 +217,12 @@
       <details class="panel input" open>
     <summary><span class="chev">▶</span> 粘贴 / 编辑原始内容</summary>
     <div class="input-body">
-      <textarea id="src" spellcheck="false" placeholder="按 <语言> 分块粘贴即可，两种写法都认：&#10;1) [TAGLINE]...[TAGLINE]  [DESCRIPTION]...[DESCRIPTION]&#10;2) tagline_localized: ...（换行）description_localized: ..."></textarea>
+      <textarea id="src" spellcheck="false" placeholder="按 <语言> 分块粘贴即可，三种写法都认：&#10;1) [TAGLINE]...[TAGLINE]  [DESCRIPTION]...[DESCRIPTION]&#10;2) tagline_localized: ...（换行）description_localized: ...&#10;3) 无标记：第一行=口号，第二行=说明"></textarea>
       <div class="btnrow">
         <button class="primary" id="parseBtn">解析生成表格</button>
         <button id="restoreBtn" class="ghost">恢复示例数据</button>
         <button id="clearBtn" class="ghost">清空</button>
-        <span class="hint">支持 <code>[TAGLINE]</code> 方括号 或 <code>tagline_localized:</code> 键值两种格式，编辑后自动重新解析。</span>
+        <span class="hint">支持三种格式：<code>[TAGLINE]</code> 方括号、<code>tagline_localized:</code> 键值、或无标记（第一行口号+第二行说明）；编辑后自动重新解析。</span>
       </div>
     </div>
   </details>
@@ -295,13 +295,23 @@ function parse(text) {
   const items = [];
   // 匹配 <locale> ... </locale>，用反向引用确保开闭标签一致
   const blockRe = /<([A-Za-z][\w-]*)>([\s\S]*?)<\/\1>/g;
+  // 判断块内是否出现过任何标记/键名（用于决定是否启用「按行定位」兜底）
+  const markedRe = new RegExp("\\[(?:TAGLINE|DESCRIPTION|SUBTYPE)\\]|(?:^|\\n)[ \\t]*(?:" + KEY_BOUNDARY + ")[ \\t]*[:：]", "i");
   let m;
   while ((m = blockRe.exec(text)) !== null) {
     const locale = m[1];
     const body = m[2];
-    const tagline = extractField(body, FIELD_DEFS.tagline);
-    const description = extractField(body, FIELD_DEFS.description);
+    let tagline = extractField(body, FIELD_DEFS.tagline);
+    let description = extractField(body, FIELD_DEFS.description);
     const subtype = extractField(body, FIELD_DEFS.subtype);
+    // 3) 无任何标记/键名：按行定位 —— 第一行作口号，其余作说明
+    if (!tagline && !description && !markedRe.test(body)) {
+      const lines = body.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (lines.length) {
+        tagline = lines[0];
+        description = lines.slice(1).join(" ");
+      }
+    }
     if (!tagline && !description && !subtype) continue; // 跳过非文案块
     items.push({ locale, subtype, tagline, description });
   }

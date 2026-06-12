@@ -661,11 +661,15 @@ tbody tr:hover{background:#fbfcfe}
         </div>
 
         <div class="row between" style="margin-bottom:6px;flex-wrap:wrap;gap:10px">
-          <div class="section-title" style="margin:0">🌐 多语文案表（可逐格手动编辑 · AI 翻译为可选辅助）</div>
+          <div class="section-title" style="margin:0">🌐 多语文案表（可逐格手动编辑 · 翻译引擎可切换）</div>
           <span class="row gap">
+            <select id="engineSel" style="width:auto;font-size:12px;padding:6px 30px 6px 10px">
+              <option value="mt">🌐 免费机翻 · Google（无需 Key）</option>
+              <option value="ai">🤖 AI 大模型（按 Workflow 3 风格）</option>
+            </select>
             <button class="btn sm" id="pasteBtn" type="button">📋 批量粘贴译文</button>
             <button class="btn ghost sm" id="retransAllBtn" type="button">↻ 全部重译</button>
-            <button class="btn blue sm" id="runTranslateBtn" type="button">🤖 AI 翻译空白行（可选）</button>
+            <button class="btn blue sm" id="runTranslateBtn" type="button">⚡ 翻译空白行</button>
           </span>
         </div>
         <div class="row gap" style="margin-bottom:8px;flex-wrap:wrap">
@@ -989,6 +993,7 @@ const K_API='playops.ai_config';
 const K_REG='playops.registry_v3';
 const K_PROJECTS='playops.projects';
 const K_RPRESETS='playops.region_presets';
+const K_ENGINE='playops.translate_engine';
 
 /* ====================================================================
  *  AI API · 适配 Anthropic / Google Gemini / OpenAI / Custom
@@ -1200,6 +1205,53 @@ async function runWorkflow3ForLang(code,sourceTag,sourceDesc){
     }
   }
   throw lastErr||new Error('多次重试均失败');
+}
+
+/* ====================================================================
+ *  免费机翻引擎 · Google Translate 公开接口（无需 Key）+ MyMemory 兜底
+ * ==================================================================== */
+function getEngine(){return loadLS(K_ENGINE,'mt');}
+function setEngine(v){saveLS(K_ENGINE,v);}
+/* Google Play 语言码 → Google 翻译语言码（默认取主语言段，特例单列） */
+const MT_CODE_MAP={'zh-CN':'zh-CN','zh-TW':'zh-TW','he-IL':'iw','fil-PH':'tl','pt-PT':'pt-PT','es-419':'es'};
+function gpToMt(code){return MT_CODE_MAP[code]||String(code).split('-')[0];}
+async function mtText(text,gpCode){
+  const src=String(text||'').trim();
+  if(!src)return'';
+  const tl=gpToMt(gpCode);
+  try{
+    const u='https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl='+encodeURIComponent(tl)+'&dt=t&q='+encodeURIComponent(src);
+    const r=await fetch(u);
+    if(!r.ok)throw new Error('gtx '+r.status);
+    const j=await r.json();
+    const out=((j&&j[0])||[]).map(s=>(s&&s[0])||'').join('').trim();
+    if(!out)throw new Error('gtx 返回空');
+    return out;
+  }catch(e){
+    // 兜底：MyMemory 免费接口（CORS 开放，约 5000 字/天）
+    const r2=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(src)+'&langpair='+encodeURIComponent('zh-CN|'+gpCode));
+    if(!r2.ok)throw new Error('机翻不可用：gtx 失败（'+(e.message||e)+'）且 MyMemory '+r2.status);
+    const j2=await r2.json();
+    const out2=j2&&j2.responseData&&j2.responseData.translatedText;
+    if(!out2||/INVALID|NO QUERY|PLEASE SELECT/i.test(String(out2)))throw new Error('MyMemory 异常：'+String(out2).slice(0,80));
+    return String(out2).trim();
+  }
+}
+async function mtTranslateRow(code,sourceTag,sourceDesc){
+  if(code==='zh-CN')return{language_code:'zh-CN',tagline_localized:sourceTag,description_localized:sourceDesc};
+  const tag=await mtText(sourceTag,code);
+  const desc=await mtText(sourceDesc,code);
+  return {
+    language_code:code,
+    tagline_localized:smartShrink(tag,LIMITS.tagline),
+    description_localized:smartShrink(desc,LIMITS.description),
+  };
+}
+/* 统一入口：按当前所选引擎翻译一行 */
+async function translateForLang(code,sourceTag,sourceDesc){
+  return getEngine()==='ai'
+    ?await runWorkflow3ForLang(code,sourceTag,sourceDesc)
+    :await mtTranslateRow(code,sourceTag,sourceDesc);
 }
 
 /* ====================================================================
@@ -1673,11 +1725,11 @@ function renderI18n(){
   });
   $$('#i18nBody [data-retry]').forEach(b=>b.onclick=async()=>{
     const i=+b.dataset.retry;const code=state.translations[i].language_code;
-    if(!hasApiKey()){toast('请先配置 AI（或直接在格子里手动填写，无需 AI）');openApiModal();return;}
+    if(getEngine()==='ai'&&!hasApiKey()){toast('AI 引擎需配置 Key · 或切到「免费机翻」');openApiModal();return;}
     if(!state.copy.taglineZh){toast('请先在 Step 3 填写中文源文案');return;}
     b.disabled=true;
     try{
-      const r=await runWorkflow3ForLang(code,state.copy.taglineZh,state.copy.descriptionZh);
+      const r=await translateForLang(code,state.copy.taglineZh,state.copy.descriptionZh);
       r.include=state.translations[i].include;
       state.translations[i]=r;renderI18n();renderCsvPreview();toast('✓ 已重译 '+code);
     }catch(e){
@@ -1695,18 +1747,22 @@ function renderCsvPreview(){
 }
 /* AI 翻译（可选辅助）：只填空白 / 失败行，已有内容（手填或已翻）自动跳过，不重复消耗额度 */
 async function runAllTranslate(){
-  if(!hasApiKey()){toast('未配置 AI · 也可以直接在表格里手动填写各语言文案后导出');openApiModal();return;}
+  const eng=getEngine();
+  if(eng==='ai'&&!hasApiKey()){toast('AI 引擎需要配置 Key · 或把上方引擎切到「免费机翻」无需任何配置');openApiModal();return;}
   if(!state.copy.taglineZh||!state.copy.descriptionZh){toast('请回 Step 3 完成中文文案');gotoStep(3);return;}
   ensureTranslationRows();
   const todo=state.translations.filter(t=>!rowHasContent(t));
   if(!todo.length){renderI18n();renderCsvPreview();toast('所有行均已有内容 · 需重译请用单行 ↻ 或「全部重译」');return;}
   const btn=$('#runTranslateBtn');btn.disabled=true;const o=btn.innerHTML;
+  // 机翻接口轻量，350ms 间隔即可；AI 引擎按 Gemini 免费层 10 RPM 节流 1.2s
+  const gap=eng==='ai'?1200:350;
+  const icon=eng==='ai'?'🤖':'🌐';
   let ok=0,fail=0;
   for(let i=0;i<todo.length;i++){
     const t=todo[i];
-    btn.innerHTML=`⏳ ${i+1}/${todo.length} · ${t.language_code}`;
+    btn.innerHTML=`⏳ ${icon} ${i+1}/${todo.length} · ${t.language_code}`;
     try{
-      const r=await runWorkflow3ForLang(t.language_code,state.copy.taglineZh,state.copy.descriptionZh);
+      const r=await translateForLang(t.language_code,state.copy.taglineZh,state.copy.descriptionZh);
       Object.assign(t,r);delete t.failed;delete t.failedReason;ok++;
     }catch(e){
       t.tagline_localized='';t.description_localized='';
@@ -1714,12 +1770,11 @@ async function runAllTranslate(){
       t.include=false;fail++;
     }
     renderI18n();
-    // 节流：Gemini 2.5 Flash 免费层 10 RPM ≈ 每 6 秒 1 次，给 1.2s 间隔再叠加内部 3 次重试足够稳
-    if(i<todo.length-1)await new Promise(r=>setTimeout(r,1200));
+    if(i<todo.length-1)await new Promise(r=>setTimeout(r,gap));
   }
   renderCsvPreview();
   btn.disabled=false;btn.innerHTML=o;
-  toast(`✓ AI 翻译完成 · 成功 ${ok} / 失败 ${fail}${fail?'（鼠标悬停"失败"标签看具体原因）':''}`,5000);
+  toast(`✓ ${eng==='ai'?'AI':'机翻'}完成 · 成功 ${ok} / 失败 ${fail}${fail?'（悬停"失败"标签看原因）':''}${eng==='mt'&&ok?' · 机翻为直译，建议抽查校对':''}`,5000);
 }
 
 function exportCsv(){
@@ -2102,11 +2157,18 @@ function init(){
   $('#outTagZh').addEventListener('input',()=>{state.copy.taglineZh=$('#outTagZh').value;refreshCounters();runComplianceScan();});
   $('#outDescZh').addEventListener('input',()=>{state.copy.descriptionZh=$('#outDescZh').value;refreshCounters();runComplianceScan();});
   $('#rescanBtn').onclick=runComplianceScan;
+  const engineSel=$('#engineSel');
+  engineSel.value=getEngine();
+  engineSel.onchange=()=>{
+    setEngine(engineSel.value);
+    toast(engineSel.value==='mt'?'已切换：🌐 免费机翻（Google 接口 · 无需 Key · 不限流）':'已切换：🤖 AI 大模型（遵循术语表与文风，需配置 Key）',3200);
+  };
   $('#runTranslateBtn').onclick=runAllTranslate;
   $('#retransAllBtn').onclick=()=>{
     const filled=state.translations.filter(rowHasContent);
     if(!filled.length){runAllTranslate();return;}
-    if(!confirm('清空现有 '+filled.length+' 条已填文案并全部用 AI 重译？（手动修改也会被覆盖）'))return;
+    const engName=getEngine()==='ai'?'AI 大模型':'免费机翻';
+    if(!confirm('清空现有 '+filled.length+' 条已填文案并全部用「'+engName+'」重译？（手动修改也会被覆盖）'))return;
     state.translations.forEach(t=>{if(t.language_code!=='zh-CN'){t.tagline_localized='';t.description_localized='';delete t.failed;}});
     renderI18n();renderCsvPreview();
     runAllTranslate();

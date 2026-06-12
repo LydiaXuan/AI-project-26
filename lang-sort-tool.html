@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>语言整理工具 · Lang Sort Tool</title>
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --panel: #ffffff;
+    --border: #e3e6ee;
+    --text: #1f2430;
+    --muted: #7a8194;
+    --accent: #5b6cff;
+    --accent-dark: #4453e0;
+    --ok: #1faa6a;
+    --chip: #eef0fb;
+    --row-alt: #fafbff;
+    --shadow: 0 1px 3px rgba(20, 28, 60, .06), 0 8px 24px rgba(20, 28, 60, .05);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-top: 18px;
+  }
+
+  details.input { padding: 0; }
+  details.input > summary {
+    cursor: pointer; list-style: none; padding: 14px 18px;
+    font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  details.input > summary::-webkit-details-marker { display: none; }
+  details.input > summary .chev { transition: transform .15s; color: var(--muted); }
+  details.input[open] > summary .chev { transform: rotate(90deg); }
+  .input-body { padding: 0 18px 16px; }
+  textarea {
+    width: 100%; min-height: 200px; resize: vertical;
+    border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 12.5px; line-height: 1.55; color: var(--text); background: #fcfcff;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,108,255,.12); }
+
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+  button {
+    font: inherit; font-size: 13px; cursor: pointer; border-radius: 7px;
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+    padding: 7px 13px; transition: background .12s, border-color .12s, color .12s, transform .05s;
+  }
+  button:hover { background: #f3f4fb; border-color: #cfd4e6; }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+  button.ghost { background: transparent; }
+  button.copied { background: var(--ok) !important; border-color: var(--ok) !important; color: #fff !important; }
+
+  .projbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 14px 18px; }
+  .projbar .field { display: flex; align-items: center; gap: 7px; }
+  .projbar label { font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .projbar select, .projbar input[type="text"], .projbar input[type="date"] {
+    font: inherit; font-size: 13px; border: 1px solid var(--border); border-radius: 7px;
+    padding: 7px 10px; background: #fcfcff; color: var(--text);
+  }
+  .projbar input.name { min-width: 180px; }
+  .projbar select:focus, .projbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,108,255,.12); }
+  .projbar .sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px; }
+  .projbar .saved-note { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+  }
+  .toolbar .count { font-size: 13px; color: var(--muted); margin-right: auto; }
+  .toolbar .count b { color: var(--text); }
+  .toolbar input.filter {
+    border: 1px solid var(--border); border-radius: 7px; padding: 7px 11px;
+    font: inherit; font-size: 13px; width: 200px; background: #fcfcff;
+  }
+  .toolbar input.filter:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,108,255,.12); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    position: sticky; top: 0; z-index: 2; background: #f3f4fb; text-align: left;
+    font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em;
+    padding: 11px 16px; border-bottom: 1px solid var(--border); text-transform: uppercase;
+  }
+  tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: var(--row-alt); }
+  tbody tr:hover td { background: #f1f3ff; }
+
+  td.lang { width: 168px; }
+  .code {
+    display: inline-block; font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 12.5px; font-weight: 600; background: var(--chip); color: var(--accent-dark);
+    padding: 2px 8px; border-radius: 6px;
+  }
+  .name { display: block; margin-top: 5px; font-size: 13px; color: var(--text); }
+  .sub {
+    display: inline-block; margin-top: 6px; font-size: 10.5px; letter-spacing: .04em;
+    color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
+  }
+
+  .cell { display: flex; flex-direction: column; gap: 8px; }
+  .cell-bar { display: flex; justify-content: flex-end; }
+  .cell-text { font-size: 13.5px; white-space: pre-wrap; word-break: break-word; }
+  .col-tag .cell-text { font-weight: 600; }
+  button.copy { padding: 4px 12px; font-size: 12px; border-radius: 6px; }
+
+  .empty { padding: 40px 18px; text-align: center; color: var(--muted); font-size: 14px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+    background: #1f2430; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: .22s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>语言整理工具 · Lang Sort Tool</h1>
+    <p>把多语言投放文案整理成「语言 / 宣传口号 / 说明」表格，逐行一键复制纯文本（自动去除 <code>[TAGLINE]</code> <code>[DESCRIPTION]</code> <code>[SUBTYPE]</code> 标记）。纯前端解析无需联网；项目名称、日期与内容自动缓存在本浏览器。</p>
+  </header>
+
+  <div class="panel projbar">
+    <div class="field">
+      <label for="projectSelect">项目</label>
+      <select id="projectSelect"></select>
+    </div>
+    <button id="newProj">＋ 新建</button>
+    <button id="delProj" class="ghost">删除</button>
+    <span class="sep"></span>
+    <div class="field">
+      <label for="projName">名称</label>
+      <input type="text" id="projName" class="name" placeholder="项目名称" />
+    </div>
+    <div class="field">
+      <label for="projDate">日期</label>
+      <input type="date" id="projDate" />
+    </div>
+    <span class="saved-note">✓ 自动缓存到本浏览器</span>
+  </div>
+
+  <details class="panel input" open>
+    <summary><span class="chev">▶</span> 粘贴 / 编辑原始内容</summary>
+    <div class="input-body">
+      <textarea id="src" spellcheck="false" placeholder="粘贴形如 &lt;en-US&gt; ... [TAGLINE]...[TAGLINE] [DESCRIPTION]...[DESCRIPTION] ... &lt;/en-US&gt; 的内容"></textarea>
+      <div class="btnrow">
+        <button class="primary" id="parseBtn">解析生成表格</button>
+        <button id="restoreBtn" class="ghost">恢复示例数据</button>
+        <button id="clearBtn" class="ghost">清空</button>
+        <span class="hint">编辑内容会自动重新解析。</span>
+      </div>
+    </div>
+  </details>
+
+  <div class="panel" style="margin-top:18px;">
+    <div class="toolbar">
+      <span class="count">已识别 <b id="cnt">0</b> 种语言</span>
+      <input class="filter" id="filter" placeholder="筛选语言 / 代码…" />
+      <button id="copyAllTag">复制全部口号</button>
+      <button id="copyAllDesc">复制全部说明</button>
+      <button id="copyTable">复制整表 (TSV)</button>
+    </div>
+    <div id="tableHost">
+      <div class="empty">暂无数据，请在上方粘贴内容。</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ---------- 语言名映射（未知代码自动回退为代码本身） ---------- */
+const LOCALE_NAMES = {
+  "en-US":"English (US)","en-GB":"English (UK)","en-IN":"English (India)",
+  "es-US":"Español (US)","es-ES":"Español (España)","es-419":"Español (LatAm)",
+  "zh-TW":"繁體中文","zh-CN":"简体中文","ja-JP":"日本語","ko-KR":"한국어",
+  "de-DE":"Deutsch","fr-FR":"Français","fr-CA":"Français (CA)",
+  "pt-BR":"Português (BR)","pt-PT":"Português (PT)","it-IT":"Italiano",
+  "nl-NL":"Nederlands","pl-PL":"Polski","ru-RU":"Русский","tr-TR":"Türkçe",
+  "ar-SA":"العربية","hi-IN":"हिन्दी","id-ID":"Bahasa Indonesia",
+  "ms-MY":"Bahasa Melayu","th-TH":"ไทย","vi-VN":"Tiếng Việt",
+  "fil-PH":"Filipino","kk-KZ":"Қазақша"
+};
+
+const state = { items: [], filter: "" };
+
+/* ---------- 解析 ---------- */
+function extractMarker(body, name) {
+  // 标记使用相同的开闭标签：[NAME] ... [NAME]
+  const re = new RegExp("\\[" + name + "\\]([\\s\\S]*?)\\[" + name + "\\]");
+  const m = re.exec(body);
+  return m ? m[1].trim() : "";
+}
+
+function parse(text) {
+  const items = [];
+  // 匹配 <locale> ... </locale>，用反向引用确保开闭标签一致
+  const blockRe = /<([A-Za-z][\w-]*)>([\s\S]*?)<\/\1>/g;
+  let m;
+  while ((m = blockRe.exec(text)) !== null) {
+    const locale = m[1];
+    const body = m[2];
+    const tagline = extractMarker(body, "TAGLINE");
+    const description = extractMarker(body, "DESCRIPTION");
+    const subtype = extractMarker(body, "SUBTYPE");
+    if (!tagline && !description && !subtype) continue; // 跳过非文案块
+    items.push({ locale, subtype, tagline, description });
+  }
+  return items;
+}
+
+/* ---------- 工具函数 ---------- */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+
+async function copyText(text) {
+  // 优先 Clipboard API；file:// 等非安全上下文回退到 execCommand
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) { /* 回退 */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.setAttribute("readonly", "");
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) { return false; }
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1400);
+}
+
+function flashBtn(btn, label) {
+  const old = btn.textContent;
+  btn.textContent = label;
+  btn.classList.add("copied");
+  setTimeout(() => { btn.textContent = old; btn.classList.remove("copied"); }, 1100);
+}
+
+/* ---------- 渲染 ---------- */
+function visibleItems() {
+  const f = state.filter.trim().toLowerCase();
+  if (!f) return state.items;
+  return state.items.filter(it => {
+    const name = (LOCALE_NAMES[it.locale] || "").toLowerCase();
+    return it.locale.toLowerCase().includes(f) || name.includes(f);
+  });
+}
+
+function render() {
+  document.getElementById("cnt").textContent = state.items.length;
+  const host = document.getElementById("tableHost");
+  const items = visibleItems();
+
+  if (state.items.length === 0) {
+    host.innerHTML = '<div class="empty">暂无数据，请在上方粘贴内容。</div>';
+    return;
+  }
+  if (items.length === 0) {
+    host.innerHTML = '<div class="empty">没有匹配「' + escapeHtml(state.filter) + '」的语言。</div>';
+    return;
+  }
+
+  let rows = "";
+  items.forEach(it => {
+    const i = state.items.indexOf(it);
+    const name = LOCALE_NAMES[it.locale] || "";
+    rows +=
+      '<tr>' +
+        '<td class="lang">' +
+          '<span class="code">' + escapeHtml(it.locale) + '</span>' +
+          (name ? '<span class="name">' + escapeHtml(name) + '</span>' : '') +
+          (it.subtype ? '<span class="sub">' + escapeHtml(it.subtype) + '</span>' : '') +
+        '</td>' +
+        '<td class="col-tag">' +
+          '<div class="cell">' +
+            '<div class="cell-bar"><button class="copy" data-row="' + i + '" data-field="tagline">复制口号</button></div>' +
+            '<div class="cell-text" dir="auto">' + escapeHtml(it.tagline) + '</div>' +
+          '</div>' +
+        '</td>' +
+        '<td class="col-desc">' +
+          '<div class="cell">' +
+            '<div class="cell-bar"><button class="copy" data-row="' + i + '" data-field="description">复制说明</button></div>' +
+            '<div class="cell-text" dir="auto">' + escapeHtml(it.description) + '</div>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+  });
+
+  host.innerHTML =
+    '<table><thead><tr>' +
+      '<th>语言 Language</th><th>宣传口号 Tagline</th><th>说明 Description</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+/* ---------- 事件 ---------- */
+function doParse() {
+  const text = document.getElementById("src").value;
+  state.items = parse(text);
+  render();
+}
+
+let parseTimer = null, saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveStore, 400);
+}
+document.getElementById("src").addEventListener("input", () => {
+  activeProj().input = document.getElementById("src").value;
+  scheduleSave();
+  clearTimeout(parseTimer);
+  parseTimer = setTimeout(doParse, 300);
+});
+
+document.getElementById("parseBtn").addEventListener("click", doParse);
+
+document.getElementById("restoreBtn").addEventListener("click", () => {
+  document.getElementById("src").value = DEFAULT_INPUT;
+  activeProj().input = DEFAULT_INPUT;
+  saveStore();
+  doParse();
+  toast("已恢复示例数据");
+});
+
+document.getElementById("clearBtn").addEventListener("click", () => {
+  document.getElementById("src").value = "";
+  activeProj().input = "";
+  saveStore();
+  state.items = [];
+  render();
+});
+
+document.getElementById("filter").addEventListener("input", e => {
+  state.filter = e.target.value;
+  render();
+});
+
+// 行内复制（事件委托）
+document.getElementById("tableHost").addEventListener("click", async e => {
+  const btn = e.target.closest("button.copy");
+  if (!btn) return;
+  const it = state.items[Number(btn.dataset.row)];
+  if (!it) return;
+  const text = btn.dataset.field === "tagline" ? it.tagline : it.description;
+  const ok = await copyText(text);
+  if (ok) flashBtn(btn, "✓ 已复制"); else toast("复制失败，请手动选择");
+});
+
+// 批量复制（始终针对全部已解析数据，TSV 含语言代码，可直接粘贴到表格）
+async function bulkCopy(kind, btn) {
+  if (state.items.length === 0) { toast("暂无数据"); return; }
+  let text;
+  if (kind === "tag") {
+    text = state.items.map(it => it.locale + "\t" + it.tagline).join("\n");
+  } else if (kind === "desc") {
+    text = state.items.map(it => it.locale + "\t" + it.description).join("\n");
+  } else {
+    text = "语言\t宣传口号\t说明\n" +
+      state.items.map(it => it.locale + "\t" + it.tagline + "\t" + it.description).join("\n");
+  }
+  const ok = await copyText(text);
+  if (ok) flashBtn(btn, "✓ 已复制"); else toast("复制失败，请手动选择");
+}
+document.getElementById("copyAllTag").addEventListener("click", e => bulkCopy("tag", e.currentTarget));
+document.getElementById("copyAllDesc").addEventListener("click", e => bulkCopy("desc", e.currentTarget));
+document.getElementById("copyTable").addEventListener("click", e => bulkCopy("table", e.currentTarget));
+
+/* ---------- 内置示例数据 ---------- */
+const DEFAULT_INPUT = `<en-US>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Rock Y2K sweet-edgy style, unlock exclusive limited cool outfit sets[TAGLINE]
+[DESCRIPTION]Our brand-new sweet-edgy themed event is now live! Complete active missions to unlock multiple limited-edition outfits in different styles and exquisite matching accessories. Mix and match freely to create your own trendy look that fits your aesthetic, and enjoy the unique charm of color-blocked glitter style.[DESCRIPTION]
+</en-US>
+
+<en-GB>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Rock Y2K sweet-edgy style, unlock exclusive limited cool outfit sets[TAGLINE]
+[DESCRIPTION]Our brand-new sweet-edgy themed event is now live! Complete active missions to unlock multiple limited-edition outfits in different styles and exquisite matching accessories. Mix and match freely to create your own trendy look that fits your aesthetic, and enjoy the unique charm of colour-blocked glitter style.[DESCRIPTION]
+</en-GB>
+
+<en-IN>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Rock Y2K sweet-edgy style, unlock exclusive limited cool outfit sets[TAGLINE]
+[DESCRIPTION]Our brand-new sweet-edgy themed event is now live! Complete active missions to unlock multiple limited-edition outfits in different styles and exquisite matching accessories. Mix and match freely to create your own trendy look that fits your aesthetic, and enjoy the unique charm of color-blocked glitter style.[DESCRIPTION]
+</en-IN>
+
+<es-US>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Vive el estilo Y2K dulce y atrevido, desbloquea conjuntos exclusivos limitados[TAGLINE]
+[DESCRIPTION]El nuevo evento temático dulce y atrevido ya está disponible. Completa misiones activas para desbloquear múltiples atuendos exclusivos de distintos estilos y accesorios finos. Combínalos libremente para crear tu look único según tu gusto, y disfruta el encanto del estilo brillante de colores contrastantes.[DESCRIPTION]
+</es-US>
+
+<zh-TW>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]演繹千禧甜酷潮流風格 解鎖限定專屬潮酷造型套裝[TAGLINE]
+[DESCRIPTION]全新甜酷主題活動已開放，參與活躍任務即可解鎖多套不同風格的限定造型與各類精緻配套飾品，玩家可自由搭配組合，打造符合個人審美的專屬潮流造型，感受撞色亮閃風格帶來的獨特魅力。[DESCRIPTION]
+</zh-TW>
+
+<zh-CN>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]演绎千禧甜酷潮流风格 解锁限定专属潮酷造型套装[TAGLINE]
+[DESCRIPTION]全新甜酷主题活动已开放，参与活跃任务即可解锁多套不同风格的限定造型与各类精致配套配饰，玩家可自由搭配组合，打造符合个人审美的专属潮流造型，感受撞色亮闪风格带来的独特魅力。[DESCRIPTION]
+</zh-CN>
+
+<ja-JP>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Y2Kスイートクールを魅せ、限定オリジナルコーデを解放しよう[TAGLINE]
+[DESCRIPTION]新登場スイートクールテーマイベント開放！アクティブミッションクリアで、様々なスタイルの限定コーデと可愛いアクセサリーをアンロック。自由に組み合わせて自分好みのトレンディなオリジナルスタイルを作り、カラーブロックキラキラスタイルの独特な魅力を体感しよう。[DESCRIPTION]
+</ja-JP>
+
+<ko-KR>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Y2K 스위트쿨 스타일 연출, 한정 나만의 쿨 코디 세트 언락[TAGLINE]
+[DESCRIPTION]신규 스위트쿨 테마 이벤트 오픈! 활동 미션 완료로 다양한 스타일의 한정 코디와 정교한 액세서리를 획득하세요. 자유롭게 조합해 내 취향 맞춤 트렌디 스타일을 만들고, 컬러블록 글리터 스타일의 특별한 매력을 느껴보세요.[DESCRIPTION]
+</ko-KR>
+
+<de-DE>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Zeige deinen Y2K süß-coolen Style, hol dir exklusive limitierte Outfit-Sets[TAGLINE]
+[DESCRIPTION]Das neue süß-coole Event ist jetzt live! Erledige aktive Missionen, um mehrere limitierte Outfits verschiedener Stile und edle Accessoires freizuschalten. Kombiniere frei, um deinen eigenen trendigen Look zu erstellen und genieße den einzigartigen Charme des glitternden Farbblock-Stils.[DESCRIPTION]
+</de-DE>
+
+<fr-FR>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Exprimez votre style Y2K sucré-badass, débloquez des tenues exclusives limitées[TAGLINE]
+[DESCRIPTION]Le nouvel événement à thème sucré-badass est en ligne ! Terminez des missions actives pour débloquer plusieurs tenues limitées de styles variés et des accessoires raffinés. Mixez-les librement pour créer votre look tendance personnalisé et profitez du charme unique du style pailleté à blocs de couleurs.[DESCRIPTION]
+</fr-FR>
+
+<fr-CA>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Exprimez votre style Y2K sucré-badass, débloquez des tenues exclusives limitées[TAGLINE]
+[DESCRIPTION]Le nouvel événement à thème sucré-badass est en ligne ! Terminez des missions actives pour débloquer plusieurs tenues limitées de styles variés et des accessoires raffinés. Mixez-les librement pour créer votre look tendance personnalisé et profitez du charme unique du style pailleté à blocs de couleurs.[DESCRIPTION]
+</fr-CA>
+
+<es-ES>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Vive el estilo Y2K dulce y atrevido, desbloquea conjuntos exclusivos limitados[TAGLINE]
+[DESCRIPTION]El nuevo evento temático dulce y atrevido ya está disponible. Completa misiones activas para desbloquear múltiples atuendos exclusivos de distintos estilos y accesorios finos. Combínalos libremente para crear tu look único según tu gusto, y disfruta el encanto del estilo brillante de colores contrastantes.[DESCRIPTION]
+</es-ES>
+
+<es-419>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Vive el estilo Y2K dulce y atrevido, desbloquea conjuntos exclusivos limitados[TAGLINE]
+[DESCRIPTION]El nuevo evento temático dulce y atrevido ya está disponible. Completa misiones activas para desbloquear múltiples atuendos exclusivos de distintos estilos y accesorios finos. Combínalos libremente para crear tu look único según tu gusto, y disfruta el encanto del estilo brillante de colores contrastantes.[DESCRIPTION]
+</es-419>
+
+<pt-BR>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Arrasa no estilo Y2K doce e moderno, desbloqueie conjuntos exclusivos limitados[TAGLINE]
+[DESCRIPTION]O novo evento temático doce e moderno já está no ar! Complete missões ativas para desbloquear vários looks limitados de diferentes estilos e acessórios refinados. Misture e combine para criar seu look exclusivo do seu gosto e aproveite o charme único do estilo brilhante com blocos de cor.[DESCRIPTION]
+</pt-BR>
+
+<pt-PT>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Arrasa no estilo Y2K doce e moderno, desbloqueia conjuntos exclusivos limitados[TAGLINE]
+[DESCRIPTION]O novo evento temático doce e moderno já está disponível! Completa missões ativas para desbloquear vários looks limitados de diferentes estilos e acessórios refinados. Mistura e combina para criares o teu look exclusivo de acordo com o teu gosto e aproveita o charme único do estilo brilhante com blocos de cor.[DESCRIPTION]
+</pt-PT>
+
+<it-IT>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Esprimi il tuo stile Y2K dolce-fighetto, sblocca set esclusivi limitati[TAGLINE]
+[DESCRIPTION]Il nuovo evento a tema dolce-fighetto è online! Completa le missioni attive per sbloccare tanti outfit limitati di stili diversi e accessori raffinati. Combina liberamente per creare il tuo look trendy personale e goderti il fascino unico dello stile glitter a blocchi di colore.[DESCRIPTION]
+</it-IT>
+
+<nl-NL>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Rock de Y2K sweet-edgy stijl, ontgrendel exclusieve limited outfit sets[TAGLINE]
+[DESCRIPTION]Onze nieuwe sweet-edgy thema-event is nu live! Voltooi actieve missies om meerdere limited outfits in verschillende stilen en mooie accessoires te ontgrendelen. Mix en match vrij om je eigen trendy look te maken die past bij jouw stijl en geniet van de unieke charme van color-blocked glitter stijl.[DESCRIPTION]
+</nl-NL>
+
+<pl-PL>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Pokaż styl Y2K słodko-odważny, odblokuj ekskluzywne limitowane zestawy[TAGLINE]
+[DESCRIPTION]Nowe wydarzenie tematyczne w słodko-odważnym stylu jest już dostępne! Ukończ aktywne misje, aby odblokować wiele limitowanych strojów w różnych stylach i eleganckie akcesoria. Łącz je dowolnie, by stworzyć własny trendowy look i poczuć wyjątkowy urok błyszczącego stylu z kontrastowymi kolorami.[DESCRIPTION]
+</pl-PL>
+
+<ru-RU>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Создавай стиль Y2K сладко-дерзкий, разблокируй эксклюзивные лимитированные наборы[TAGLINE]
+[DESCRIPTION]Новое тематическое событие в стиле сладкой дерзости уже открыто! Выполняй активные задания, чтобы разблокировать несколько лимитированных образов разных стилей и изысканных аксессуаров. Свободно комбинируй, создавай свой трендовый образ по вкусу и ощущай уникальный шарм мерцающего стиля с контрастными цветами.[DESCRIPTION]
+</ru-RU>
+
+<tr-TR>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Y2K tatlı-cool tarzını yaşa, özel sınırlı kıyafet setlerini aç[TAGLINE]
+[DESCRIPTION]Yepyeni tatlı-cool temalı etkinlik başladı! Aktif görevleri tamamla, farklı tarzlarda sınırlı kıyafetler ve kaliteli aksesuarlar kazan. İstediğin gibi karıştırıp eşleştir, kendi zevkine özel trend görünüm yarat, renk bloklu parlamalı tarzın eşsiz çekiciliğini hisset.[DESCRIPTION]
+</tr-TR>
+
+<ar-SA>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]عبر عن أسلوب Y2K الحلو الجريء، افتح مجموعات ملابس حصرية محدودة[TAGLINE]
+[DESCRIPTION]الحدث الجديد بالأسلوب الحلو الجريء متاح الآن. أكمل المهام النشطة لفتح عدة أزياء محدودة بأنماط مختلفة وإكسسوارات راقية. امزج بحرية لصنع مظهرك العصري الخاص يناسب ذوقك واستمتع بالسحر الفريد لأسلوب اللمعان بالألوان المتضادة.[DESCRIPTION]
+</ar-SA>
+
+<hi-IN>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Y2K स्वीट-एजी स्टाइल को अपनाएं, एक्सक्लूसिव सीमित आउटफिट सेट अनलॉक करें[TAGLINE]
+[DESCRIPTION]नया स्वीट-एजी थीम इवेंट लाइव हो गया है! सक्रिय मिशन पूरे करके विभिन्न स्टाइल के कई सीमित आउटफिट और बढ़िया एक्सेसरीज अनलॉक करें। अपनी पसंद के अनुसार खुलकर मिक्स एंड मैच करके अपना खुद का ट्रेंडी लुक बनाएं और कलर-ब्लॉक ग्लिटर स्टाइल के अनोखे आकर्षण का आनंद लें।[DESCRIPTION]
+</hi-IN>
+
+<id-ID>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Tampil gaya Y2K sweet-edgy, buka set outfit eksklusif edisi terbatas[TAGLINE]
+[DESCRIPTION]Event tema sweet-edgy baru sudah dibuka! Selesaikan misi aktif untuk unlock banyak outfit edisi terbatas berbagai gaya dan aksesoris cantik. Campur dan cocokkan bebas buat gaya trendy pribadi sesuai seleramu, rasakan pesona unik gaya glitter blok warna.[DESCRIPTION]
+</id-ID>
+
+<ms-MY>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Paparkan gaya Y2K manis-gagah, buka set pakaian eksklusif terhad[TAGLINE]
+[DESCRIPTION]Acara tema manis-gagah yang baharu sudah dibuka. Selesaikan misi aktif untuk buka pelbagai pakaian terhad gaya berbeza dan aksesori cantik. Campur dan padankan secara bebas untuk cipta gaya eksklusif ikut citarasa anda, rasai keunikan gaya kilau blok warna.[DESCRIPTION]
+</ms-MY>
+
+<th-TH>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]สไตล์ Y2K สวีทคูล ปลดล็อคชุดเท่ เอ็กซ์คลูซีฟจำกัด[TAGLINE]
+[DESCRIPTION]อีเวนต์ธีมสวีทคูลสุดใหม่เปิดแล้ว! ทำภารกิจแอคทีฟเพื่อปลดล็อคชุดจำกัดหลายสไตล์และเครื่องประดับสวยๆ คอมไบน์ได้อิสระสร้างสไตล์สุดเทรนด์ของคุณเอง สัมผัสเสน่ห์สไตล์สีตัดกับกลิตเตอร์สุดพิเศษ![DESCRIPTION]
+</th-TH>
+
+<vi-VN>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Thể hiện phong cách Y2K ngọt ngào cá tính, mở khóa bộ trang phục độc quyền giới hạn[TAGLINE]
+[DESCRIPTION]Sự kiện chủ đề ngọt ngào cá tính hoàn toàn mới đã mở cửa! Tham gia nhiệm vụ hoạt động để mở khóa nhiều bộ trang phục giới hạn nhiều phong cách và phụ kiện tinh xảo. Tự do phối đồ để tạo kiểu độc đáo theo gu của bạn và cảm nhận sức hấp dẫn đặc biệt của phong cách lấp lánh tương phản màu.[DESCRIPTION]
+</vi-VN>
+
+<fil-PH>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Ipakita ang Y2K sweet-edgy style, i-unlock ang eksklusibong limitadong outfit sets[TAGLINE]
+[DESCRIPTION]Ang bagong sweet-edgy themed event ay live na! Kumpletuhin ang mga aktibong misyon para i-unlock ang maraming limitadong outfits ng iba't ibang estilo at magagandang accessories. Pwede mong i-mix and match nang libre para gumawa ng sarili mong trendy look na bagay sa panlasa mo, at maranasan ang kakaibang ganda ng color-blocked glitter na estilo.[DESCRIPTION]
+</fil-PH>
+
+<kk-KZ>
+[SUBTYPE]SPECIAL[SUBTYPE]
+[TAGLINE]Y2K тәтті-өткір стилін көрсет, эксклюзивді шектеулі киім топтамаларын аш[TAGLINE]
+[DESCRIPTION]Жаңа тәтті-өткір тақырыптық іс-шара ашылды! Белсенді тапсырмаларды орындап, әртүрлі стильдегі шектеулі бейнелер мен әсем аксессуарларды аша аласыз. Еркін біріктіріп, өзіңіздің затыңызға сай трендтік бейне жасаңыз және контрастты түсті жарқырау стилінің ерекше тартымдылығын сезіңіз.[DESCRIPTION]
+</kk-KZ>`;
+
+/* ---------- 项目缓存（localStorage） ---------- */
+const LS_KEY = "langSortTool.v1";
+
+function todayStr() {
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function loadStore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY));
+    if (s && Array.isArray(s.projects) && s.projects.length) return s;
+  } catch (e) { /* 忽略损坏数据 */ }
+  return null;
+}
+function saveStore() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(store)); }
+  catch (e) { /* 隐私模式 / 超额时静默 */ }
+}
+function activeProj() {
+  return store.projects.find(p => p.id === store.activeId) || store.projects[0];
+}
+
+let store = loadStore();
+if (!store) {
+  const id = uid();
+  store = { activeId: id, projects: [{ id, name: "示例活动 Sample", date: todayStr(), input: DEFAULT_INPUT }] };
+  saveStore();
+}
+
+function renderProjectSelect() {
+  const sel = document.getElementById("projectSelect");
+  sel.innerHTML = store.projects.map(p =>
+    '<option value="' + p.id + '">' + escapeHtml((p.name || "未命名") + " · " + (p.date || "")) + '</option>'
+  ).join("");
+  sel.value = store.activeId;
+}
+function updateActiveOptionLabel() {
+  const opt = document.querySelector('#projectSelect option[value="' + store.activeId + '"]');
+  const p = activeProj();
+  if (opt) opt.textContent = (p.name || "未命名") + " · " + (p.date || "");
+}
+function loadActiveIntoUI() {
+  const p = activeProj();
+  store.activeId = p.id;
+  document.getElementById("projName").value = p.name || "";
+  document.getElementById("projDate").value = p.date || todayStr();
+  document.getElementById("src").value = p.input || "";
+  renderProjectSelect();
+  doParse();
+}
+
+document.getElementById("projectSelect").addEventListener("change", e => {
+  store.activeId = e.target.value;
+  saveStore();
+  loadActiveIntoUI();
+});
+document.getElementById("newProj").addEventListener("click", () => {
+  const p = { id: uid(), name: "新项目", date: todayStr(), input: "" };
+  store.projects.push(p);
+  store.activeId = p.id;
+  saveStore();
+  loadActiveIntoUI();
+  const n = document.getElementById("projName");
+  n.focus(); n.select();
+});
+document.getElementById("delProj").addEventListener("click", () => {
+  const p = activeProj();
+  if (!confirm("删除项目「" + (p.name || "未命名") + "」？此操作无法撤销。")) return;
+  store.projects = store.projects.filter(x => x.id !== p.id);
+  if (store.projects.length === 0) {
+    const id = uid();
+    store.projects.push({ id, name: "新项目", date: todayStr(), input: "" });
+    store.activeId = id;
+  } else {
+    store.activeId = store.projects[0].id;
+  }
+  saveStore();
+  loadActiveIntoUI();
+});
+document.getElementById("projName").addEventListener("input", e => {
+  activeProj().name = e.target.value;
+  updateActiveOptionLabel();
+  scheduleSave();
+});
+document.getElementById("projDate").addEventListener("change", e => {
+  activeProj().date = e.target.value;
+  updateActiveOptionLabel();
+  saveStore();
+});
+
+/* ---------- 初始化 ---------- */
+loadActiveIntoUI();
+</script>
+</body>
+</html>

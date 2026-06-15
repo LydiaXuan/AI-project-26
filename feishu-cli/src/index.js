@@ -57,10 +57,13 @@ async function cmdPush({ all, dryRun }) {
       let imageKey = null;
       const buf = dataUrlToBuffer(m.img);
       if (buf) imageKey = await uploadImage(buf);
-      await sendMessage(config.chatId, 'interactive', buildCard(m, imageKey));
+      const card = buildCard(m, imageKey);
+      for (const cid of config.chatIds) {
+        await sendMessage(cid, 'interactive', card); // 上传一次图，发给每个群
+      }
       sent.add(m.key);
       ok++;
-      console.log(`  ✓ ${tag}`);
+      console.log(`  ✓ ${tag}${config.chatIds.length > 1 ? ` → ${config.chatIds.length} 个群` : ''}`);
     } catch (e) {
       console.error(`  ✗ ${tag}：${e.message}`);
     }

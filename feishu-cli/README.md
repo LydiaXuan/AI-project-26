@@ -34,12 +34,26 @@ node src/index.js --all       # 全量补发（忽略历史，慎用，会刷屏
 
 ## 定时跑
 
-**Windows（任务计划程序）**：操作填 `node`，参数 `D:\路径\feishu-cli\src\index.js --once`，
-「起始于」填 `feishu-cli` 目录。触发器按需（如每周一 10:00）。
+目标：**每天 18:00 发一次**。
 
-**Mac/Linux（cron）**：`crontab -e` 加一行（每周一 10:00）：
+**Windows（任务计划程序）**：操作填 `node`，参数 `D:\路径\feishu-cli\src\index.js --once`，
+「起始于」填 `feishu-cli` 目录。触发器：每天，18:00。
+
+**Mac/Linux（cron）**：`crontab -e` 加一行（每天 18:00）：
 ```cron
-0 10 * * 1 cd /路径/feishu-cli && /usr/bin/node src/index.js --once >> push.log 2>&1
+0 18 * * * cd /路径/feishu-cli && /usr/bin/node src/index.js --once >> push.log 2>&1
 ```
 
 > 跑定时的机器必须能访问 `DATA_DIR`（群晖盘）且能联网到飞书。
+
+## 以后换群 / 加群
+
+**不用改代码**，只动 `.env`：
+
+1. 把机器人拉进新群（群设置 → 群机器人 → 添加）。
+2. `npm run list-chats` 拿新群的 `chat_id`。
+3. 改 `.env` 的 `FEISHU_CHAT_ID`：
+   - 换群：替换成新的 `chat_id`。
+   - 加群（同时发多个群）：英文逗号隔开，如 `oc_aaa,oc_bbb`。
+
+机器人的权限、应用本身都不用动。

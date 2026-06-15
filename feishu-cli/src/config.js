@@ -26,10 +26,13 @@ function parseEnv(text) {
 const fileEnv = existsSync(ENV_PATH) ? parseEnv(readFileSync(ENV_PATH, 'utf8')) : {};
 const get = (k) => process.env[k] ?? fileEnv[k];
 
+const chatIdRaw = get('FEISHU_CHAT_ID') || '';
+
 export const config = {
   appId: get('FEISHU_APP_ID'),
   appSecret: get('FEISHU_APP_SECRET'),
-  chatId: get('FEISHU_CHAT_ID'),
+  chatId: chatIdRaw,                                   // 原始值（仅用于校验是否填了）
+  chatIds: chatIdRaw.split(',').map((s) => s.trim()).filter(Boolean), // 支持多群，逗号分隔
   dataDir: get('DATA_DIR'),
   domain: (get('FEISHU_DOMAIN') || 'https://open.feishu.cn').replace(/\/+$/, ''),
 };

@@ -1,2 +1,7 @@
 CHAT-LOG.md
 CHAT-LOG.archive/
+
+# feishu-cli 本机机密 / 运行状态，绝不入库
+feishu-cli/.env
+feishu-cli/.feishu-cli-state.json
+node_modules/

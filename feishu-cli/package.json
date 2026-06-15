@@ -1,0 +1,19 @@
+{
+  "name": "feishu-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "把图测工具里采用(adopted)的素材，定时汇总推送到飞书群",
+  "bin": {
+    "feishu-push": "src/index.js"
+  },
+  "scripts": {
+    "list-chats": "node src/index.js --list-chats",
+    "dry-run": "node src/index.js --dry-run",
+    "push": "node src/index.js --once",
+    "push-all": "node src/index.js --all"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

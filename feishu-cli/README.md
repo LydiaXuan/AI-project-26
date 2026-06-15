@@ -26,11 +26,16 @@
 
 ```bash
 node src/index.js --dry-run   # 预演：看会发哪些，不真发
-node src/index.js --once      # 发「自上次以来新采用」的素材（默认）
-node src/index.js --all       # 全量补发（忽略历史，慎用，会刷屏）
+node src/index.js --once      # 发「自上次以来新增的采用素材」（默认）
+node src/index.js --seed      # 把当下所有 adopted 标为已发，从下次起只推新增
+node src/index.js --all       # 全量补发（忽略历史，极慎用，会刷屏）
 ```
 
-「新采用」靠本机 `.feishu-cli-state.json` 里记的已发 key 去重；删掉该文件 = 下次重新全发。
+**「今天采用今天发，历史不再补发」的策略**：
+
+- **首次跑 `--once`**：会把当前已有的 adopted 素材**全部标为「已发」但不发任何消息**，相当于自动 seed，避免历史刷屏。
+- **之后每天 18:00 跑 `--once`**：只发「从上次记录之后新出现的 adopted 变体」。
+- 状态存在本机 `.feishu-cli-state.json`（gitignore）；删掉它 = 重新走"首次"流程。
 
 ## 定时跑
 

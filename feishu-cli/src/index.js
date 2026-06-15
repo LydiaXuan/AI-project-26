@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // 图测工具采用素材 → 飞书群推送 CLI
 //   node src/index.js --list-chats   列出机器人所在群，拿 chat_id
-//   node src/index.js --once         发送自上次以来新采用的素材（默认）
-//   node src/index.js --all          忽略历史，发送全部采用素材
-//   node src/index.js --dry-run      只打印将发什么，不真正发送
+//   node src/index.js --once         发送「自上次以来新采用」的素材（默认，首次只记账不发）
+//   node src/index.js --seed         把现有所有 adopted 标为已发，下次起只发新增（首次部署用）
+//   node src/index.js --all          忽略历史，把所有 adopted 都发一遍（慎用，会刷屏）
+//   node src/index.js --dry-run      预演，不真正发送
 import { config, assertConfig } from './config.js';
 import { collectAdoptedMaterials } from './reader.js';
 import { loadState, saveState } from './state.js';
@@ -32,19 +33,41 @@ async function cmdListChats() {
   }
 }
 
+// 把当前所有 adopted 素材标为「已发」，不真正发送。用户首次部署或想从今天开始重新计时用。
+function cmdSeed({ dryRun }) {
+  assertConfig(['dataDir']);
+  const materials = collectAdoptedMaterials(config.dataDir);
+  const sent = materials.map((m) => m.key);
+  console.log(`发现 ${materials.length} 条历史 adopted 素材，${dryRun ? '（dry-run，不写状态）' : '已全部'}标记为已发。`);
+  console.log('下次 --once 将只发「自现在起新增的采用素材」。');
+  if (!dryRun) saveState({ lastRun: Date.now(), sent });
+}
+
 async function cmdPush({ all, dryRun }) {
-  assertConfig(dryRun ? ['dataDir'] : ['appId', 'appSecret', 'chatId', 'dataDir']);
+  assertConfig(['dataDir']); // 先只校验数据源，发不发再说
 
   const materials = collectAdoptedMaterials(config.dataDir);
   const state = loadState();
-  const sent = new Set(state.sent);
+  const firstRun = state.lastRun === 0 && state.sent.length === 0;
 
+  // 首次运行（state 空 + 非 --all）：把现有 adopted 当历史，本次不发任何东西，只记账
+  if (firstRun && !all) {
+    console.log(`首次运行：发现 ${materials.length} 条历史 adopted 素材。`);
+    console.log(`按"今天采用今天发，历史不再补发"的策略，本次不发送，仅记录为已发。`);
+    if (!dryRun) saveState({ lastRun: Date.now(), sent: materials.map((m) => m.key) });
+    else console.log('（--dry-run，未写状态。真实运行会把这些标记为已发。）');
+    return;
+  }
+
+  const sent = new Set(state.sent);
   const todo = all ? materials : materials.filter((m) => !sent.has(m.key));
-  // 时间稳定排序：旧的先发
   todo.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
 
-  console.log(`采用素材共 ${materials.length} 条，本次待发 ${todo.length} 条${all ? '（--all 全量）' : ''}${dryRun ? '（--dry-run 不实发）' : ''}。`);
+  console.log(`采用素材共 ${materials.length} 条，本次待发 ${todo.length} 条${all ? '（--all 全量）' : '（增量）'}${dryRun ? '（--dry-run 不实发）' : ''}。`);
   if (!todo.length) return;
+
+  // 真要发了才校验飞书凭证
+  if (!dryRun) assertConfig(['appId', 'appSecret', 'chatId']);
 
   let ok = 0;
   for (const m of todo) {
@@ -78,14 +101,16 @@ async function cmdPush({ all, dryRun }) {
 function help() {
   console.log(`用法：
   node src/index.js --list-chats   列出机器人所在群，拿 chat_id
-  node src/index.js --once         发送新采用的素材（默认，可省略）
-  node src/index.js --all          发送全部采用素材（忽略历史）
+  node src/index.js --once         发送新增的采用素材（默认，首次只记账不发）
+  node src/index.js --seed         把现有 adopted 都标为已发，从下次起只推新增
+  node src/index.js --all          忽略历史，全量补发（慎用）
   node src/index.js --dry-run      预演，不真正发送`);
 }
 
 async function main() {
   if (has('--help') || has('-h')) return help();
   if (has('--list-chats')) return cmdListChats();
+  if (has('--seed')) return cmdSeed({ dryRun: has('--dry-run') });
   return cmdPush({ all: has('--all'), dryRun: has('--dry-run') });
 }
 

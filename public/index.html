@@ -1906,6 +1906,18 @@ function variantRowHTML(v, i, ctrl, recordId, recordAttrs) {
      </div>` : `<span class="font-bold text-slate-400">-</span>`;
   const _dispImg = variantDisplayImage(v, recordAttrs);
   const imgStyle = _dispImg ? `background-image:url('${_dispImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;` : 'background:#F1F5F9;';
+  // 视频属性：渲染只读 URL 框 + 打开链接（不勾视频则跳过）
+  const _recAttrs = (Array.isArray(recordAttrs) && recordAttrs.length) ? recordAttrs : ['icon'];
+  const _showVideo = _recAttrs.includes('视频');
+  const _showImage = _recAttrs.some(a => a !== '视频');
+  const _videoUrl = _showVideo ? getAsset(v, '视频', recordAttrs) : '';
+  const _videoBlock = _showVideo ? `
+        <div class="vc-video w-full max-w-[140px] mx-auto mb-2">
+          <div class="text-[9px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">视频 (YouTube)</div>
+          <input type="text" value="${escapeHTML(_videoUrl||'')}" readonly onclick="event.stopPropagation(); this.select();" class="w-full text-[11px] text-slate-700 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none truncate" placeholder="（无）">
+          ${_videoUrl ? `<a href="${escapeHTML(_videoUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-[10px] text-indigo-500 hover:underline inline-flex items-center gap-0.5 mt-0.5">▶ 打开视频</a>` : ''}
+        </div>` : '';
+  const _imageBlock = _showImage ? `<div class="vc-image w-full max-w-[140px] h-28 mx-auto rounded border border-slate-200 mb-2 bg-slate-50/40" style="${imgStyle}"></div>` : '';
   return `
     <div class="variant-card flex flex-col p-3 rounded-lg border ${cls} hover:opacity-100 transition-colors relative overflow-hidden">
       ${topBar}
@@ -1916,7 +1928,7 @@ function variantRowHTML(v, i, ctrl, recordId, recordAttrs) {
         </div>
         ${headerRight}
       </div>
-      <div class="vc-image w-full max-w-[140px] h-28 mx-auto rounded border border-slate-200 mb-2 bg-slate-50/40" style="${imgStyle}"></div>
+      ${_videoBlock}${_imageBlock}
       <div class="vc-metrics space-y-1.5">
         <div class="flex justify-between text-[11px]"><span class="text-slate-500">首次安装</span><span class="font-bold text-slate-700">${formatNum(v.installs)}</span></div>
         <div class="flex justify-between text-[11px]"><span class="text-slate-500">保留安装</span><span class="font-bold text-slate-700">${formatNum(v.retained)}</span></div>
@@ -1989,6 +2001,19 @@ function detailSpotlightHTML(r) {
   const imgStyle = _selImg
     ? `background-image:url('${_selImg}'); background-size:contain; background-position:center; background-repeat:no-repeat;`
     : 'background:#F1F5F9;';
+  // 视频属性：当前 variant 在视频属性下的 URL
+  const _detRecAttrs = (Array.isArray(r.attrs) && r.attrs.length) ? r.attrs : ['icon'];
+  const _detShowVideo = _detRecAttrs.includes('视频');
+  const _detShowImage = _detRecAttrs.some(a => a !== '视频');
+  const _detVideoUrl = _detShowVideo ? getAsset(selV, '视频', r.attrs) : '';
+  const _detVideoBlock = _detShowVideo ? `
+      <div class="rounded border border-slate-200 bg-slate-50/60 p-3 space-y-2">
+        <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">视频 (YouTube)</div>
+        ${_detVideoUrl
+          ? `<a href="${escapeHTML(_detVideoUrl)}" target="_blank" rel="noopener" class="text-[13px] text-indigo-500 hover:underline break-all inline-flex items-start gap-1">▶ ${escapeHTML(_detVideoUrl)}</a>`
+          : `<div class="text-sm text-slate-400">未填</div>`}
+      </div>` : '';
+  const _detImageBlock = _detShowImage ? `<div class="w-full h-[360px] rounded border border-slate-100 bg-slate-50/40 ${_selImg ? 'cursor-zoom-in' : ''}" style="${imgStyle}" ${_selImg ? `onclick="showLightbox('${_selImg}')"` : ''}></div>` : '';
   const tabs = variants.map((v, i) => {
     const active = i === selIdx;
     return `<button type="button" onclick="selectDetailVariant(${i})" class="px-3 py-1.5 text-[12px] font-semibold rounded-md transition ${active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">${escapeHTML(v.name)}</button>`;
@@ -1997,7 +2022,7 @@ function detailSpotlightHTML(r) {
   return `<div id="detail-spotlight" class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
     <div class="flex p-1 gap-1 bg-slate-50 border-b border-slate-200">${tabs}</div>
     <div class="p-4 space-y-3">
-      <div class="w-full h-[360px] rounded border border-slate-100 bg-slate-50/40 ${_selImg ? 'cursor-zoom-in' : ''}" style="${imgStyle}" ${_selImg ? `onclick="showLightbox('${_selImg}')"` : ''}></div>
+      ${_detVideoBlock}${_detImageBlock}
       <div class="flex items-center justify-between flex-wrap gap-3 pt-1">
         <div class="flex gap-5 text-[12px]">
           <div><span class="text-slate-500 font-semibold">首次安装</span> <span class="text-slate-800 font-bold ml-1">${formatNum(selV.installs)}</span></div>

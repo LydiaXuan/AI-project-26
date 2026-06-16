@@ -4,6 +4,13 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { computeEffect } from './effect.js';
 
+// "YYYY-MM-DD" → 毫秒时间戳；空/无效返回 0。
+function parseDate(s) {
+  if (!s || typeof s !== 'string') return 0;
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : 0;
+}
+
 function readRecords(dataDir) {
   const single = join(dataDir, 'records.json');
   if (existsSync(single)) {
@@ -32,6 +39,8 @@ export function collectAdoptedMaterials(dataDir) {
     const control = variants.find((v) => v.role === 'control') || variants[0];
     for (const v of variants) {
       if (!v.adopted) continue;
+      // "采用时间"用于排序/比较：endDate(实验结束日) 最准，没有就退到 startDate / updatedAt
+      const adoptedTime = parseDate(r.endDate) || parseDate(r.startDate) || r.updatedAt || r.createdAt || 0;
       materials.push({
         key: `${r.id}::${v.name}`,
         recordId: r.id,
@@ -43,6 +52,7 @@ export function collectAdoptedMaterials(dataDir) {
         startDate: r.startDate || '',
         endDate: r.endDate || '',
         summary: r.summary || '',
+        adoptedTime,
         updatedAt: r.updatedAt || r.createdAt || 0,
         variantName: v.name,
         installs: v.installs,

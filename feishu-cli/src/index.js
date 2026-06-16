@@ -43,9 +43,10 @@ async function cmdTest({ dryRun }) {
     console.log('没有找到任何 adopted 素材。请先在图测工具里把某个变体标为「采用」后重试。');
     return;
   }
-  materials.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  materials.sort((a, b) => (b.adoptedTime || 0) - (a.adoptedTime || 0));
   const m = materials[0];
-  console.log(`【试发】挑选最新采用：${m.project} / ${m.variantName}（效果 ${m.effect || '—'}，图${m.img ? '有' : '无'}）`);
+  const when = m.endDate || m.startDate || '(无日期)';
+  console.log(`【试发】挑选最新采用：${m.project} / ${m.variantName}（${when}，效果 ${m.effect || '—'}，图${m.img ? '有' : '无'}）`);
   console.log('  ※ 仅本次预览，不会写状态文件，正式 --once 仍按首次记账流程跑。');
   if (dryRun) {
     console.log('  (--dry-run，未真正发送)');
@@ -90,7 +91,8 @@ async function cmdPush({ all, dryRun }) {
 
   const sent = new Set(state.sent);
   const todo = all ? materials : materials.filter((m) => !sent.has(m.key));
-  todo.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+  // 正式推送时也按 endDate 顺序发，老的在前
+  todo.sort((a, b) => (a.adoptedTime || 0) - (b.adoptedTime || 0));
 
   console.log(`采用素材共 ${materials.length} 条，本次待发 ${todo.length} 条${all ? '（--all 全量）' : '（增量）'}${dryRun ? '（--dry-run 不实发）' : ''}。`);
   if (!todo.length) return;

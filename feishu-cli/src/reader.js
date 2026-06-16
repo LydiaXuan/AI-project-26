@@ -55,7 +55,14 @@ export function collectAdoptedMaterials(dataDir) {
 
     for (const v of variants) {
       if (!v.adopted) continue;
-      const adoptedTime = parseDate(r.endDate) || parseDate(r.startDate) || r.updatedAt || r.createdAt || 0;
+      // 优先用「点采用按钮的时间戳」(v.adoptedAt)；老数据没有这个字段，退到
+      // endDate(实验结束日) / startDate / 记录的 updatedAt / createdAt。
+      const adoptedTime = v.adoptedAt
+        || parseDate(r.endDate)
+        || parseDate(r.startDate)
+        || r.updatedAt
+        || r.createdAt
+        || 0;
       const videoUrl = hasVideo ? getAssetForVariant(v, '视频', recAttrs) : '';
       // 图片：优先选第一个非视频 attr；老数据 v.img 是 fallback
       const firstImgAttr = recAttrs.find((a) => a !== '视频');

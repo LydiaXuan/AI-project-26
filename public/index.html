@@ -1323,7 +1323,14 @@ function renderVariants() {
     inp.onblur = () => renderVariants();
   });
 }
-window.toggleAdopt = i => { formData.variants[i].adopted = !formData.variants[i].adopted; renderVariants(); };
+window.toggleAdopt = i => {
+  const v = formData.variants[i];
+  v.adopted = !v.adopted;
+  // 记录点"采用"那一刻的时间戳；取消采用时清掉，避免误用旧值
+  if (v.adopted) v.adoptedAt = Date.now();
+  else delete v.adoptedAt;
+  renderVariants();
+};
 // 资产读写（统一走 v.assets[attr]）。老的 setVariantImage/clearVariantImage 作为 alias
 window.clearVariantAsset = (i, attr) => {
   const v = formData.variants[i]; if (!v) return;

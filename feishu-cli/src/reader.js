@@ -30,6 +30,18 @@ function readRecords(dataDir) {
   throw new Error(`在 ${dataDir} 下没找到 records.json，也没有 records/ 目录`);
 }
 
+// 取变体在某 attr 下的素材（适配新旧两种存储）
+// 新版：v.assets[attr]；老版：v.img 视为「记录里第一个非视频 attr」的内容
+function getAssetForVariant(v, attr, recAttrs) {
+  if (v?.assets && Object.prototype.hasOwnProperty.call(v.assets, attr)) {
+    return v.assets[attr] || '';
+  }
+  if (!v?.img || v?.assets) return '';
+  const primary = (Array.isArray(recAttrs) ? recAttrs : []).find((a) => a !== '视频') || 'icon';
+  if (attr === primary || (attr === 'icon' && !recAttrs)) return v.img;
+  return '';
+}
+
 // 返回素材列表：每个采用的变体一条
 export function collectAdoptedMaterials(dataDir) {
   const records = readRecords(dataDir);
@@ -37,10 +49,18 @@ export function collectAdoptedMaterials(dataDir) {
   for (const r of records) {
     const variants = Array.isArray(r.variants) ? r.variants : [];
     const control = variants.find((v) => v.role === 'control') || variants[0];
+    const recAttrs = (Array.isArray(r.attrs) && r.attrs.length) ? r.attrs : ['icon'];
+    const hasVideo = recAttrs.includes('视频');
+    const hasImage = recAttrs.some((a) => a !== '视频');
+
     for (const v of variants) {
       if (!v.adopted) continue;
-      // "采用时间"用于排序/比较：endDate(实验结束日) 最准，没有就退到 startDate / updatedAt
       const adoptedTime = parseDate(r.endDate) || parseDate(r.startDate) || r.updatedAt || r.createdAt || 0;
+      const videoUrl = hasVideo ? getAssetForVariant(v, '视频', recAttrs) : '';
+      // 图片：优先选第一个非视频 attr；老数据 v.img 是 fallback
+      const firstImgAttr = recAttrs.find((a) => a !== '视频');
+      const img = (hasImage && firstImgAttr) ? (getAssetForVariant(v, firstImgAttr, recAttrs) || v.img || '') : '';
+
       materials.push({
         key: `${r.id}::${v.name}`,
         recordId: r.id,
@@ -48,6 +68,7 @@ export function collectAdoptedMaterials(dataDir) {
         type: r.type || '',
         ratio: r.ratio || '',
         component: r.component || '',
+        attrs: recAttrs,
         confidence: r.confidence,
         startDate: r.startDate || '',
         endDate: r.endDate || '',
@@ -59,7 +80,8 @@ export function collectAdoptedMaterials(dataDir) {
         retained: v.retained,
         ciLow: v.ciLow,
         ciHigh: v.ciHigh,
-        img: v.img || '',
+        img,
+        videoUrl,
         effect: computeEffect(v, control),
       });
     }

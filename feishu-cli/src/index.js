@@ -21,6 +21,14 @@ function dataUrlToBuffer(dataUrl) {
   return Buffer.from(m[1], 'base64');
 }
 
+// 给日志用：素材形态的简短描述
+function mediaSummary(m) {
+  const parts = [];
+  if (m.videoUrl) parts.push('视频');
+  if (m.img) parts.push('图');
+  return parts.length ? parts.join('+') : '无素材';
+}
+
 async function cmdListChats() {
   assertConfig(['appId', 'appSecret']);
   const chats = await listChats();
@@ -46,7 +54,8 @@ async function cmdTest({ dryRun }) {
   materials.sort((a, b) => (b.adoptedTime || 0) - (a.adoptedTime || 0));
   const m = materials[0];
   const when = m.endDate || m.startDate || '(无日期)';
-  console.log(`【试发】挑选最新采用：${m.project} / ${m.variantName}（${when}，效果 ${m.effect || '—'}，图${m.img ? '有' : '无'}）`);
+  const mediaTag = mediaSummary(m);
+  console.log(`【试发】挑选最新采用：${m.project} / ${m.variantName}（${when}，效果 ${m.effect || '—'}，${mediaTag}）`);
   console.log('  ※ 仅本次预览，不会写状态文件，正式 --once 仍按首次记账流程跑。');
   if (dryRun) {
     console.log('  (--dry-run，未真正发送)');
@@ -104,7 +113,7 @@ async function cmdPush({ all, dryRun }) {
   for (const m of todo) {
     const tag = `${m.project} / ${m.variantName}`;
     if (dryRun) {
-      console.log(`  [dry] ${tag} · 效果 ${m.effect || '—'} · 图${m.img ? '有' : '无'}`);
+      console.log(`  [dry] ${tag} · 效果 ${m.effect || '—'} · ${mediaSummary(m)}`);
       continue;
     }
     try {

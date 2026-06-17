@@ -20,7 +20,11 @@
    ```bash
    npm run list-chats        # 或 node src/index.js --list-chats
    ```
-   把目标群的 `chat_id` 填回 `.env` 的 `FEISHU_CHAT_ID`。
+   把目标群的 `chat_id` 填回 `.env`：
+   - `FEISHU_CHAT_ID_BUYING` — **同步买量**群（发「同步买量」文案 + 素材）
+   - `FEISHU_CHAT_ID_REVIEW` — **测试复盘总结**群（发「本轮复盘总结」文案 + 素材）
+   - 现在只有一个群？两个填同一个 `chat_id`，该群会收到两条消息。
+   - 各自都支持逗号隔开多群；没配这俩会降级用旧的 `FEISHU_CHAT_ID`。
 
 ## 日常用法
 
@@ -57,8 +61,9 @@ node src/index.js --all       # 全量补发（忽略历史，极慎用，会刷
 
 1. 把机器人拉进新群（群设置 → 群机器人 → 添加）。
 2. `npm run list-chats` 拿新群的 `chat_id`。
-3. 改 `.env` 的 `FEISHU_CHAT_ID`：
+3. 改 `.env` 的 `FEISHU_CHAT_ID_BUYING` / `FEISHU_CHAT_ID_REVIEW`：
    - 换群：替换成新的 `chat_id`。
    - 加群（同时发多个群）：英文逗号隔开，如 `oc_aaa,oc_bbb`。
+   - 买量群和复盘群分开后，把两个变量填成不同的 `chat_id` 即可分流。
 
 机器人的权限、应用本身都不用动。

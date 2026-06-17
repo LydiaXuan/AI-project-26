@@ -1,13 +1,29 @@
-// 把一条素材组装成飞书交互卡片：
-// 头部(项目名) + 团队复盘总结 + (图 | 视频链接) + 灰底信息框(应用属性/测试人/效果)。
+// 把一条素材组装成飞书交互卡片，按模块取不同的正文：
+//   buying（同步买量）：正文取 m.buyingNote
+//   review（测试复盘总结）：正文取 m.summary
+// 两个模块结构一致：头部(项目名) + 模块正文 + (图 | 视频链接) + 灰底信息框。
 import { effectText } from './effect.js';
 
-export function buildCard(m, imageKey) {
+// 灰底框文案：新应用了xx，测试人：姓名 · 效果（两个模块都带）
+function infoLine(m) {
+  const attrsText = (Array.isArray(m.attrs) ? m.attrs : []).filter(Boolean).join('、');
+  const parts = [];
+  if (attrsText) parts.push(`新应用了${attrsText}`);
+  if (m.owner) parts.push(`测试人：${m.owner}`);
+  let info = parts.join('，');
+  const eff = effectText(m.effect);
+  if (eff && eff !== '—') info += (info ? ' · ' : '') + eff;
+  return info;
+}
+
+// module: 'buying' | 'review'
+export function buildCard(m, imageKey, module = 'buying') {
+  const bodyText = module === 'review' ? m.summary : m.buyingNote;
   const elements = [];
 
-  // 团队复盘总结：紧跟在标题下方
-  if (m.summary && m.summary.trim()) {
-    elements.push({ tag: 'div', text: { tag: 'lark_md', content: m.summary.trim() } });
+  // 模块正文：紧跟在标题下方
+  if (bodyText && bodyText.trim()) {
+    elements.push({ tag: 'div', text: { tag: 'lark_md', content: bodyText.trim() } });
   }
 
   // 有图就上图
@@ -29,14 +45,8 @@ export function buildCard(m, imageKey) {
     });
   }
 
-  // 灰底信息框（放在图片下方）：新应用了xx，测试人：姓名 · 效果
-  const attrsText = (Array.isArray(m.attrs) ? m.attrs : []).filter(Boolean).join('、');
-  const infoParts = [];
-  if (attrsText) infoParts.push(`新应用了${attrsText}`);
-  if (m.owner) infoParts.push(`测试人：${m.owner}`);
-  let info = infoParts.join('，');
-  const eff = effectText(m.effect);
-  if (eff && eff !== '—') info += (info ? ' · ' : '') + eff;
+  // 灰底信息框（放在图片下方）
+  const info = infoLine(m);
   if (info) {
     elements.push({
       tag: 'column_set',

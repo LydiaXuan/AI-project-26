@@ -81,6 +81,7 @@ export function collectAdoptedMaterials(dataDir) {
         startDate: r.startDate || '',
         endDate: r.endDate || '',
         summary: r.summary || '',
+        buyingNote: r.buyingNote || '',
         adoptedTime,
         updatedAt: r.updatedAt || r.createdAt || 0,
         variantName: v.name,

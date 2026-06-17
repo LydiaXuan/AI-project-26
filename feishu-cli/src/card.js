@@ -1,15 +1,19 @@
-// 把一条素材组装成飞书交互卡片：头部(项目名 + 副标题一行) + (图 | 视频链接)。
+// 把一条素材组装成飞书交互卡片：头部(项目名 + 同行附加信息) + (图 | 视频链接)。
 import { effectText } from './effect.js';
 
 export function buildCard(m, imageKey) {
-  // 头部副标题（白字，字号比标题小）：新应用了xx，测试人：姓名 · 效果
+  // 头部同一行：{项目名}   新应用了xx，测试人：姓名 · 效果
   const attrsText = (Array.isArray(m.attrs) ? m.attrs : []).filter(Boolean).join('、');
   const subParts = [];
   if (attrsText) subParts.push(`新应用了${attrsText}`);
   if (m.owner) subParts.push(`测试人：${m.owner}`);
-  let subtitle = subParts.join('，');
+  let extra = subParts.join('，');
   const eff = effectText(m.effect);
-  if (eff && eff !== '—') subtitle += (subtitle ? ' · ' : '') + eff;
+  if (eff && eff !== '—') extra += (extra ? ' · ' : '') + eff;
+
+  const projectName = m.project || m.recordId;
+  // 用全角空格拉开项目名和后半段，让它们看起来像项目名右侧跟着的附属信息
+  const headerTitle = extra ? `${projectName}　　${extra}` : projectName;
 
   const elements = [];
 
@@ -32,15 +36,12 @@ export function buildCard(m, imageKey) {
     });
   }
 
-  const header = {
-    title: { tag: 'plain_text', content: m.project || m.recordId },
-    template: 'blue',
-  };
-  if (subtitle) header.subtitle = { tag: 'plain_text', content: subtitle };
-
   return {
     config: { wide_screen_mode: true },
-    header,
+    header: {
+      title: { tag: 'plain_text', content: headerTitle },
+      template: 'blue',
+    },
     elements,
   };
 }

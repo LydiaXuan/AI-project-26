@@ -72,6 +72,7 @@ export function collectAdoptedMaterials(dataDir) {
         key: `${r.id}::${v.name}`,
         recordId: r.id,
         project: r.project || '',
+        owner: r.owner || '',
         type: r.type || '',
         ratio: r.ratio || '',
         component: r.component || '',

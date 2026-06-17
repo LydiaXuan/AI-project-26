@@ -38,7 +38,7 @@ export function buildCard(m, imageKey, module = 'buying') {
     });
   }
 
-  // 运营同步行 + 文案：黄橙色底纹包裹（同一个 column_set 里）
+  // 运营同步行 + 文案：浅灰底纹包裹（飞书预设里最素的一档）
   const inner = [{ tag: 'div', text: { tag: 'lark_md', content: syncLine(m) } }];
   let body = (module === 'review' ? m.summary : m.buyingNote) || '';
   body = body.trim();
@@ -47,7 +47,7 @@ export function buildCard(m, imageKey, module = 'buying') {
   elements.push({
     tag: 'column_set',
     flex_mode: 'none',
-    background_style: 'yellow',
+    background_style: 'grey',
     horizontal_spacing: 'default',
     columns: [
       { tag: 'column', width: 'weighted', weight: 1, vertical_align: 'top', elements: inner },

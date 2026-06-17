@@ -69,7 +69,8 @@ export function buildCard(m, imageKey, module = 'buying') {
     config: { wide_screen_mode: true },
     header: {
       title: { tag: 'plain_text', content: m.project || m.recordId },
-      template: 'blue',
+      // 买量卡青色、复盘卡蓝色，落在同一个群也好区分
+      template: module === 'review' ? 'blue' : 'turquoise',
     },
     elements,
   };

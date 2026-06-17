@@ -24,6 +24,12 @@ select { -webkit-appearance:none; -moz-appearance:none; appearance:none;
 .cs-option { padding:.375rem .875rem; font-size:13px; color:#334155; cursor:pointer; white-space:nowrap; }
 .cs-option:hover { background:#EEF2FF; color:#3730A3; }
 .cs-option.cs-selected { background:#EEF2FF; color:#4F46E5; font-weight:600; }
+/* IP 下拉做成更明显的椭圆气泡（够 3~4 字宽） */
+#cs-f-ip .cs-trigger, #cs-d-ip .cs-trigger { justify-content:space-between; gap:.5rem; padding:.25rem .75rem; min-width:6.5rem; background:#EEF2FF; border:1px solid #C7D2FE; border-radius:9999px; color:#4F46E5; }
+#cs-f-ip .cs-trigger:hover, #cs-d-ip .cs-trigger:hover { background:#E0E7FF; }
+#cs-f-ip .cs-text, #cs-d-ip .cs-text { min-width:3.5rem; }
+#cs-f-ip .cs-text:empty::before, #cs-d-ip .cs-text:empty::before { content:'选择 IP'; color:#A5B4FC; }
+#cs-f-ip .cs-chev, #cs-d-ip .cs-chev { color:#818CF8; }
 .segmented-btn input:checked + div { background:#EEF2FF; color:#4F46E5; box-shadow:0 1px 2px rgba(0,0,0,.05); border-color:#C7D2FE; }
 .hide-scrollbar::-webkit-scrollbar { display:none; } .hide-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
 .smooth-transition { transition: all .4s cubic-bezier(.25,1,.5,1); }
@@ -177,6 +183,10 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                 </div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
+                <div class="flex items-center gap-2"><div id="cs-f-ratio" class="relative"></div><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">是否IP</label>
                 <div class="flex items-center gap-2">
                   <div class="flex gap-2" id="f-isip">
@@ -188,10 +198,6 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                     <button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('ips','IP')">+</button>
                   </div>
                 </div>
-              </div>
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
-                <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
-                <div class="flex items-center gap-2"><div id="cs-f-ratio" class="relative"></div><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
               </div>
               <div class="flex items-center justify-between pb-3 invisible" aria-hidden="true">
                 <label class="text-[13px] font-medium">占位</label>

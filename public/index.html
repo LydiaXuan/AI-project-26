@@ -1758,7 +1758,10 @@ function renderTimeline() {
   const proj = $('#tl-project').value;
   let list = [...state.records].sort((a,b) => {
     const ta = recordEffectiveTime(a), tb = recordEffectiveTime(b);
-    return tlSortOrder === 'desc' ? tb - ta : ta - tb;
+    if (ta !== tb) return tlSortOrder === 'desc' ? tb - ta : ta - tb;
+    // 有效时间相同（同一天）：按「提交时间」createdAt 排，后提交的在上（后续编辑不影响）
+    const ca = a.createdAt || 0, cb = b.createdAt || 0;
+    return tlSortOrder === 'desc' ? cb - ca : ca - cb;
   });
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
   if (tlOwners !== null) list = list.filter(r => tlOwners.includes(r.owner));

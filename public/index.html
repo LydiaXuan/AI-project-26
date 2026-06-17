@@ -2100,7 +2100,7 @@ function detailHTML(r) {
         <div class="flex items-center gap-2 mb-3"><span class="w-1.5 h-4 bg-emerald-500 rounded-full"></span><h3 class="text-[13px] font-bold">同步买量</h3></div>
         <textarea id="detail-buying" rows="3" placeholder="给买量同学的同步内容..." class="w-full text-[13px] text-slate-700 bg-slate-50 border border-transparent rounded-lg p-3 resize-none placeholder-slate-400 hover:border-slate-300">${escapeHTML(r.buyingNote||'')}</textarea>
         <div class="flex justify-end mt-2">
-          <button onclick="saveSummary('${r.id}')" class="px-4 py-1.5 bg-emerald-50 text-emerald-700 text-[12px] font-bold rounded-md hover:bg-emerald-100">保存同步买量</button>
+          <button onclick="saveSummary('${r.id}')" class="px-4 py-1.5 bg-emerald-50 text-emerald-700 text-[12px] font-bold rounded-md hover:bg-emerald-100">保存信息</button>
         </div>
         <div class="flex items-center gap-2 mt-4 mb-3"><span class="w-1.5 h-4 bg-indigo-500 rounded-full"></span><h3 class="text-[13px] font-bold">本轮复盘总结</h3></div>
         <textarea id="detail-summary" rows="4" placeholder="在此输入本轮复盘结论..." class="w-full text-[13px] text-slate-700 bg-slate-50 border border-transparent rounded-lg p-3 resize-none placeholder-slate-400 hover:border-slate-300">${escapeHTML(r.summary||'')}</textarea>

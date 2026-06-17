@@ -1,20 +1,15 @@
-// 把一条素材组装成飞书交互卡片：(图 | 视频链接) + 项目名 + 主信息行 + 效果行。
+// 把一条素材组装成飞书交互卡片：头部(项目名 + 副标题一行) + (图 | 视频链接)。
 import { effectText } from './effect.js';
 
-const typeLabel = (t) => (t === 'ab' ? 'A/B' : t === 'direct' ? '直接更新' : t || '');
-
 export function buildCard(m, imageKey) {
-  // 主信息行：xx项目，新应用了xx（icon/五图/置顶/视频），测试人：姓名
+  // 头部副标题（白字，字号比标题小）：新应用了xx，测试人：姓名 · 效果
   const attrsText = (Array.isArray(m.attrs) ? m.attrs : []).filter(Boolean).join('、');
-  const mainParts = [`${m.project || m.recordId}项目`];
-  if (attrsText) mainParts.push(`新应用了${attrsText}`);
-  if (m.owner) mainParts.push(`测试人：${m.owner}`);
-  const mainLine = mainParts.join('，');
-
-  // 效果行（保留）：效果 · 采用变体 · 类型
-  const effParts = [effectText(m.effect), `采用「${m.variantName}」`];
-  if (typeLabel(m.type)) effParts.push(typeLabel(m.type));
-  const effLine = effParts.join(' · ');
+  const subParts = [];
+  if (attrsText) subParts.push(`新应用了${attrsText}`);
+  if (m.owner) subParts.push(`测试人：${m.owner}`);
+  let subtitle = subParts.join('，');
+  const eff = effectText(m.effect);
+  if (eff && eff !== '—') subtitle += (subtitle ? ' · ' : '') + eff;
 
   const elements = [];
 
@@ -36,15 +31,16 @@ export function buildCard(m, imageKey) {
       text: { tag: 'lark_md', content: '_（无素材内容）_' },
     });
   }
-  elements.push({ tag: 'div', text: { tag: 'lark_md', content: `**${mainLine}**` } });
-  elements.push({ tag: 'div', text: { tag: 'lark_md', content: effLine } });
+
+  const header = {
+    title: { tag: 'plain_text', content: m.project || m.recordId },
+    template: 'blue',
+  };
+  if (subtitle) header.subtitle = { tag: 'plain_text', content: subtitle };
 
   return {
     config: { wide_screen_mode: true },
-    header: {
-      title: { tag: 'plain_text', content: m.project || m.recordId },
-      template: 'blue',
-    },
+    header,
     elements,
   };
 }

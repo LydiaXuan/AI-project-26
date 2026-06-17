@@ -1,30 +1,23 @@
-// 把一条素材组装成飞书交互卡片，按模块取不同的正文：
-//   buying（同步买量）：正文取 m.buyingNote
-//   review（测试复盘总结）：正文取 m.summary
-// 两个模块结构一致：头部(项目名) + 模块正文 + (图 | 视频链接) + 灰底信息框。
+// 把一条素材组装成飞书交互卡片，按模块取不同的正文与头部颜色：
+//   buying（同步买量）：青色头；正文 = buyingNote + 「，可供买量参考~」
+//   review（测试复盘总结）：紫色头；正文 = summary
+// 结构：头部(项目名) + (图 | 视频链接) + 运营同步行 + 文案。
 import { effectText } from './effect.js';
 
-// 灰底框文案：新应用了xx，测试人：姓名 · 效果（两个模块都带）
-function infoLine(m) {
+// 运营同步行：运营（姓名）同步：该项目新应用了xx，效果
+function syncLine(m) {
+  const intro = m.owner ? `运营（${m.owner}）同步：` : '运营同步：';
   const attrsText = (Array.isArray(m.attrs) ? m.attrs : []).filter(Boolean).join('、');
-  const parts = [];
-  if (attrsText) parts.push(`新应用了${attrsText}`);
-  if (m.owner) parts.push(`测试人：${m.owner}`);
-  let info = parts.join('，');
+  let line = intro;
+  if (attrsText) line += `该项目新应用了${attrsText}`;
   const eff = effectText(m.effect);
-  if (eff && eff !== '—') info += (info ? ' · ' : '') + eff;
-  return info;
+  if (eff && eff !== '—') line += (attrsText ? '，' : '') + eff;
+  return line;
 }
 
 // module: 'buying' | 'review'
 export function buildCard(m, imageKey, module = 'buying') {
-  const bodyText = module === 'review' ? m.summary : m.buyingNote;
   const elements = [];
-
-  // 模块正文：紧跟在标题下方
-  if (bodyText && bodyText.trim()) {
-    elements.push({ tag: 'div', text: { tag: 'lark_md', content: bodyText.trim() } });
-  }
 
   // 有图就上图
   if (imageKey) {
@@ -45,32 +38,21 @@ export function buildCard(m, imageKey, module = 'buying') {
     });
   }
 
-  // 灰底信息框（放在图片下方）
-  const info = infoLine(m);
-  if (info) {
-    elements.push({
-      tag: 'column_set',
-      flex_mode: 'none',
-      background_style: 'grey',
-      horizontal_spacing: 'default',
-      columns: [
-        {
-          tag: 'column',
-          width: 'weighted',
-          weight: 1,
-          vertical_align: 'top',
-          elements: [{ tag: 'div', text: { tag: 'lark_md', content: info } }],
-        },
-      ],
-    });
-  }
+  // 运营同步行
+  elements.push({ tag: 'div', text: { tag: 'lark_md', content: syncLine(m) } });
+
+  // 文案：买量卡 = buyingNote + 结尾；复盘卡 = summary
+  let body = (module === 'review' ? m.summary : m.buyingNote) || '';
+  body = body.trim();
+  if (module === 'buying') body = body ? `${body}，可供买量参考~` : '可供买量参考~';
+  if (body) elements.push({ tag: 'div', text: { tag: 'lark_md', content: body } });
 
   return {
     config: { wide_screen_mode: true },
     header: {
       title: { tag: 'plain_text', content: m.project || m.recordId },
-      // 买量卡青色、复盘卡蓝色，落在同一个群也好区分
-      template: module === 'review' ? 'blue' : 'turquoise',
+      // 买量卡青色、复盘卡紫色
+      template: module === 'review' ? 'purple' : 'turquoise',
     },
     elements,
   };

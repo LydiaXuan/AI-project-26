@@ -177,6 +177,19 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                 </div>
               </div>
               <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
+                <label class="text-[13px] font-medium text-slate-500">是否IP</label>
+                <div class="flex items-center gap-2">
+                  <div class="flex gap-2" id="f-isip">
+                    <label class="segmented-btn cursor-pointer"><input type="radio" name="f-isip" value="0" class="peer sr-only" checked><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">否</div></label>
+                    <label class="segmented-btn cursor-pointer"><input type="radio" name="f-isip" value="1" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">是</div></label>
+                  </div>
+                  <div id="f-ip-wrap" class="hidden items-center gap-2">
+                    <div id="cs-f-ip" class="relative"></div>
+                    <button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('ips','IP')">+</button>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3 whitespace-nowrap">
                 <label class="text-[13px] font-medium text-slate-500">流量分配比例</label>
                 <div class="flex items-center gap-2"><div id="cs-f-ratio" class="relative"></div><button class="text-indigo-500 text-xs" onclick="addMetaInput('ratios','比例','60% / 40%')">+</button></div>
               </div>
@@ -231,6 +244,19 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
                       <label class="segmented-btn cursor-pointer"><input type="checkbox" value="五图" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">五图</div></label>
                       <label class="segmented-btn cursor-pointer"><input type="checkbox" value="置顶" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">置顶</div></label>
                       <label class="segmented-btn cursor-pointer"><input type="checkbox" value="视频" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">视频</div></label>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <label class="text-[13px] font-medium text-slate-500">是否IP</label>
+                    <div class="flex items-center gap-2">
+                      <div class="flex gap-2" id="d-isip">
+                        <label class="segmented-btn cursor-pointer"><input type="radio" name="d-isip" value="0" class="peer sr-only" checked><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">否</div></label>
+                        <label class="segmented-btn cursor-pointer"><input type="radio" name="d-isip" value="1" class="peer sr-only"><div class="px-3 py-1 rounded text-[12px] font-medium text-slate-500 border border-transparent hover:bg-slate-50">是</div></label>
+                      </div>
+                      <div id="d-ip-wrap" class="hidden items-center gap-2">
+                        <div id="cs-d-ip" class="relative"></div>
+                        <button type="button" class="text-indigo-500 text-xs" onclick="addMetaInput('ips','IP')">+</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -313,6 +339,10 @@ textarea:focus { outline:none; border-color:#818CF8; box-shadow:0 0 0 4px rgba(9
           </button>
           <button id="tl-attrs-btn" type="button" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100 flex items-center gap-1">
             <span id="tl-attrs-label">测试属性：全部</span>
+            <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <button id="tl-ip-btn" type="button" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100 flex items-center gap-1">
+            <span id="tl-ip-label">IP：全部</span>
             <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           </button>
           <select id="tl-adoption" class="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 text-[12px] font-semibold rounded-full cursor-pointer hover:bg-slate-100">
@@ -588,7 +618,7 @@ window.openEffectPicker = (i, btn) => {
 // ============ db ============
 const IDB_NAME='viso-aso-db', IDB_VER=1;
 let _idb=null, _folder=null;
-const state = { records:[], meta:{ projects:[], owners:[], ratios:[], components:[], lastId:{} }, recycle:[], pending:[], profile:null };
+const state = { records:[], meta:{ projects:[], owners:[], ratios:[], components:[], ips:[], lastId:{} }, recycle:[], pending:[], profile:null };
 
 function openIDB() { return new Promise((res, rej) => {
   const r = indexedDB.open(IDB_NAME, IDB_VER);
@@ -796,7 +826,7 @@ document.addEventListener('click', e => {
 });
 async function loadAll() {
   state.records = await loadAllRecords();
-  state.meta = await readJSON('meta.json', { projects:[], owners:[], ratios:[], components:[], lastId:{} });
+  state.meta = await readJSON('meta.json', { projects:[], owners:[], ratios:[], components:[], ips:[], lastId:{} });
   state.recycle = await readJSON('recycle.json', []);
   state.pending = (await kvGet('pending')) || [];
   state.profile = JSON.parse(localStorage.getItem('profile') || 'null');
@@ -813,6 +843,7 @@ function ensureDefaults() {
   if (!m.components?.length) m.components = ['主要商品详情页','应用图标 (Icon)','五图','置顶视频','短描述'];
   if (!m.projects) m.projects = [];
   if (!m.owners) m.owners = [];
+  if (!m.ips) m.ips = [];
 }
 // meta.json 仍是共享单文件：保存前 read-merge，多人新增下拉项取并集，避免互相覆盖
 // mergeLists=true（默认）: 写盘前先 read-merge 磁盘上的列表（并集），保护多人并发「新增」
@@ -823,7 +854,7 @@ async function saveMeta(mergeLists = true) {
     const disk = await readJSON('meta.json', null);
     if (disk) {
       if (mergeLists) {
-        ['projects','owners','ratios','components'].forEach(k => {
+        ['projects','owners','ratios','components','ips'].forEach(k => {
           state.meta[k] = Array.from(new Set([...(disk[k]||[]), ...(state.meta[k]||[])]));
         });
       }
@@ -938,6 +969,7 @@ function blankForm() {
     component: state.meta.components[0] || '',
     startDate: '', endDate: '', confidence: 99,
     attrs: [],
+    isIp: false, ip: '',
     noteChange: '', notePurpose: '', noteDesign: '', summary: '', buyingNote: '',
     updateDate: '', imageBefore: '', imageAfter: '',
     variants: [
@@ -1005,6 +1037,8 @@ function renderForm() {
       renderVariants();
     };
   });
+  // 是否IP：默认否；选「是」时显示 IP 下拉框（可在下拉里输入新的 IP 名）
+  wireIpField('f', formData);
   // 老记录里如果有 notePurpose，加载时合并到 noteChange 一次（首次进表单生效）
   if (formData.notePurpose && !formData._merged) {
     formData.noteChange = (formData.noteChange ? formData.noteChange + ' · ' : '') + formData.notePurpose;
@@ -1036,6 +1070,8 @@ function renderDirectForm() {
       paintDirectSlot('after');
     };
   });
+  // 是否IP：与 A/B 表单同款
+  wireIpField('d', formData);
   $('#d-note').value = formData.noteChange || '';
   $('#d-note').oninput = e => formData.noteChange = e.target.value;
   applyAutoDirectBeforeImage();
@@ -1109,6 +1145,29 @@ function fillSelect(sel, items, value) {
 }
 // 自定义下拉：替代原生 select，trigger 紧凑右对齐 / 列表左对齐有内边距
 // host 必须是 position:relative 的容器；options 是字符串数组
+// 「是否IP」单选 + 选「是」时挂载 IP 下拉。prefix 为 'f'(A/B) 或 'd'(direct)
+function wireIpField(prefix, fd) {
+  if (typeof fd.isIp !== 'boolean') fd.isIp = false;
+  if (typeof fd.ip !== 'string') fd.ip = '';
+  const wrap = $(`#${prefix}-ip-wrap`);
+  const sync = () => {
+    $$(`#${prefix}-isip input`).forEach(r => { r.checked = (r.value === '1') === fd.isIp; });
+    wrap.classList.toggle('hidden', !fd.isIp);
+    wrap.classList.toggle('flex', fd.isIp);
+    if (fd.isIp) {
+      mountCustomSelect(`#cs-${prefix}-ip`, state.meta.ips, fd.ip, v => { fd.ip = v; });
+    }
+  };
+  $$(`#${prefix}-isip input`).forEach(r => {
+    r.onchange = e => {
+      fd.isIp = e.target.value === '1';
+      if (!fd.isIp) fd.ip = '';
+      sync();
+    };
+  });
+  sync();
+}
+
 function mountCustomSelect(hostSel, items, value, onChange) {
   const host = $(hostSel); if (!host) return;
   const safeVal = items.includes(value) ? value : (items[0] || '');
@@ -1486,6 +1545,7 @@ let tlAdoption = 'all';     // 'all' / 'adopted' / 'not-adopted'
 let tlOwners   = null;
 let tlAttrs    = null;
 let tlRetests  = null;
+let tlIps      = null;  // null=全部；包含特殊值 '__none__' 表示「非 IP」
 const TL_ATTR_OPTS = [
   { value: 'icon', label: 'icon' },
   { value: '五图', label: '五图' },
@@ -1730,6 +1790,8 @@ function renderTimeline() {
   $('#tl-period-label').textContent = dbPeriodLabel(tlDateState);
   updateMultiLabel('#tl-owner-label', '测试人', tlOwners, state.meta.owners.map(o => ({value:o, label:o})));
   updateMultiLabel('#tl-attrs-label', '测试属性', tlAttrs, TL_ATTR_OPTS);
+  const tlIpOpts = [{value:'__none__', label:'非 IP'}, ...state.meta.ips.map(x => ({value:x, label:x}))];
+  updateMultiLabel('#tl-ip-label', 'IP', tlIps, tlIpOpts);
   updateMultiLabel('#tl-retest-label', '复测状态', tlRetests, TL_RETEST_OPTS);
   $('#tl-project').onchange = renderTimeline;
   $('#tl-search').oninput = renderTimeline;
@@ -1746,6 +1808,12 @@ function renderTimeline() {
     e.stopPropagation();
     openMultiFilter('#tl-attrs-btn', TL_ATTR_OPTS,
       () => tlAttrs, next => { tlAttrs = next; },
+      renderTimeline);
+  };
+  $('#tl-ip-btn').onclick = e => {
+    e.stopPropagation();
+    openMultiFilter('#tl-ip-btn', tlIpOpts,
+      () => tlIps, next => { tlIps = next; },
       renderTimeline);
   };
   $('#tl-retest-btn').onclick = e => {
@@ -1766,6 +1834,10 @@ function renderTimeline() {
   if (proj && proj !== '全部项目') list = list.filter(r => r.project === proj);
   if (tlOwners !== null) list = list.filter(r => tlOwners.includes(r.owner));
   if (tlAttrs !== null) list = list.filter(r => Array.isArray(r.attrs) && r.attrs.some(a => tlAttrs.includes(a)));
+  if (tlIps !== null) list = list.filter(r => {
+    if (r.isIp && r.ip) return tlIps.includes(r.ip);
+    return tlIps.includes('__none__');  // 没标 IP 的，归到「非 IP」
+  });
   if (tlDateState.from) { const fT = _sod(tlDateState.from).getTime(); list = list.filter(r => recordEffectiveTime(r) >= fT); }
   if (tlDateState.to)   { const tT = _eod(tlDateState.to).getTime();   list = list.filter(r => recordEffectiveTime(r) <= tT); }
   if (tlAdoption === 'adopted')     list = list.filter(r => recordIsAdopted(r));
@@ -2544,6 +2616,7 @@ function renderSettings() {
         ${chipsSection('负责人', 'owners')}
         ${chipsSection('实验类型', 'components')}
         ${chipsSection('流量分配比例', 'ratios')}
+        ${chipsSection('IP', 'ips')}
       </div>
     </section>
 
@@ -2655,7 +2728,7 @@ window.metaInputBlur = async (inp) => {
 };
 // 提取出来供 inline 改名复用（不弹 prompt，直接传值）
 async function _renameMetaInline(key, oldVal, newVal) {
-  const fieldMap = { projects: 'project', owners: 'owner', ratios: 'ratio', components: 'component' };
+  const fieldMap = { projects: 'project', owners: 'owner', ratios: 'ratio', components: 'component', ips: 'ip' };
   const field = fieldMap[key];
   const willMerge = state.meta[key].includes(newVal);
   if (willMerge && !confirm(`「${newVal}」已存在。继续会把所有「${oldVal}」的记录合并进「${newVal}」，确认？`)) {

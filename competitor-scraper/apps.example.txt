@@ -1,0 +1,9 @@
+# 每行一个 Google Play 链接或包名，# 开头为注释，空行忽略。
+# 用法： node scrape.js --file apps.example.txt
+
+# 链接形式（从浏览器地址栏直接复制）
+https://play.google.com/store/apps/details?id=com.spotify.music
+
+# 裸包名形式
+com.zhiliaoapp.musically
+com.instagram.android

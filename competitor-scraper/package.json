@@ -1,0 +1,12 @@
+{
+  "name": "competitor-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "扒取 Google Play 竞品商店截图与推广素材的命令行工具",
+  "bin": { "gp-scrape": "./scrape.js" },
+  "scripts": { "start": "node scrape.js" },
+  "dependencies": {
+    "google-play-scraper": "^10.0.0"
+  }
+}

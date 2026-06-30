@@ -8,7 +8,8 @@
     "gp-scrape": "./scrape.js"
   },
   "scripts": {
-    "start": "node scrape.js"
+    "start": "node scrape.js",
+    "web": "node server.js"
   },
   "dependencies": {
     "google-play-scraper": "^10.0.0",

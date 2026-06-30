@@ -2,3 +2,4 @@ node_modules/
 output/
 竞品图/
 *.log
+data/

@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import gplayPkg from 'google-play-scraper';
 import { parseAppId, maxRes, safeName, extFromUrl, pool } from './lib/util.js';
 import { downloadTo } from './lib/download.js';
+import { resolveProxy } from './lib/proxy.js';
 
 const gplay = gplayPkg.default || gplayPkg;
 
@@ -32,6 +33,7 @@ function parseArgs(argv) {
     out: './output',
     concurrency: 5,
     file: null,
+    proxy: null,            // 代理地址，如 http://127.0.0.1:7890
     skip: new Set(),        // 跳过的素材类型：screenshots|feature|icon|video
     inputs: [],
   };
@@ -43,6 +45,7 @@ function parseArgs(argv) {
       case '--out':     case '-o': opts.out = argv[++i]; break;
       case '--concurrency': opts.concurrency = Math.max(1, parseInt(argv[++i], 10) || 5); break;
       case '--file':    case '-f': opts.file = argv[++i]; break;
+      case '--proxy':   case '-p': opts.proxy = argv[++i]; break;
       case '--no-screenshots': opts.skip.add('screenshots'); break;
       case '--no-feature':     opts.skip.add('feature'); break;
       case '--no-icon':        opts.skip.add('icon'); break;
@@ -67,6 +70,8 @@ Google Play 竞品商店素材扒取工具
   -l, --lang    <码>   语言，默认 en（如 zh-TW / zh-CN / ja）
   -o, --out     <目录> 输出目录，默认 ./output
   -f, --file    <文件> 从文本文件读取，每行一个链接/包名（# 开头为注释）
+  -p, --proxy   <地址> 走代理抓取，如 http://127.0.0.1:7890
+                       （命令行连不上谷歌时用；也可设环境变量 HTTPS_PROXY）
       --concurrency <n> 单个应用内图片并发下载数，默认 5
       --no-screenshots  不抓截图
       --no-feature      不抓特色大图/推广图
@@ -125,11 +130,12 @@ function buildAssets(app, skip) {
 }
 
 // ── 处理单个 app ────────────────────────────────────────────────
-async function processApp(appId, opts) {
+async function processApp(appId, opts, agent) {
   process.stdout.write(`\n📦 ${appId} … 拉取商店信息`);
   let app;
   try {
-    app = await gplay.app({ appId, country: opts.country, lang: opts.lang });
+    const requestOptions = agent ? { agent: { https: agent, http: agent } } : undefined;
+    app = await gplay.app({ appId, country: opts.country, lang: opts.lang, requestOptions });
   } catch (e) {
     console.log(`  ✗ 失败：${e.message}`);
     return { appId, ok: false, error: e.message };
@@ -141,7 +147,7 @@ async function processApp(appId, opts) {
   await mkdir(dir, { recursive: true });
 
   const results = await pool(assets, opts.concurrency, async (asset) => {
-    const bytes = await downloadTo(asset.url, join(dir, asset.name));
+    const bytes = await downloadTo(asset.url, join(dir, asset.name), { agent });
     return bytes;
   });
 
@@ -200,11 +206,23 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`开始抓取 ${ids.length} 个应用｜地区=${opts.country} 语言=${opts.lang} 输出=${opts.out}`);
+  let proxy = null;
+  try {
+    proxy = resolveProxy(opts.proxy);
+  } catch (e) {
+    console.error('✗ ' + e.message);
+    process.exit(1);
+  }
+  const agent = proxy?.agent || null;
+
+  console.log(
+    `开始抓取 ${ids.length} 个应用｜地区=${opts.country} 语言=${opts.lang} 输出=${opts.out}` +
+    (proxy ? `｜代理=${proxy.proxyUrl}` : '｜直连（未设代理）')
+  );
 
   const summary = [];
   for (const id of ids) {        // 应用之间串行，避免请求过密被限流
-    summary.push(await processApp(id, opts));
+    summary.push(await processApp(id, opts, agent));
   }
 
   console.log('\n──────── 汇总 ────────');

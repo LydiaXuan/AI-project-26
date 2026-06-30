@@ -54,11 +54,31 @@ node scrape.js --file apps.example.txt --out ./竞品图
 | `-l, --lang <码>` | `en` | 语言，如 `zh-TW` `zh-CN` `ja` |
 | `-o, --out <目录>` | `./output` | 输出目录 |
 | `-f, --file <文件>` | — | 从文本文件批量读取链接/包名 |
+| `-p, --proxy <地址>` | — | 走代理抓取，如 `http://127.0.0.1:7890` |
 | `--concurrency <n>` | `5` | 单个应用内图片并发下载数 |
 | `--no-screenshots` | | 不抓截图 |
 | `--no-feature` | | 不抓特色大图/推广图 |
 | `--no-icon` | | 不抓图标 |
 | `--no-video` | | 不抓视频缩略图 |
+
+### 走代理（命令行连不上谷歌时）
+
+浏览器能上谷歌，不代表命令行也能——很多代理只接管浏览器。若出现
+`ETIMEDOUT` / `连接超时`，就用代理跑：
+
+```bash
+# 把端口换成你代理软件的本地 HTTP 端口（Clash 常见 7890，V2rayN 常见 10809）
+node scrape.js -p http://127.0.0.1:7890 wool.match.color.sort.jam.puzzle
+```
+
+也可以设环境变量，之后所有命令自动走代理（PowerShell 当前窗口有效）：
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+node scrape.js wool.match.color.sort.jam.puzzle
+```
+
+> 代理同时作用于「拉取商店信息」和「下载图片」两步。
 
 ## 输出结构
 

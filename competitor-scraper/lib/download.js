@@ -1,8 +1,9 @@
 // ================================================================
-// download.js — 带重试/退避的图片下载（用 Node 内置 fetch）
+// download.js — 带重试/退避的图片下载（用 got，支持代理 agent）
 // ================================================================
 import { writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import got from 'got';
 import { sleep } from './util.js';
 
 const UA =
@@ -11,19 +12,27 @@ const UA =
 
 /**
  * 下载一个 URL 到 destPath，失败按 2/4/8s 退避重试。
- * 返回写入的字节数。
+ * @param {object} [opts]
+ * @param {import('http').Agent} [opts.agent] 代理 agent（https-proxy-agent）
+ * @param {number} [opts.retries=3]
+ * @returns {Promise<number>} 写入的字节数
  */
-export async function downloadTo(url, destPath, { retries = 3 } = {}) {
+export async function downloadTo(url, destPath, { agent, retries = 3 } = {}) {
+  const options = {
+    responseType: 'buffer',
+    headers: { 'user-agent': UA, accept: 'image/*,*/*' },
+    timeout: { request: 30000 },
+    retry: { limit: 0 },          // 自己控制重试，关掉 got 内置的
+    followRedirect: true,
+  };
+  if (agent) options.agent = { https: agent, http: agent };
+
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': UA, Accept: 'image/*,*/*' },
-        redirect: 'follow',
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const buf = Buffer.from(await res.arrayBuffer());
-      if (buf.length === 0) throw new Error('empty body');
+      const res = await got(url, options);
+      const buf = res.body;
+      if (!buf || buf.length === 0) throw new Error('empty body');
       await mkdir(dirname(destPath), { recursive: true });
       await writeFile(destPath, buf);
       return buf.length;

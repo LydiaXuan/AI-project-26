@@ -26,6 +26,21 @@
 
 - 用中文，步骤要具体、面向非命令行用户（点哪里、敲什么）。
 
+## Events（活动与优惠）图的抓取结论
+
+> google-play-scraper 的 `app()` **不返回** "Events & offers" 板块的活动横幅图，需自己解析商店页 HTML。
+
+经真实页面（`wool.match.color.sort.jam.puzzle`，`hl=en&gl=US`，页面 ~1.3MB / 170 个图片链接）验证：
+
+- **活动图也是 `https://play-lh.googleusercontent.com/...` 链接**，集中在页面 ~1.10M 偏移处，彼此相邻。
+- **"Events & offers" 这个标题文字不在序列化数据里**（`IndexOf` 返回 -1），不能拿它当锚点。
+- **可靠规律**：每个活动卡片都有时间标记 **`Ends in` / `Ends on`**（en 语言下），其后**约 90 个字符**就是该活动的图片 URL，再往后 ~550 字符是活动标题。顺序固定：`[Ends 标记] → [图片URL] → [标题]`。
+- **提取策略**：正则锚定时间标记 `(Ends in|Ends on|Starts in|Starts on)`，对每个匹配取其后约 400 字符内的**第一个** play-lh 图片 URL，去重即为活动图。
+  - 标记是英文，所以抓 events 时**强制 `hl=en`** 最稳（横幅图通常与语言无关）。
+  - 活动图 URL 末尾无尺寸参数时，下载前补 `=s0` 取原图。
+- 该样本有 2 个活动：`i6bcXm1wygOcr2oLapGz...`、`OQsKbhQQWE1JG9tRPjptIx...`。
+- 实现方式：用 got（带代理 agent）抓原始页 `details?id=<id>&hl=en&gl=<country>`，按上述规律提取，下到各应用的 `events/` 子目录。待落地为工具内 `--no-events` 可关的默认功能。
+
 ## 项目内工具
 
 - `competitor-scraper/` —— Google Play 竞品商店素材扒取命令行工具（截图/推广图/图标/视频缩略图）。用法见该目录 README.md。

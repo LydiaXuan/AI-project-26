@@ -22,6 +22,7 @@ import gplayPkg from 'google-play-scraper';
 import { parseAppId, maxRes, safeName, extFromUrl, pool } from './lib/util.js';
 import { downloadTo } from './lib/download.js';
 import { resolveProxy } from './lib/proxy.js';
+import { fetchEventImages } from './lib/events.js';
 
 const gplay = gplayPkg.default || gplayPkg;
 
@@ -50,6 +51,7 @@ function parseArgs(argv) {
       case '--no-feature':     opts.skip.add('feature'); break;
       case '--no-icon':        opts.skip.add('icon'); break;
       case '--no-video':       opts.skip.add('video'); break;
+      case '--no-events':      opts.skip.add('events'); break;
       case '--help': case '-h': opts.help = true; break;
       default:
         if (a.startsWith('-')) { console.warn(`⚠ 未知参数：${a}`); }
@@ -77,6 +79,7 @@ Google Play 竞品商店素材扒取工具
       --no-feature      不抓特色大图/推广图
       --no-icon         不抓图标
       --no-video        不抓视频缩略图
+      --no-events       不抓活动图（Events & offers 板块）
   -h, --help            显示帮助
 
 示例：
@@ -142,7 +145,26 @@ async function processApp(appId, opts, agent) {
   }
   const dir = join(opts.out, `${safeName(app.title)}__${appId}`);
   const assets = buildAssets(app, opts.skip);
-  console.log(`  → ${app.title}（${app.developer?.devId || app.developer || '?'}），共 ${assets.length} 张`);
+
+  // 活动图（Events & offers）：库不返回，需另解析商店页 HTML
+  let eventUrls = [];
+  let eventError = null;
+  if (!opts.skip.has('events')) {
+    process.stdout.write(' …活动图');
+    const ev = await fetchEventImages(appId, { country: opts.country, agent });
+    eventUrls = ev.urls;
+    eventError = ev.error || null;
+    const pad = String(eventUrls.length).length;
+    eventUrls.forEach((url, i) => {
+      const n = String(i + 1).padStart(Math.max(2, pad), '0');
+      assets.push({ url, name: join('events', `${n}.jpg`), label: `活动图${n}` });
+    });
+  }
+
+  console.log(
+    `  → ${app.title}（${app.developer?.devId || app.developer || '?'}），共 ${assets.length} 张` +
+    (eventUrls.length ? `（含活动图 ${eventUrls.length}）` : '')
+  );
 
   await mkdir(dir, { recursive: true });
 
@@ -173,6 +195,7 @@ async function processApp(appId, opts, agent) {
       feature: app.headerImage ? 1 : 0,
       icon: app.icon ? 1 : 0,
       videoThumb: app.videoImage ? 1 : 0,
+      events: eventUrls.length,
     },
     sources: {
       icon: app.icon || null,
@@ -180,7 +203,9 @@ async function processApp(appId, opts, agent) {
       videoImage: app.videoImage || null,
       video: app.video || null,
       screenshots: app.screenshots || [],
+      events: eventUrls,
     },
+    eventError,
     downloadedTo: dir,
     failed,
   };

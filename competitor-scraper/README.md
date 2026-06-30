@@ -10,6 +10,7 @@
 | 特色大图 / 推广图 | feature graphic（商店顶部横幅推广图） |
 | 应用图标 | app icon |
 | 视频缩略图 | 宣传视频的封面图 |
+| 活动图 | Events & offers 板块的限时活动横幅图 |
 
 所有图片都会自动改写成**最高可得分辨率**（`=s0` 原图），并附 `metadata.json` 记录原始 URL、地区、抓取时间等。
 
@@ -60,6 +61,10 @@ node scrape.js --file apps.example.txt --out ./竞品图
 | `--no-feature` | | 不抓特色大图/推广图 |
 | `--no-icon` | | 不抓图标 |
 | `--no-video` | | 不抓视频缩略图 |
+| `--no-events` | | 不抓活动图（Events & offers） |
+
+> 活动图（Events & offers）是单独解析商店页 HTML 得到的，抓取时固定用 `hl=en`
+> 以保证识别稳定；下到各应用的 `events/` 子目录。
 
 ### 走代理（命令行连不上谷歌时）
 

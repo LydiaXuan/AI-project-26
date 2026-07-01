@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 提效自动化工作流 · 可编辑闭环全景</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="tb-title mono">AI OPS WORKFLOW</span>
+    <button class="tb-btn" id="editToggle">✎ 编辑模式：开</button>
+    <button class="tb-btn" id="exportBtn">⬇ 导出 JSON</button>
+    <button class="tb-btn" id="importBtn">⬆ 导入 JSON</button>
+    <input type="file" id="importInput" accept="application/json" style="display:none">
+    <button class="tb-btn danger" id="resetBtn">↺ 重置默认数据</button>
+    <span class="tb-savehint mono" id="saveHint">已保存</span>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Google Play &amp; iOS · AI Automation Ops Map · 可交互可编辑</div>
+    <h1>AI 提效自动化工作流<br><span class="thin">从竞品调研到用户维护，闭环全景实时看板</span></h1>
+    <p class="lede">把扁平的工具清单还原成一条发行 / ASO 全流程链路，逐环节透视自动化闭环的完成度与断点。点击「编辑模式」即可直接改写节点状态、增删工具、重排顺序 —— 所有改动会自动保存在本地浏览器中。</p>
+    <div class="hero-stats">
+      <div class="hstat"><div class="num" id="statTotal">0</div><div class="lab" id="statTotalLab">工具总数</div></div>
+      <div class="hstat sig"><div class="num" id="statDone">0</div><div class="lab" id="statDoneLab">已落地</div></div>
+      <div class="hstat wip"><div class="num" id="statWip">0</div><div class="lab">进行中</div></div>
+      <div class="hstat brk"><div class="num" id="statGap">0</div><div class="lab">关键断点</div></div>
+    </div>
+
+    <div class="flowcard">
+      <div class="fc-head">
+        <b>闭环流向总览 · 点击节点跳转对应环节</b>
+        <div class="fc-legend">
+          <span><i style="background:var(--sig)"></i>已闭环</span>
+          <span><i style="background:var(--wip)"></i>存在进行中</span>
+          <span><i style="background:var(--brk)"></i>断点</span>
+        </div>
+      </div>
+      <div class="flowscroll"><div id="flowSvgHolder"></div></div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-idx">01</span><h2>自动化闭环矩阵</h2></div>
+    <p class="sec-sub">每条产品链拆成四个必备节点：采集 → 分析生成 → 人工确认 → 回写 / 推送。绿色代表已跑通，琥珀是进行中，红色虚线是链路上的断点。编辑模式下点击任意节点即可循环切换状态，点击环节名可直接改名。</p>
+    <div class="legend">
+      <span><i class="dot sig"></i>已闭环</span>
+      <span><i class="dot wip"></i>进行中</span>
+      <span><i class="dot brk"></i>断点 / 缺失</span>
+      <span><i class="dot na"></i>该环不适用</span>
+      <span class="edit-hint" id="boardEditHint">点击节点 / 名称可编辑</span>
+    </div>
+
+    <div class="board" id="board">
+      <div class="board-top">
+        <div>产品链 / 环节</div><div>采集</div><div>分析生成</div><div>人工确认</div><div>回写·推送</div>
+      </div>
+      <div id="boardRows"></div>
+    </div>
+
+    <div class="foundation">
+      <span class="tag">S9 · 地基层</span>
+      <span class="txt" id="foundationTxt"></span>
+      <span class="items" id="foundationItems"></span>
+    </div>
+  </div>
+</section>
+
+<section style="background:var(--paper-2);border-top:1.5px solid var(--edge);border-bottom:1.5px solid var(--edge)">
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-idx">02</span><h2>关键断点</h2></div>
+    <p class="sec-sub">不是「哪里工具少」，而是「哪条链的自动化闭环断在了关键节点」——这些补齐后 ROI 最高。卡片内容均可在编辑模式下直接改写，也可以增删。</p>
+    <div class="gaps" id="gapsList"></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-idx">03</span><h2>数据透视</h2></div>
+    <p class="sec-sub">状态分布与各环节落地情况，随编辑实时更新。</p>
+    <div class="charts">
+      <div class="chartbox"><b>整体状态分布</b><canvas id="donutChart"></canvas></div>
+      <div class="chartbox"><b>各环节工具状态构成</b><canvas id="stackChart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-idx">04</span><h2>全流程工具清单</h2></div>
+    <p class="sec-sub">按状态筛选、按名称搜索。编辑模式下可改名、切状态、标记共享、拖拽排序、增删工具。</p>
+    <div class="searchrow">
+      <input type="text" class="searchbox" id="searchInput" placeholder="搜索工具名称…">
+    </div>
+    <div class="filters" id="filters"></div>
+    <div class="jumprow" id="jumprow"></div>
+    <br>
+    <div id="inventory"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="mono">SOURCE</span> 飞书多维表格「AI 提效场景」· 过滤安卓小游戏方向后保留 93 条 &nbsp;|&nbsp; <span class="mono">SCOPE</span> Google Play + iOS &nbsp;|&nbsp; 四段闭环模型由链路结构推导，非原表字段 &nbsp;|&nbsp; 所有编辑保存在本机浏览器 localStorage，可用顶部「导出 JSON」备份。
+  </div>
+</footer>
+
+<script src="chart.umd.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+  document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importInput").click());
+</script>
+</body>
+</html>

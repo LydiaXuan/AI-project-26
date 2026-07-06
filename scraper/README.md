@@ -2,7 +2,71 @@
 
 抓取指定 App 的**当前应用图**(icon + 截图)和**历史元数据变更**(icon/截图 的历史版本,即 Apptweak `timeline_tab` 的内容),存到本地并生成 `manifest.json`。
 
-走 **Apptweak 官方 REST API**(用你自己的 API key),不是匿名爬网页 —— 合规、稳定、数据结构干净。
+两条路线,按你有没有 **API 席位**选:
+
+| 路线 | 脚本 | 适用 | 依赖 |
+|---|---|---|---|
+| **A. 官方 API** | `apptweak_scraper.py` | 你有 API key/席位 | 纯标准库,零依赖 |
+| **B. 浏览器会话** ⭐ | `apptweak_browser_scraper.py` | **没有 API 席位**,但能登录网页 | 需装 Playwright |
+
+> 你的情况是**没有 API 席位** → 用 **路线 B**(下方「路线 B」章节)。路线 A 留作以后拿到 key 时用。
+
+---
+
+# 路线 B:浏览器会话版(无需 API 席位)⭐
+
+用 Playwright 驱动一个真实浏览器,**复用你手动登录的会话**,打开目标页面,把页面加载时请求到的 JSON 数据和图片全部抓下来。相当于「你自己的浏览器在帮你另存图片」。
+
+## B-1. 准备(在你自己电脑上,只做一次)
+
+```bash
+pip install playwright
+playwright install chromium
+```
+
+## B-2. 登录(存会话,只需做一次;过期后重做)
+
+```bash
+cd scraper
+python3 apptweak_browser_scraper.py login
+```
+
+浏览器窗口会弹出 → 你在里面正常登录 Apptweak → 登录到能看见数据后,**回到终端按 Enter**。会话存进 `state.json`。
+
+## B-3. 抓取(可反复跑)
+
+```bash
+python3 apptweak_browser_scraper.py scrape \
+  --url "https://app.apptweak.com/aso-intelligence/applications/android/com.oakever.jigsawcard/metadata?scope=country&country=us&language=us&device=android&view=timeline_tab&workspace=189777" \
+  --out ./apptweak_out
+```
+
+- 想抓多个页面/多个 App:重复 `--url "..."` 传多次。
+- 历史很多、图没加载全:调大 `--scroll-rounds 40`。
+- 不想看到浏览器窗口:加 `--headless`(首次建议**别加**,好观察有没有真登录上)。
+
+## B-4. 输出
+
+```
+apptweak_out/
+├── images/                所有抓到的图(icon_/screenshot_ 前缀 + 编号)
+├── raw/responses.json     页面请求到的所有 JSON(含历史时间线原始数据,可据此提取每张图的日期)
+└── manifest.json          清单:每张图的 url / 类型 / 来源 / 本地路径
+```
+
+> **历史图的日期**藏在 `raw/responses.json` 里。抓完把这个文件发我,我可以再写一小段把「日期 ↔ 图片」对应关系整理成你「图测记录工具」能导入的格式。
+
+## B-5. 排错
+
+- **一张都没下下来** → 多半是会话没登上或已过期:重跑 `login`,确认浏览器里真能看到数据再按 Enter。
+- **图不全** → 加大 `--scroll-rounds`(时间线是懒加载,滚到底才继续加载)。
+- **合规**:这是用你自己的付费账户看你有权访问的数据,只自动化了「另存」。请遵守 Apptweak 服务条款,别高频批量拉别的 App。
+
+---
+
+# 路线 A:官方 API 版(需要 API key)
+
+走 **Apptweak 官方 REST API**,合规、稳定、数据结构干净。**没有 API 席位就跳过本节。**
 
 ---
 

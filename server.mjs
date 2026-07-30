@@ -98,23 +98,40 @@ async function callModel(messages, { temperature = 0.2, maxTokens = 1500 } = {})
   }
 }
 
+// Free Google Translate endpoint (en -> zh-CN). No API key required.
+async function googleTranslate(text) {
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(url, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (!res.ok) throw new Error(`谷歌翻译返回 ${res.status}`);
+    const data = await res.json();
+    return Array.isArray(data?.[0]) ? data[0].map((seg) => seg?.[0] || '').join('').trim() : '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function handleTranslate(req, res) {
   const body = await readBody(req);
   const keywords = Array.isArray(body.keywords) ? body.keywords.map((word) => String(word || '').trim()).filter(Boolean) : [];
   if (!keywords.length) { sendJson(res, 400, { error: '缺少需要翻译的关键词' }); return; }
   const unique = [...new Set(keywords)];
-  const messages = [
-    { role: 'system', content: '你是资深 iOS ASO（App Store 优化）本地化专家。把英文关键词翻译成简洁自然的简体中文，只输出翻译结果，不要解释。' },
-    { role: 'user', content: `把下列英文关键词翻译成简体中文，尽量简短贴合应用商店语境。只返回一个 JSON 对象，键是原始英文关键词，值是中文翻译，不要包含其他文字。\n关键词列表：\n${JSON.stringify(unique)}` },
-  ];
+  const translations = {};
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < unique.length) {
+      const word = unique[cursor];
+      cursor += 1;
+      try { const value = await googleTranslate(word); if (value) translations[word] = value; } catch (error) { console.error('translate failed:', word, error.message); }
+    }
+  };
   try {
-    const content = await callModel(messages, { temperature: 0.1, maxTokens: 1200 });
-    const parsed = extractJson(content) || {};
-    const translations = {};
-    unique.forEach((word) => { const value = parsed[word] ?? parsed[word.toLowerCase()]; if (value) translations[word] = String(value).trim(); });
+    await Promise.all(Array.from({ length: Math.min(5, unique.length) }, worker));
     sendJson(res, 200, { translations });
   } catch (error) {
-    sendJson(res, 502, { error: error.message });
+    sendJson(res, 502, { error: error.message || '翻译失败' });
   }
 }
 

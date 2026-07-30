@@ -142,11 +142,11 @@ async function handleAnalyze(req, res) {
   const rows = Array.isArray(body.rows) ? body.rows.slice(0, 300) : [];
   if (!rows.length) { sendJson(res, 400, { error: '没有可分析的关键词数据' }); return; }
   const table = rows
-    .map((row) => `${row.keyword} | 搜索量:${row.volume ?? 0} 难度:${row.difficulty ?? 0} 相关性:${row.relevance ?? 0} 应用数:${row.apps ?? 0}`)
+    .map((row) => `${row.keyword} | 排名:${row.rank ?? 0} 搜索指数:${row.searchIndex ?? 0} 流行度:${row.popularity ?? 0} 搜索结果数:${row.results ?? 0} 安装量:${row.installs ?? 0}`)
     .join('\n');
   const messages = [
     { role: 'system', content: '你是资深 iOS App Store ASO 关键词策略专家，熟悉苹果 100 字符关键词字段规则。' },
-    { role: 'user', content: `App 主标题：${title || '（未填写）'}\nApp 副标题：${subtitle || '（未填写）'}\n\n下面是候选关键词及其指标（搜索量越高越好，难度越低越好，相关性越高越好）：\n${table}\n\n请分析后只返回一个 JSON 对象，结构如下（不要有多余文字）：\n{\n  "summary": "一句话总体结论",\n  "highFrequencyWords": ["高频核心词"],\n  "asoWords": ["值得布局的 ASO 词"],\n  "goodWords": ["推荐优先使用的关键词"],\n  "combinations": ["建议的关键词组合"],\n  "keywordField": "建议填入 iOS 100 字符字段的关键词串，用英文逗号分隔且不加空格，不超过 100 字符，且不包含标题或副标题里已出现的词"\n}` },
+    { role: 'user', content: `App 主标题：${title || '（未填写）'}\nApp 副标题：${subtitle || '（未填写）'}\n\n下面是候选关键词及其指标（搜索指数与流行度越高越好，排名越靠前越好，搜索结果数越少竞争越小，安装量越高越好）：\n${table}\n\n请分析后只返回一个 JSON 对象，结构如下（不要有多余文字）：\n{\n  "summary": "一句话总体结论",\n  "highFrequencyWords": ["高频核心词"],\n  "asoWords": ["值得布局的 ASO 词"],\n  "goodWords": ["推荐优先使用的关键词"],\n  "combinations": ["建议的关键词组合"],\n  "keywordField": "建议填入 iOS 100 字符字段的关键词串，用英文逗号分隔且不加空格，不超过 100 字符，且不包含标题或副标题里已出现的词"\n}` },
   ];
   try {
     const content = await callModel(messages, { temperature: 0.3, maxTokens: 1600 });

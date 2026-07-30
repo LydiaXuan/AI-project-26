@@ -64,16 +64,66 @@ function decodeFile(buffer) {
 }
 function parseDelimitedLine(line, separator) { const cells = []; let cell = ''; let quoted = false; for (let index = 0; index < line.length; index += 1) { const char = line[index]; if (char === '"' && line[index + 1] === '"' && quoted) { cell += '"'; index += 1; } else if (char === '"') quoted = !quoted; else if (char === separator && !quoted) { cells.push(cell.trim()); cell = ''; } else cell += char; } cells.push(cell.trim()); return cells; }
 const brandValues = new Set(['1', 'true', 'yes', 'y', '是', '品牌', '品牌词']);
+const columnAliases = { keyword: ['keyword', '关键词', 'term', 'word', 'search term'], translation: ['translation', '翻译', '中文翻译', '中文'], brand: ['brand', '品牌词', '品牌'], rank: ['rank', '排名', 'ranking'], change: ['change', '变动', '排名变动', '变化'], searchIndex: ['searchindex', 'search index', '搜索指数', '指数', 'volume', '搜索量'], popularity: ['popularity', '流行度', '热度'], results: ['results', '搜索结果数', '结果数', '应用数', 'competition'], traffic: ['traffic', '搜索流量', '流量'], impressions: ['impressions', '展现量', '曝光量', '展示量'], installs: ['installs', '安装量', '下载量', 'downloads'] };
 function parseText(text, source = '已导入') {
   const trimmed = text.replace(/^﻿/, '').trim(); if (!trimmed) return [];
   if (trimmed[0] === '[' || trimmed[0] === '{') { try { const parsed = JSON.parse(trimmed); const list = Array.isArray(parsed) ? parsed : parsed.keywords || parsed.data || []; return list.map((item, index) => typeof item === 'string' ? normalizeRow({ keyword: item }, index, source) : normalizeRow({ keyword: item.keyword || item.word || item.term, translation: item.translation || item.chinese, brand: brandValues.has(normalize(item.brand)), rank: item.rank, change: item.change, searchIndex: item.searchIndex ?? item.searchindex ?? item.volume, popularity: item.popularity, results: item.results ?? item.apps, traffic: item.traffic, impressions: item.impressions, installs: item.installs ?? item.downloads }, index, source)).filter((row) => row.keyword); } catch { return []; } }
-  const lines = trimmed.split(/\r?\n/).filter((line) => line.trim()); const separator = lines[0].includes('\t') ? '\t' : ','; const matrix = lines.map((line) => parseDelimitedLine(line, separator)); const header = matrix[0].map((cell) => normalize(cell));
-  const aliases = { keyword: ['keyword', '关键词', 'term', 'word', 'search term'], translation: ['translation', '翻译', '中文翻译', '中文'], brand: ['brand', '品牌词', '品牌'], rank: ['rank', '排名', 'ranking'], change: ['change', '变动', '排名变动', '变化'], searchIndex: ['searchindex', 'search index', '搜索指数', '指数', 'volume', '搜索量'], popularity: ['popularity', '流行度', '热度'], results: ['results', '搜索结果数', '结果数', '应用数', 'competition'], traffic: ['traffic', '搜索流量', '流量'], impressions: ['impressions', '展现量', '曝光量', '展示量'], installs: ['installs', '安装量', '下载量', 'downloads'] };
-  const hasHeader = Object.values(aliases).some((names) => names.some((name) => header.includes(normalize(name)))); const data = hasHeader ? matrix.slice(1) : matrix;
-  const indexOf = (field, fallback) => { const found = aliases[field].map((name) => header.indexOf(normalize(name))).find((index) => index >= 0); return found === undefined ? fallback : found; };
+  const lines = trimmed.split(/\r?\n/).filter((line) => line.trim()); const separator = lines[0].includes('\t') ? '\t' : ','; return parseMatrix(lines.map((line) => parseDelimitedLine(line, separator)), source);
+}
+// Turn a 2D cell grid (from CSV/TSV or xlsx) into rows. Scans the first few
+// lines for the real header, so a title banner above the header is skipped.
+function parseMatrix(rawMatrix, source = '已导入') {
+  const matrix = rawMatrix.map((row) => (Array.isArray(row) ? row : []).map((cell) => String(cell ?? '').trim())).filter((row) => row.some((cell) => cell)); if (!matrix.length) return [];
+  const score = (row) => { const cells = row.map(normalize); return Object.values(columnAliases).filter((names) => names.some((name) => cells.includes(normalize(name)))).length; };
+  let headerIndex = -1; for (let i = 0; i < Math.min(matrix.length, 6); i += 1) { if (score(matrix[i]) >= 2) { headerIndex = i; break; } }
+  const header = headerIndex >= 0 ? matrix[headerIndex].map(normalize) : [];
+  const data = headerIndex >= 0 ? matrix.slice(headerIndex + 1) : matrix;
+  const indexOf = (field, fallback) => { if (!header.length) return fallback; const found = columnAliases[field].map((name) => header.indexOf(normalize(name))).find((i) => i >= 0); return found === undefined ? -1 : found; };
   const idx = { keyword: indexOf('keyword', 0), translation: indexOf('translation', -1), brand: indexOf('brand', -1), rank: indexOf('rank', -1), change: indexOf('change', -1), searchIndex: indexOf('searchIndex', -1), popularity: indexOf('popularity', -1), results: indexOf('results', -1), traffic: indexOf('traffic', -1), impressions: indexOf('impressions', -1), installs: indexOf('installs', -1) };
   const cell = (line, i) => (i >= 0 ? line[i] : '');
   return data.map((line, index) => normalizeRow({ keyword: cell(line, idx.keyword), translation: cell(line, idx.translation), brand: brandValues.has(normalize(cell(line, idx.brand))), rank: toNumber(cell(line, idx.rank)), change: Number(String(cell(line, idx.change)).replace(/[,\s]/g, '')) || 0, searchIndex: toNumber(cell(line, idx.searchIndex)), popularity: toNumber(cell(line, idx.popularity)), results: toNumber(cell(line, idx.results)), traffic: toNumber(cell(line, idx.traffic)), impressions: toNumber(cell(line, idx.impressions)), installs: toNumber(cell(line, idx.installs)) }, index, source)).filter((row) => row.keyword && !looksMojibake(row.keyword));
+}
+// ---- .xlsx reader: unzip (DecompressionStream) + minimal SpreadsheetML parsing, no external libs ----
+function decodeXml(value) { return String(value).replace(/&(lt|gt|quot|apos|amp|#\d+);/g, (match, code) => (code[0] === '#' ? String.fromCharCode(Number(code.slice(1))) : { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' }[code])); }
+function columnToIndex(ref) { const match = String(ref).match(/^([A-Z]+)/); if (!match) return 0; let index = 0; for (const char of match[1]) index = index * 26 + (char.charCodeAt(0) - 64); return index - 1; }
+async function inflateRaw(bytes) { const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return new Uint8Array(await new Response(stream).arrayBuffer()); }
+async function unzip(buffer) {
+  const view = new DataView(buffer); const bytes = new Uint8Array(buffer); let eocd = -1;
+  for (let i = bytes.length - 22; i >= 0; i -= 1) { if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; } }
+  if (eocd < 0) throw new Error('不是有效的 xlsx 文件');
+  const count = view.getUint16(eocd + 10, true); let offset = view.getUint32(eocd + 16, true); const files = {};
+  for (let i = 0; i < count; i += 1) {
+    if (view.getUint32(offset, true) !== 0x02014b50) break;
+    const method = view.getUint16(offset + 10, true); const compSize = view.getUint32(offset + 20, true);
+    const nameLen = view.getUint16(offset + 28, true); const extraLen = view.getUint16(offset + 30, true); const commentLen = view.getUint16(offset + 32, true);
+    const localOffset = view.getUint32(offset + 42, true); const name = new TextDecoder().decode(bytes.subarray(offset + 46, offset + 46 + nameLen));
+    const localNameLen = view.getUint16(localOffset + 26, true); const localExtraLen = view.getUint16(localOffset + 28, true);
+    const dataStart = localOffset + 30 + localNameLen + localExtraLen;
+    files[name] = { method, data: bytes.subarray(dataStart, dataStart + compSize) }; offset += 46 + nameLen + extraLen + commentLen;
+  }
+  return files;
+}
+async function readZipText(files, name) { const entry = files[name]; if (!entry) return ''; const raw = entry.method === 0 ? entry.data : await inflateRaw(entry.data); return new TextDecoder().decode(raw); }
+async function parseXlsx(buffer) {
+  const files = await unzip(buffer);
+  const sharedXml = await readZipText(files, 'xl/sharedStrings.xml'); const shared = [];
+  if (sharedXml) { const siRegex = /<si[^>]*>([\s\S]*?)<\/si>/g; let si; while ((si = siRegex.exec(sharedXml))) { shared.push([...si[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((t) => decodeXml(t[1])).join('')); } }
+  const sheetName = Object.keys(files).filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort()[0]; if (!sheetName) throw new Error('xlsx 中没有找到工作表');
+  const sheetXml = await readZipText(files, sheetName); const matrix = [];
+  const rowRegex = /<row[^>]*>([\s\S]*?)<\/row>/g; let row;
+  while ((row = rowRegex.exec(sheetXml))) {
+    const cells = []; const cellRegex = /<c\s+([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g; let cellMatch;
+    while ((cellMatch = cellRegex.exec(row[1]))) {
+      const attrs = cellMatch[1]; const inner = cellMatch[2] || '';
+      const ref = (attrs.match(/r="([A-Z]+\d+)"/) || [])[1]; const type = (attrs.match(/t="([^"]+)"/) || [])[1];
+      let value = '';
+      if (type === 'inlineStr') value = decodeXml((inner.match(/<t[^>]*>([\s\S]*?)<\/t>/) || ['', ''])[1]);
+      else { const raw = (inner.match(/<v>([\s\S]*?)<\/v>/) || ['', ''])[1]; value = type === 's' ? (shared[Number(raw)] || '') : decodeXml(raw); }
+      cells[ref ? columnToIndex(ref) : cells.length] = value;
+    }
+    matrix.push(Array.from(cells, (item) => (item == null ? '' : item)));
+  }
+  return matrix;
 }
 function merge(incoming, options = {}) {
   if (!incoming.length) { if (!options.silent) showToast('没有识别到可用关键词，请检查文件格式或编码'); return { incoming: 0, added: 0, duplicates: 0 }; }
@@ -85,7 +135,7 @@ function renderImportStatus(results, summary) { const status = $('#importStatus'
 function restoreImportStatus() { try { const saved = JSON.parse(localStorage.getItem('ios-key-import-status') || 'null'); if (saved?.results?.length) renderImportStatus(saved.results, saved.summary); } catch { localStorage.removeItem('ios-key-import-status'); } }
 function showUploadProgress(done, total) { const box = $('#uploadProgress'); box.hidden = false; $('#uploadProgressCount').textContent = `${done}/${total} 个文件`; $('#uploadProgressText').textContent = done < total ? '正在处理文件…' : '上传完成'; $('#uploadProgressFill').style.width = `${total ? Math.round((done / total) * 100) : 0}%`; }
 function hideUploadProgress() { clearTimeout(hideUploadProgress.timer); hideUploadProgress.timer = setTimeout(() => { $('#uploadProgress').hidden = true; }, 1400); }
-async function importFiles(fileList) { const files = [...fileList]; if (!files.length) return; const results = []; let totalIncoming = 0; let totalAdded = 0; let totalDuplicates = 0; let done = 0; showUploadProgress(0, files.length); for (const file of files) { try { const decoded = decodeFile(await file.arrayBuffer()); const result = merge(parseText(decoded.text, file.name), { silent: true }); totalIncoming += result.incoming; totalAdded += result.added; totalDuplicates += result.duplicates; results.push({ name: file.name, encoding: decoded.encoding, count: result.incoming, status: '成功' }); } catch (error) { console.error(error); results.push({ name: file.name, encoding: '读取失败', count: 0, status: '失败' }); } done += 1; showUploadProgress(done, files.length); } save(); render(); renderImportStatus(results, { totalIncoming, totalAdded, totalDuplicates }); hideUploadProgress(); const failed = results.filter((item) => item.status === '失败').length; showToast(failed ? `完成 ${results.length - failed} 个文件，${failed} 个文件失败` : `上传成功，共新增 ${totalAdded} 条关键词`); }
+async function importFiles(fileList) { const files = [...fileList]; if (!files.length) return; const results = []; let totalIncoming = 0; let totalAdded = 0; let totalDuplicates = 0; let done = 0; showUploadProgress(0, files.length); for (const file of files) { try { const buffer = await file.arrayBuffer(); let incoming; let encoding; if (/\.xlsx$/i.test(file.name)) { incoming = parseMatrix(await parseXlsx(buffer), file.name); encoding = 'Excel (.xlsx)'; } else { const decoded = decodeFile(buffer); incoming = parseText(decoded.text, file.name); encoding = decoded.encoding; } const result = merge(incoming, { silent: true }); totalIncoming += result.incoming; totalAdded += result.added; totalDuplicates += result.duplicates; results.push({ name: file.name, encoding, count: result.incoming, status: '成功' }); } catch (error) { console.error(error); results.push({ name: file.name, encoding: '读取失败', count: 0, status: '失败' }); } done += 1; showUploadProgress(done, files.length); } save(); render(); renderImportStatus(results, { totalIncoming, totalAdded, totalDuplicates }); hideUploadProgress(); const failed = results.filter((item) => item.status === '失败').length; showToast(failed ? `完成 ${results.length - failed} 个文件，${failed} 个文件失败` : `上传成功，共新增 ${totalAdded} 条关键词`); }
 
 const localTranslations = { rotate: '旋转', rings: '圆环', ring: '圆环', circles: '圆圈', circle: '圆圈', puzzle: '益智', spin: '旋转', brain: '大脑', teaser: '挑战', relaxing: '放松', game: '游戏', geometry: '几何', mind: '思维', endless: '无限', color: '颜色', unlock: '解锁', '3d': '3D' };
 function translateLocally(keyword) { return tokens(keyword).map((word) => localTranslations[word] || word).join(''); }

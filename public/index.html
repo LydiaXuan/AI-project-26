@@ -25,8 +25,8 @@
         <main class="main-workspace">
           <div class="workspace-heading"><div><p class="eyebrow">IOS ASO / 关键词库建立与筛选</p><h1>词库导入、清洗与分析</h1><p class="heading-note">上传多个关键词文件，自动去重、翻译、筛选并生成 iOS 关键词组合。</p></div><div class="save-note"><span class="online-dot"></span>本地自动保存</div></div>
           <section class="work-card import-card" id="importArea">
-            <div class="card-heading"><div><span class="section-number">01</span><div><h2>导入关键词文件</h2><p>支持 CSV、TSV、TXT、JSON，自动识别 UTF-8、UTF-16、GBK 和 GB18030 编码。</p></div></div><input id="fileInput" type="file" multiple hidden accept=".csv,.tsv,.txt,.json" /></div>
-            <div class="upload-row" id="dropZone" role="button" tabindex="0"><span class="upload-icon">⇧</span><div class="upload-copy"><strong>点击或拖拽上传文件</strong><span>可一次选择多个 CSV / TSV / TXT / JSON，自动合并去重 · 不保留文件副本</span></div><span class="upload-cta">选择文件</span></div>
+            <div class="card-heading"><div><span class="section-number">01</span><div><h2>导入关键词文件</h2><p>支持 Excel(.xlsx)、CSV、TSV、TXT、JSON，自动识别编码并跳过标题行。</p></div></div><input id="fileInput" type="file" multiple hidden accept=".xlsx,.csv,.tsv,.txt,.json" /></div>
+            <div class="upload-row" id="dropZone" role="button" tabindex="0"><span class="upload-icon">⇧</span><div class="upload-copy"><strong>点击或拖拽上传文件</strong><span>可一次选择多个 Excel / CSV / TSV / TXT / JSON，自动合并去重 · 不保留文件副本</span></div><span class="upload-cta">选择文件</span></div>
             <div class="upload-progress" id="uploadProgress" hidden><div class="upload-progress-head"><span id="uploadProgressText">正在处理文件…</span><span id="uploadProgressCount">0/0</span></div><div class="upload-progress-track"><i id="uploadProgressFill"></i></div></div>
             <div class="import-result" id="importStatus" aria-live="polite"><span class="import-status-icon">○</span><div><strong>等待上传文件</strong><p>选择文件后，这里会显示文件名、编码、识别数量和去重结果。</p></div></div>
           </section>

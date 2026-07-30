@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f6f8" />
+    <title>iOS 关键词库 | 建立与筛选</title>
+    <link rel="stylesheet" href="styles.css?v=20260730-3" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="topbar-brand"><span class="brand-mark"><i></i><i></i><i></i></span><strong>IOS<span>KEY</span></strong><small>关键词工作台</small></div>
+        <div class="project-switcher"><span class="project-label">当前项目</span><strong>Rotate Rings · iOS US</strong><span class="chevron">⌄</span></div>
+        <div class="top-actions"><button class="top-action" id="newProjectButton">＋ 新建项目</button><button class="top-action" id="themeButton">◐ 浅色模式</button><button class="user-button" title="用户设置">AS</button></div>
+      </header>
+      <div class="workspace">
+        <aside class="sidebar">
+          <div class="sidebar-heading">工作区</div>
+          <nav class="nav-list"><button class="nav-item active" data-view="library"><span class="nav-icon">▦</span><span>词库管理</span><span class="nav-count" id="navCount">0</span></button><button class="nav-item" data-view="analysis"><span class="nav-icon">◉</span><span>AI 词频分析</span></button><button class="nav-item" data-view="field"><span class="nav-icon">⌁</span><span>100 字符字段</span></button></nav>
+          <div class="sidebar-divider"></div><div class="sidebar-heading">工具状态</div>
+          <div class="source-list"><div><span class="status-dot orange"></span>文件导入 <b>就绪</b></div><div><span class="status-dot green"></span>完全去重 <b>自动</b></div><div><span class="status-dot blue"></span>AI 分析 <b id="sidebarApiState">未配置</b></div></div>
+          <div class="sidebar-foot"><span class="online-dot"></span> 本地运行 <small>数据不上传</small></div>
+        </aside>
+        <main class="main-workspace">
+          <div class="workspace-heading"><div><p class="eyebrow">IOS ASO / 关键词库建立与筛选</p><h1>词库导入、清洗与分析</h1><p class="heading-note">上传多个关键词文件，自动去重、翻译、筛选并生成 iOS 关键词组合。</p></div><div class="save-note"><span class="online-dot"></span>本地自动保存</div></div>
+          <section class="work-card import-card" id="importArea">
+            <div class="card-heading"><div><span class="section-number">01</span><div><h2>导入关键词文件</h2><p>支持 CSV、TSV、TXT、JSON，自动识别 UTF-8、UTF-16、GBK 和 GB18030 编码。</p></div></div><input id="fileInput" type="file" multiple hidden accept=".csv,.tsv,.txt,.json" /></div>
+            <div class="import-grid"><div class="drop-zone" id="dropZone" role="button" tabindex="0"><span class="upload-icon">⇧</span><strong>点击或拖拽上传文件</strong><span>支持一次选择多个词库文件，系统会自动合并完全重复关键词</span><small>仅支持 CSV、TSV、TXT、JSON · 不保留文件副本</small></div><div class="import-result" id="importStatus" aria-live="polite"><span class="import-status-icon">○</span><div><strong>等待上传文件</strong><p>选择文件后，这里会显示文件名、编码、识别数量和去重结果。</p></div></div></div>
+          </section>
+          <section class="work-card library-card" id="libraryView">
+            <div class="card-heading"><div><span class="section-number">02</span><div><h2>词库清洗与筛选数据表</h2><p><strong id="uniqueCount">0</strong> 条完全去重词 · 直接点击单元格即可编辑</p></div></div><div class="card-actions"><button class="button secondary" id="translateButton">✦ AI 翻译</button></div></div>
+            <div class="toolbar"><label class="search-input"><span>⌕</span><input id="searchInput" placeholder="搜索关键词或中文翻译" /><kbd>/</kbd></label><div class="toolbar-actions"><button class="button filter-button" id="filterButton">筛选 <b id="filterCount">0</b></button><button class="text-button" id="clearFilters">↺ 重置</button></div></div>
+            <div class="filter-drawer" id="filterDrawer" hidden><label>搜索量 ≥<input id="volumeMin" type="number" placeholder="0" /></label><label>搜索量 ≤<input id="volumeMax" type="number" placeholder="不限" /></label><label>难度 ≤<input id="difficultyMax" type="number" placeholder="100" /></label><label>相关性 ≥<input id="relevanceMin" type="number" placeholder="0" /></label><small>填写数字后，结果会实时更新。</small></div>
+            <div class="translation-status" id="translationStatus" aria-live="polite"></div><div class="table-wrap"><table><thead><tr><th class="check-column"><button class="check-box" id="selectVisible" title="选择当前显示结果"></button></th><th><button class="sort-button" data-sort="keyword">关键词 <span></span></button></th><th>中文翻译</th><th><button class="sort-button" data-sort="volume">搜索量 <span></span></button></th><th><button class="sort-button" data-sort="difficulty">难度 <span></span></button></th><th><button class="sort-button" data-sort="relevance">相关性 <span></span></button></th><th><button class="sort-button" data-sort="apps">应用数 <span></span></button></th><th></th></tr></thead><tbody id="keywordBody"></tbody></table><div class="empty-state" id="emptyState" hidden><strong>没有匹配的关键词</strong><span>调整筛选条件，或上传新的文件。</span></div></div><div class="table-foot"><span>当前显示 <b id="showingCount">0</b> / <b id="footerCount">0</b> 条关键词</span><span class="data-note">完全重复项会自动合并，保留指标较高的数据</span></div>
+          </section>
+          <section class="work-card analysis-card" id="insightArea">
+            <div class="card-heading"><div><span class="section-number">03</span><div><h2>AI 高频词与词群分析</h2><p>配置 API 后分析高频词、潜力词、ASO 组合和 100 字符建议。</p></div></div><div class="analysis-actions"><span class="api-state" id="apiState">未配置 API</span><button class="button ai-button" id="analyzeButton">✦ AI 分析</button></div></div>
+            <div class="analysis-grid"><div class="frequency"><div class="mini-head"><span>当前词库高频词</span><small>本地统计预览</small></div><div id="frequencyList"></div></div><div class="recommendation"><div class="recommendation-icon">✦</div><div><strong id="recommendationTitle">等待 AI 分析</strong><p id="recommendationText">配置 API 后可以分析高频词、潜力词和 iOS ASO 组合。</p><div class="chips" id="recommendationChips"></div></div></div></div>
+            <div class="api-note"><span>API 配置读取自服务端环境变量</span><code>AI_API_URL</code><code>AI_API_KEY</code><code>AI_MODEL</code><button id="apiHelpButton">查看配置说明</button></div>
+          </section>
+        </main>
+        <aside class="assembly-panel" id="fieldView">
+          <div class="assembly-header"><div><p class="eyebrow">ASO METADATA</p><h2>100 字符关键词字段</h2><p>标题、副标题和 100 字符字段独立计算</p></div><span class="local-badge">本地编辑</span></div>
+          <div class="assembly-project"><span>项目</span><strong>Rotate Rings · iOS US</strong></div>
+          <div class="assembly-fields"><label class="metadata-field"><span><b>App 主标题</b><em id="titleCount">12/30 字符</em></span><input id="appTitle" value="Rotate Rings" maxlength="30" /></label><label class="metadata-field"><span><b>App 副标题</b><em id="subtitleCount">30/30 字符</em></span><input id="appSubtitle" value="Rotate Circles &amp; Unlock Puzzle" maxlength="30" /></label><label class="metadata-field keyword-field-label"><span><b>100 字符关键词字段</b><em><strong id="charUsed">0</strong>/100 字符</em></span><textarea id="keywordField" maxlength="100" placeholder="勾选左侧关键词，或直接输入关键词"></textarea></label></div>
+          <div class="field-alert" id="fieldAlert" role="status" aria-live="polite" hidden></div><div class="assembly-stats"><div><span>已选关键词</span><strong id="selectedCount">0</strong><small>条</small></div><div><span>剩余空间</span><strong id="remainingCount">100</strong><small>字符</small></div></div>
+          <div class="rule-box"><strong>⚠ 苹果规则提示</strong><p>标题和副标题中的词会自动作为保护词排除。关键词之间用英文逗号分隔，不要加空格；单数形式可节省字符。</p><div class="protected-inline"><span><b id="protectedCount">0</b> 个保护词</span><small id="protectedWords">填写标题和副标题后自动识别</small></div><button id="ruleButton">查看完整规则 →</button></div>
+          <div class="assembly-actions"><button class="action-button primary-action" id="copyField">▣ 复制关键词串</button><button class="action-button secondary-action" id="exportField">⇩ 导出关键词串</button><button class="action-button secondary-action" id="exportReport">⇩ 导出项目报告</button><button class="action-button clear-action" id="clearField">× 清空当前生成</button></div><div class="assembly-footer"><span>✓ 逗号后不要加空格</span><button class="reset-link" id="resetAll">恢复示例数据</button></div>
+        </aside>
+      </div>
+    </div>
+    <div class="toast" id="toast" hidden></div><script src="app.js?v=20260730-3"></script>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+@echo off
+rem Copy this file to ai-api.local.bat and fill in your own provider details.
+rem The server sends keyword data only when all three variables are set.
+set "AI_API_URL=https://your-provider.example/v1/chat/completions"
+set "AI_API_KEY=replace-with-your-key"
+set "AI_MODEL=your-model-name"
